@@ -194,7 +194,7 @@ export default function QuestionPanel({ topicId, onClose }) {
       <PanelWrapper onClose={onClose} stats={null} currentIndex={0} queueLength={0}>
         <div className="flex-1 flex items-center justify-center">
           <div className="flex flex-col items-center gap-4">
-            <div className="w-10 h-10 border-2 border-[rgba(255,23,68,0.2)] border-t-[#ff1744] rounded-full animate-spin" />
+            <div className="w-10 h-10 border-2 border-[rgba(8,145,178,0.2)] border-t-[#0891b2] rounded-full animate-spin" />
             <p className="font-bebas text-gray-600 tracking-widest text-sm">KARTLAR YÜKLENİYOR</p>
           </div>
         </div>
@@ -207,7 +207,7 @@ export default function QuestionPanel({ topicId, onClose }) {
       <PanelWrapper onClose={onClose} stats={null} currentIndex={0} queueLength={0}>
         <div className="flex-1 flex items-center justify-center p-6">
           <div className="text-center">
-            <div className="font-bebas text-6xl text-[#ff1744] mb-4 tracking-widest">—</div>
+            <div className="font-bebas text-6xl text-[#0891b2] mb-4 tracking-widest">—</div>
             <h3 className="font-bebas text-2xl text-white tracking-widest mb-2">SORU YOK</h3>
             <p className="text-gray-600 text-xs uppercase tracking-widest">Bu konuda henüz soru eklenmemiş.</p>
           </div>
@@ -232,9 +232,9 @@ export default function QuestionPanel({ topicId, onClose }) {
   return (
     <PanelWrapper onClose={onClose} stats={stats} currentIndex={currentIndex} queueLength={queue.length}>
       {/* Progress bar */}
-      <div className="h-[3px] flex-shrink-0" style={{ background: '#1a1a1a' }}>
+      <div className="h-[3px] flex-shrink-0" style={{ background: '#1a2d45' }}>
         <motion.div
-          className="h-full bg-[#ff1744]"
+          className="h-full bg-[#0891b2]"
           animate={{ width: `${(currentIndex / queue.length) * 100}%` }}
           transition={{ duration: 0.4 }}
         />
@@ -255,8 +255,8 @@ export default function QuestionPanel({ topicId, onClose }) {
             <div
               className="mb-7 p-5 relative"
               style={{
-                background: '#111',
-                borderLeft: '4px solid #ff1744',
+                background: '#0d1e35',
+                borderLeft: '4px solid #0891b2',
               }}
             >
               <p className="text-gray-100 text-base sm:text-lg leading-relaxed font-medium">
@@ -282,14 +282,14 @@ export default function QuestionPanel({ topicId, onClose }) {
                       borderColor = 'rgba(255,23,68,0.4)'
                       textColor = '#ff8888'
                     } else {
-                      bg = '#0a0a0a'
-                      borderColor = '#1a1a1a'
+                      bg = '#0a1628'
+                      borderColor = '#1a2d45'
                       textColor = '#444'
                     }
                   } else if (i === selectedOption) {
-                    bg = 'rgba(255,23,68,0.08)'
-                    borderColor = '#ff1744'
-                    textColor = '#ff8888'
+                    bg = 'rgba(8,145,178,0.08)'
+                    borderColor = '#0891b2'
+                    textColor = '#67d9f0'
                   }
 
                   return (
@@ -327,9 +327,9 @@ export default function QuestionPanel({ topicId, onClose }) {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="p-4 mb-4"
-                style={{ background: 'rgba(255,23,68,0.05)', borderLeft: '3px solid rgba(255,23,68,0.4)' }}
+                style={{ background: 'rgba(8,145,178,0.05)', borderLeft: '3px solid rgba(8,145,178,0.4)' }}
               >
-                <p className="text-[10px] font-semibold text-[#ff1744] mb-1.5 uppercase tracking-[0.2em]">Açıklama</p>
+                <p className="text-[10px] font-semibold text-[#0891b2] mb-1.5 uppercase tracking-[0.2em]">Açıklama</p>
                 <p className="text-gray-400 text-sm leading-relaxed">{currentQuestion.explanation}</p>
               </motion.div>
             )}
@@ -340,7 +340,7 @@ export default function QuestionPanel({ topicId, onClose }) {
       {/* Bottom actions */}
       <div
         className="p-4 sm:p-6 flex-shrink-0"
-        style={{ borderTop: '1px solid #1a1a1a', background: '#0a0a0a' }}
+        style={{ borderTop: '1px solid #1a2d45', background: '#0a1628' }}
       >
         {!showAnswer ? (
           <motion.button
@@ -349,9 +349,9 @@ export default function QuestionPanel({ topicId, onClose }) {
             onClick={() => setShowAnswer(true)}
             className="w-full max-w-sm mx-auto flex items-center justify-center gap-2 py-4 px-6 font-bebas tracking-[0.15em] text-base text-white"
             style={{
-              background: '#ff1744',
+              background: '#0891b2',
               clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px))',
-              boxShadow: '0 4px 24px rgba(255,23,68,0.3)',
+              boxShadow: '0 4px 24px rgba(8,145,178,0.3)',
             }}
           >
             CEVABI GÖSTER
@@ -398,26 +398,26 @@ function PanelWrapper({ children, onClose, stats, currentIndex, queueLength }) {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 flex flex-col"
-      style={{ background: '#0a0a0a' }}
+      style={{ background: '#0a1628' }}
     >
       {/* Top bar */}
       <div
         className="flex items-center justify-between px-5 py-3.5 flex-shrink-0 relative"
-        style={{ borderBottom: '1px solid #1a1a1a', background: '#0a0a0a' }}
+        style={{ borderBottom: '1px solid #1a2d45', background: '#0a1628' }}
       >
-        {/* Left red accent */}
-        <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#ff1744]" />
+        {/* Left teal accent */}
+        <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#0891b2]" />
 
         <div className="flex items-center gap-4 pl-3">
           <span
             className="font-bebas text-white tracking-[0.15em] text-lg"
             style={{ transform: 'skewX(-4deg)', display: 'inline-block' }}
           >
-            DAVY'S <span className="text-[#ff1744]">DENTAL</span>
+            DAVY'S <span className="text-[#0891b2]">DENTAL</span>
           </span>
           <span
-            className="font-bebas text-[#ff1744] text-xs tracking-[0.2em] px-2 py-0.5"
-            style={{ background: 'rgba(255,23,68,0.1)', border: '1px solid rgba(255,23,68,0.2)' }}
+            className="font-bebas text-[#0891b2] text-xs tracking-[0.2em] px-2 py-0.5"
+            style={{ background: 'rgba(8,145,178,0.1)', border: '1px solid rgba(8,145,178,0.2)' }}
           >
             SORU MODU
           </span>
@@ -427,7 +427,7 @@ function PanelWrapper({ children, onClose, stats, currentIndex, queueLength }) {
           {stats && queueLength > 0 && (
             <div className="hidden sm:flex items-center gap-3">
               <StatPill color="#4466ff" label="Yeni" count={stats.newCount} />
-              <StatPill color="#ff1744" label="Öğrenme" count={stats.learningCount} />
+              <StatPill color="#0891b2" label="Öğrenme" count={stats.learningCount} />
               <StatPill color="#22c55e" label="İnceleme" count={stats.reviewCount} />
               <span className="text-[10px] text-gray-700 uppercase tracking-wider font-semibold">
                 {currentIndex}/{queueLength}
@@ -437,7 +437,7 @@ function PanelWrapper({ children, onClose, stats, currentIndex, queueLength }) {
           <button
             onClick={onClose}
             className="p-2 text-gray-600 hover:text-white transition-colors"
-            style={{ background: '#111', border: '1px solid #1a1a1a' }}
+            style={{ background: '#0d1e35', border: '1px solid #1a2d45' }}
           >
             <X size={16} />
           </button>
@@ -471,11 +471,11 @@ function FinishedScreen({ stats, total, onClose }) {
       {/* Background slash elements */}
       <div
         className="absolute top-0 right-0 w-48 h-48 pointer-events-none"
-        style={{ background: '#ff1744', opacity: 0.05, clipPath: 'polygon(100% 0, 100% 100%, 0 100%)' }}
+        style={{ background: '#0891b2', opacity: 0.05, clipPath: 'polygon(100% 0, 100% 100%, 0 100%)' }}
       />
       <div
         className="absolute bottom-0 left-0 w-48 h-48 pointer-events-none"
-        style={{ background: '#ff1744', opacity: 0.05, clipPath: 'polygon(0 0, 100% 0, 0 100%)' }}
+        style={{ background: '#0891b2', opacity: 0.05, clipPath: 'polygon(0 0, 100% 0, 0 100%)' }}
       />
 
       <div className="text-center max-w-sm relative z-10">
@@ -486,7 +486,7 @@ function FinishedScreen({ stats, total, onClose }) {
           transition={{ type: 'spring', stiffness: 250, damping: 18, delay: 0.1 }}
         >
           <h2
-            className="font-bebas text-[#ff1744] tracking-widest leading-none mb-1"
+            className="font-bebas text-[#0891b2] tracking-widest leading-none mb-1"
             style={{ fontSize: 'clamp(48px, 10vw, 80px)', transform: 'skewX(-4deg)', display: 'inline-block' }}
           >
             TEBRİKLER!
@@ -508,19 +508,19 @@ function FinishedScreen({ stats, total, onClose }) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.25 }}
           className="grid grid-cols-3 mb-8"
-          style={{ gap: '2px', background: '#111' }}
+          style={{ gap: '2px', background: '#0d1e35' }}
         >
-          <div className="bg-[#0a0a0a] px-4 py-4 relative">
+          <div className="bg-[#0a1628] px-4 py-4 relative">
             <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-blue-500" />
             <div className="font-bebas text-3xl text-blue-400">{stats.newCount}</div>
             <div className="text-[9px] text-gray-600 uppercase tracking-wider mt-0.5">Yeni</div>
           </div>
-          <div className="bg-[#0a0a0a] px-4 py-4 relative">
+          <div className="bg-[#0a1628] px-4 py-4 relative">
             <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-[#ff6600]" />
             <div className="font-bebas text-3xl text-orange-400">{stats.learningCount}</div>
             <div className="text-[9px] text-gray-600 uppercase tracking-wider mt-0.5">Öğrenme</div>
           </div>
-          <div className="bg-[#0a0a0a] px-4 py-4 relative">
+          <div className="bg-[#0a1628] px-4 py-4 relative">
             <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-emerald-500" />
             <div className="font-bebas text-3xl text-emerald-400">{stats.reviewCount}</div>
             <div className="text-[9px] text-gray-600 uppercase tracking-wider mt-0.5">İnceleme</div>
@@ -536,7 +536,7 @@ function FinishedScreen({ stats, total, onClose }) {
           onClick={onClose}
           className="w-full flex items-center justify-center gap-2 py-3.5 font-bebas tracking-[0.15em] text-base text-white"
           style={{
-            background: '#ff1744',
+            background: '#0891b2',
             clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px))',
           }}
         >

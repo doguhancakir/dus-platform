@@ -17,7 +17,7 @@
   }
 
   body {
-    background-color: #0a0a0a;
+    background-color: #0a1628;
     color: #e8e8e8;
     min-height: 100vh;
   }
@@ -28,7 +28,7 @@
   }
 
   ::selection {
-    background: rgba(255, 23, 68, 0.3);
+    background: rgba(8, 145, 178, 0.3);
     color: #ffffff;
   }
 
@@ -38,15 +38,15 @@
   }
 
   ::-webkit-scrollbar-track {
-    background: #0a0a0a;
+    background: #0a1628;
   }
 
   ::-webkit-scrollbar-thumb {
-    background: #2a2a2a;
+    background: #243550;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: #ff1744;
+    background: #0891b2;
   }
 }
 
@@ -54,26 +54,26 @@
   .shimmer {
     background: linear-gradient(
       90deg,
-      #141414 0%,
-      #222222 50%,
-      #141414 100%
+      #162544 0%,
+      #1e3050 50%,
+      #162544 100%
     );
     background-size: 200% 100%;
     animation: shimmer 1.8s infinite;
   }
 
   .card {
-    background: #1a1a1a;
-    border: 1px solid #2a2a2a;
+    background: #1a2d45;
+    border: 1px solid #243550;
     @apply transition-all duration-200;
   }
 
   .card:hover {
-    border-color: rgba(255, 23, 68, 0.3);
+    border-color: rgba(8, 145, 178, 0.3);
   }
 
   .btn-primary {
-    background: #ff1744;
+    background: #0891b2;
     color: #ffffff;
     border-radius: 0;
     @apply font-semibold px-5 py-2.5 text-sm
@@ -81,8 +81,8 @@
   }
 
   .btn-primary:hover:not(:disabled) {
-    background: #e8143c;
-    box-shadow: 0 0 20px rgba(255, 23, 68, 0.3);
+    background: #0779a0;
+    box-shadow: 0 0 20px rgba(8, 145, 178, 0.3);
   }
 
   .btn-primary:active:not(:disabled) {
@@ -97,12 +97,12 @@
   }
 
   .btn-ghost:hover {
-    background: #1a1a1a;
+    background: #1a2d45;
   }
 
   .input {
-    background: #111111;
-    border: 1px solid #2a2a2a;
+    background: #0d1e35;
+    border: 1px solid #243550;
     border-radius: 0;
     @apply px-4 py-2.5 text-gray-200
            placeholder-gray-600 focus:outline-none
@@ -110,13 +110,13 @@
   }
 
   .input:focus {
-    border-color: #ff1744;
-    box-shadow: 0 0 0 2px rgba(255, 23, 68, 0.1), 0 0 12px rgba(255, 23, 68, 0.12);
+    border-color: #0891b2;
+    box-shadow: 0 0 0 2px rgba(8, 145, 178, 0.1), 0 0 12px rgba(8, 145, 178, 0.12);
   }
 
   .progress-bar {
     @apply h-1 overflow-hidden;
-    background: #2a2a2a;
+    background: #243550;
   }
 
   .progress-fill {
@@ -172,15 +172,15 @@
 
 .markdown-content h1 {
   font-size: 1.85em;
-  border-left: 4px solid #ff1744;
+  border-left: 4px solid #0891b2;
   padding-left: 0.7em;
 }
 
 .markdown-content h2 {
   font-size: 1.45em;
-  border-left: 3px solid rgba(255, 23, 68, 0.5);
+  border-left: 3px solid rgba(8, 145, 178, 0.5);
   padding-left: 0.6em;
-  border-bottom: 1px solid #222;
+  border-bottom: 1px solid #1e3050;
   padding-bottom: 0.35em;
 }
 
@@ -213,18 +213,18 @@
 }
 
 .markdown-content code {
-  background: rgba(255, 23, 68, 0.07);
-  border: 1px solid rgba(255, 23, 68, 0.18);
+  background: rgba(8, 145, 178, 0.07);
+  border: 1px solid rgba(8, 145, 178, 0.18);
   padding: 0.15em 0.45em;
   font-size: 0.875em;
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  color: #ff6b6b;
+  color: #67d9f0;
 }
 
 .markdown-content pre {
-  background: #111111;
-  border: 1px solid #2a2a2a;
-  border-left: 3px solid #ff1744;
+  background: #0d1e35;
+  border: 1px solid #243550;
+  border-left: 3px solid #0891b2;
   padding: 1.2em;
   overflow-x: auto;
   margin-bottom: 1.2em;
@@ -238,12 +238,12 @@
 }
 
 .markdown-content blockquote {
-  border-left: 4px solid #ff1744;
+  border-left: 4px solid #0891b2;
   padding: 0.8em 1.1em;
   margin-left: 0;
   margin-bottom: 1.1em;
   color: #9ca3b0;
-  background: rgba(255, 23, 68, 0.05);
+  background: rgba(8, 145, 178, 0.05);
 }
 
 .markdown-content table {
@@ -254,18 +254,18 @@
 }
 
 .markdown-content th {
-  background: rgba(255, 23, 68, 0.12);
+  background: rgba(8, 145, 178, 0.12);
   color: #f0f0f8;
   font-weight: 700;
   padding: 0.65em 0.9em;
-  border: 1px solid #2a2a2a;
+  border: 1px solid #243550;
   text-align: left;
   letter-spacing: 0.03em;
 }
 
 .markdown-content td {
   padding: 0.55em 0.9em;
-  border: 1px solid #222;
+  border: 1px solid #1e3050;
   color: #c8ccd4;
 }
 
@@ -274,7 +274,7 @@
 }
 
 .markdown-content tr:hover td {
-  background: rgba(255, 23, 68, 0.04);
+  background: rgba(8, 145, 178, 0.04);
 }
 
 .markdown-content hr {
@@ -287,11 +287,11 @@
    HIGHLIGHT CALLOUTS
    ======================== */
 .highlight-critical {
-  background: rgba(255, 23, 68, 0.08);
-  border-left: 4px solid #ff1744;
+  background: rgba(8, 145, 178, 0.08);
+  border-left: 4px solid #0891b2;
   padding: 0.7em 1.1em;
   margin-bottom: 0.85em;
-  color: #ffaaaa;
+  color: #a8e8f4;
 }
 
 .highlight-important {

@@ -8,19 +8,19 @@ export default {
     extend: {
       colors: {
         bg: {
-          primary: '#0a0a0a',
-          secondary: '#0f0f0f',
-          tertiary: '#141414',
-          card: '#1a1a1a',
-          hover: '#2a2a2a',
-          border: '#2a2a2a',
+          primary: '#0a1628',
+          secondary: '#0f1d32',
+          tertiary: '#162544',
+          card: '#1a2d45',
+          hover: '#243550',
+          border: '#243550',
         },
         accent: {
-          DEFAULT: '#ff1744',
-          hover: '#e8143c',
-          muted: '#cc0030',
-          subtle: 'rgba(255,23,68,0.1)',
-          border: 'rgba(255,23,68,0.25)',
+          DEFAULT: '#0891b2',
+          hover: '#0779a0',
+          muted: '#066d8f',
+          subtle: 'rgba(8,145,178,0.1)',
+          border: 'rgba(8,145,178,0.25)',
         },
         gold: {
           DEFAULT: '#f0c040',
@@ -34,9 +34,9 @@ export default {
       },
       boxShadow: {
         'card': '0 2px 8px rgba(0,0,0,0.6), 0 1px 2px rgba(0,0,0,0.8)',
-        'card-hover': '0 16px 48px rgba(0,0,0,0.8), 0 4px 16px rgba(255,23,68,0.15)',
-        'glow': '0 0 24px rgba(255,23,68,0.3)',
-        'glow-sm': '0 0 12px rgba(255,23,68,0.2)',
+        'card-hover': '0 16px 48px rgba(0,0,0,0.8), 0 4px 16px rgba(8,145,178,0.15)',
+        'glow': '0 0 24px rgba(8,145,178,0.3)',
+        'glow-sm': '0 0 12px rgba(8,145,178,0.2)',
         'gold': '0 0 20px rgba(240,192,64,0.25)',
       },
       animation: {
@@ -65,8 +65,8 @@ export default {
           '100%': { opacity: '1', transform: 'scale(1)' },
         },
         pulseRed: {
-          '0%, 100%': { boxShadow: '0 0 8px rgba(255,23,68,0.3)' },
-          '50%': { boxShadow: '0 0 28px rgba(255,23,68,0.7)' },
+          '0%, 100%': { boxShadow: '0 0 8px rgba(8,145,178,0.3)' },
+          '50%': { boxShadow: '0 0 28px rgba(8,145,178,0.7)' },
         },
         slamIn: {
           '0%': { opacity: '0', transform: 'translateX(-40px) skewX(-3deg)' },

@@ -125,7 +125,7 @@ export default function BranchPage() {
         {/* Back link */}
         <Link
           to="/"
-          className="inline-flex items-center gap-1.5 text-gray-600 hover:text-[#ff1744] text-xs uppercase tracking-widest mb-8 transition-colors"
+          className="inline-flex items-center gap-1.5 text-gray-600 hover:text-[#0891b2] text-xs uppercase tracking-widest mb-8 transition-colors"
         >
           <ChevronLeft size={14} />
           <span>Genel Bakış</span>
@@ -138,7 +138,7 @@ export default function BranchPage() {
           className="mb-10 relative"
         >
           {/* Red left stripe */}
-          <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#ff1744]" />
+          <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#0891b2]" />
 
           <div className="pl-5">
             <h1
@@ -153,13 +153,13 @@ export default function BranchPage() {
                 <div className="flex items-center gap-4 text-xs text-gray-600 mb-2 uppercase tracking-wider">
                   <span>{completedCount}/{topics.length} konu tamamlandı</span>
                   {totalDue > 0 && (
-                    <span className="text-[#ff1744]">{totalDue} kart bekliyor</span>
+                    <span className="text-[#0891b2]">{totalDue} kart bekliyor</span>
                   )}
-                  <span className="text-[#ff1744] font-bebas text-lg">{progress}%</span>
+                  <span className="text-[#0891b2] font-bebas text-lg">{progress}%</span>
                 </div>
-                <div className="h-[2px] w-64 max-w-full" style={{ background: '#1a1a1a' }}>
+                <div className="h-[2px] w-64 max-w-full" style={{ background: '#1a2d45' }}>
                   <motion.div
-                    className="h-full bg-[#ff1744]"
+                    className="h-full bg-[#0891b2]"
                     initial={{ width: 0 }}
                     animate={{ width: `${progress}%` }}
                     transition={{ duration: 0.8, delay: 0.2 }}
@@ -220,17 +220,17 @@ function TopicCard({ topic, stats, isCompleted, showProgress }) {
         whileTap={{ scale: 0.99 }}
         className="relative overflow-hidden cursor-pointer flex items-center gap-4 px-5 py-4"
         style={{
-          background: '#111',
+          background: '#0d1e35',
           borderLeft: '3px solid transparent',
           transition: 'border-left-color 0.15s ease, background 0.15s ease',
         }}
         onMouseEnter={e => {
-          e.currentTarget.style.borderLeftColor = '#ff1744'
-          e.currentTarget.style.background = '#161616'
+          e.currentTarget.style.borderLeftColor = '#0891b2'
+          e.currentTarget.style.background = '#111e33'
         }}
         onMouseLeave={e => {
           e.currentTarget.style.borderLeftColor = 'transparent'
-          e.currentTarget.style.background = '#111'
+          e.currentTarget.style.background = '#0d1e35'
         }}
       >
         {/* Completion icon */}
@@ -259,7 +259,7 @@ function TopicCard({ topic, stats, isCompleted, showProgress }) {
                   <span className="text-blue-500">{stats.newCount} yeni</span>
                 )}
                 {showProgress && stats.dueCount > 0 && (
-                  <span className="text-[#ff1744]">{stats.dueCount} bekliyor</span>
+                  <span className="text-[#0891b2]">{stats.dueCount} bekliyor</span>
                 )}
                 {showProgress && stats.learnedCount > 0 && (
                   <span className="text-emerald-500">{stats.learnedCount} öğrenildi</span>
@@ -287,7 +287,7 @@ function EmptyState({ branchName }) {
   return (
     <div
       className="p-12 text-center"
-      style={{ background: '#111', borderLeft: '3px solid #1a1a1a' }}
+      style={{ background: '#0d1e35', borderLeft: '3px solid #1a2d45' }}
     >
       <p className="font-bebas text-xl text-gray-700 tracking-widest mb-2">HENÜZ KONU YOK</p>
       <p className="text-gray-600 text-xs uppercase tracking-wider">{branchName} için konular yakında eklenecek.</p>

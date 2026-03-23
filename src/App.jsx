@@ -12,9 +12,9 @@ function ProtectedRoute({ children }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+      <div className="min-h-screen bg-[#0a1628] flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 border-2 border-[rgba(255,23,68,0.2)] border-t-[#ff1744] rounded-full animate-spin" />
+          <div className="w-10 h-10 border-2 border-[rgba(8,145,178,0.2)] border-t-[#0891b2] rounded-full animate-spin" />
           <p className="text-gray-600 text-xs uppercase tracking-widest">Yükleniyor...</p>
         </div>
       </div>

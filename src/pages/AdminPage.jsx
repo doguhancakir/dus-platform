@@ -19,7 +19,7 @@ export default function AdminPage() {
     return (
       <Layout>
         <div className="max-w-md mx-auto px-6 py-16">
-          <div style={{ background: '#111', border: '1px solid #222', borderLeft: '3px solid #ff1744', padding: '2rem' }}>
+          <div style={{ background: '#0d1e35', border: '1px solid #1e3050', borderLeft: '3px solid #0891b2', padding: '2rem' }}>
             <h2 className="font-bebas text-2xl text-white tracking-widest mb-2">ADMİN PANELİ</h2>
             <p className="text-gray-600 text-xs uppercase tracking-wider mb-6">Erişim için şifre girin</p>
             <input
@@ -35,7 +35,7 @@ export default function AdminPage() {
                 }
               }}
             />
-            {pwError && <p className="text-[#ff1744] text-xs mb-3 uppercase tracking-wider">{pwError}</p>}
+            {pwError && <p className="text-[#0891b2] text-xs mb-3 uppercase tracking-wider">{pwError}</p>}
             <button
               className="btn-primary w-full font-bebas tracking-widest"
               onClick={() => {
@@ -55,13 +55,13 @@ export default function AdminPage() {
     <Layout>
       <div className="max-w-5xl mx-auto px-6 sm:px-10 py-8 pb-20">
         <div className="mb-6 relative pl-4">
-          <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#ff1744]" />
+          <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#0891b2]" />
           <h1 className="font-bebas text-3xl text-white tracking-widest">ADMİN PANELİ</h1>
           <p className="text-gray-600 text-[10px] uppercase tracking-widest mt-0.5">İçerik yönetimi</p>
         </div>
 
         {/* Tabs */}
-        <div className="flex items-center mb-6" style={{ borderBottom: '2px solid #1a1a1a' }}>
+        <div className="flex items-center mb-6" style={{ borderBottom: '2px solid #1a2d45' }}>
           {[
             { id: 'topics', label: 'KONULAR' },
             { id: 'questions', label: 'SORULAR' },
@@ -73,8 +73,8 @@ export default function AdminPage() {
               onClick={() => setActiveTab(tab.id)}
               className="font-bebas tracking-[0.12em] px-5 py-2.5 text-sm transition-all duration-150 relative"
               style={{
-                color: activeTab === tab.id ? '#ff1744' : '#555',
-                borderBottom: activeTab === tab.id ? '2px solid #ff1744' : '2px solid transparent',
+                color: activeTab === tab.id ? '#0891b2' : '#555',
+                borderBottom: activeTab === tab.id ? '2px solid #0891b2' : '2px solid transparent',
                 marginBottom: -2,
               }}
             >
@@ -182,7 +182,7 @@ function TopicsTab() {
             exit={{ opacity: 0, height: 0 }}
             className="overflow-hidden"
           >
-            <div className="p-5 space-y-3" style={{ background: '#111', border: '1px solid #222', borderLeft: '3px solid #ff1744' }}>
+            <div className="p-5 space-y-3" style={{ background: '#0d1e35', border: '1px solid #1e3050', borderLeft: '3px solid #0891b2' }}>
               <div className="flex items-center justify-between">
                 <h3 className="font-bebas tracking-widest text-white">{editingId ? 'KONUYU DÜZENLE' : 'YENİ KONU'}</h3>
                 <button onClick={() => { setEditingId(null); setShowNew(false) }} className="text-gray-600 hover:text-gray-300">
@@ -210,17 +210,17 @@ function TopicsTab() {
 
       {loading ? (
         <div className="flex justify-center py-8">
-          <Loader2 size={24} className="animate-spin text-[#ff1744]" />
+          <Loader2 size={24} className="animate-spin text-[#0891b2]" />
         </div>
       ) : topics.length === 0 ? (
-        <div className="p-8 text-center text-gray-600 text-xs uppercase tracking-widest" style={{ background: '#111', border: '1px solid #1a1a1a' }}>
+        <div className="p-8 text-center text-gray-600 text-xs uppercase tracking-widest" style={{ background: '#0d1e35', border: '1px solid #1a2d45' }}>
           Bu branşta henüz konu yok.
         </div>
       ) : (
         <div className="space-y-[2px]">
           {topics.map(topic => (
             <div key={topic.id} className="flex items-center justify-between gap-3 p-4"
-              style={{ background: '#111', border: '1px solid #1a1a1a' }}>
+              style={{ background: '#0d1e35', border: '1px solid #1a2d45' }}>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-200 truncate">{topic.title}</p>
                 <p className="text-[10px] text-gray-600 uppercase tracking-wider mt-0.5">Sıra: {topic.sort_order}</p>
@@ -228,12 +228,12 @@ function TopicsTab() {
               <div className="flex items-center gap-1.5">
                 <button onClick={() => startEdit(topic)}
                   className="p-2 text-gray-600 hover:text-gray-300 transition-colors"
-                  style={{ background: '#0a0a0a', border: '1px solid #1a1a1a' }}>
+                  style={{ background: '#0a1628', border: '1px solid #1a2d45' }}>
                   <Edit3 size={13} />
                 </button>
                 <button onClick={() => deleteTopic(topic.id)}
-                  className="p-2 text-gray-600 hover:text-[#ff1744] transition-colors"
-                  style={{ background: '#0a0a0a', border: '1px solid #1a1a1a' }}>
+                  className="p-2 text-gray-600 hover:text-[#0891b2] transition-colors"
+                  style={{ background: '#0a1628', border: '1px solid #1a2d45' }}>
                   <Trash2 size={13} />
                 </button>
               </div>
@@ -347,7 +347,7 @@ function QuestionsTab() {
         {showForm && (
           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-            <div className="p-5 space-y-4" style={{ background: '#111', border: '1px solid #222', borderLeft: '3px solid #ff1744' }}>
+            <div className="p-5 space-y-4" style={{ background: '#0d1e35', border: '1px solid #1e3050', borderLeft: '3px solid #0891b2' }}>
               <div className="flex items-center justify-between">
                 <h3 className="font-bebas tracking-widest text-white">{editingId ? 'SORUYU DÜZENLE' : 'YENİ SORU'}</h3>
                 <button onClick={() => { setShowForm(false); setEditingId(null) }} className="text-gray-600 hover:text-gray-300"><X size={16} /></button>
@@ -360,7 +360,7 @@ function QuestionsTab() {
                   <div key={i} className="flex items-center gap-2">
                     <input type="radio" name="correct" checked={form.correct_answer === i}
                       onChange={() => setForm(f => ({ ...f, correct_answer: i }))}
-                      className="accent-[#ff1744]" />
+                      className="accent-[#0891b2]" />
                     <span className="text-xs text-gray-600 w-5">{String.fromCharCode(65 + i)}.</span>
                     <input className="input text-sm" placeholder={`${String.fromCharCode(65 + i)} şıkkı`}
                       value={opt} onChange={e => {
@@ -388,15 +388,15 @@ function QuestionsTab() {
 
       {selectedTopic && (
         loading ? (
-          <div className="flex justify-center py-8"><Loader2 size={24} className="animate-spin text-[#ff1744]" /></div>
+          <div className="flex justify-center py-8"><Loader2 size={24} className="animate-spin text-[#0891b2]" /></div>
         ) : questions.length === 0 ? (
-          <div className="p-8 text-center text-gray-600 text-xs uppercase tracking-widest" style={{ background: '#111', border: '1px solid #1a1a1a' }}>
+          <div className="p-8 text-center text-gray-600 text-xs uppercase tracking-widest" style={{ background: '#0d1e35', border: '1px solid #1a2d45' }}>
             Bu konuda henüz soru yok.
           </div>
         ) : (
           <div className="space-y-[2px]">
             {questions.map((q, idx) => (
-              <div key={q.id} className="p-4" style={{ background: '#111', border: '1px solid #1a1a1a' }}>
+              <div key={q.id} className="p-4" style={{ background: '#0d1e35', border: '1px solid #1a2d45' }}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <p className="text-[10px] text-gray-700 mb-1 uppercase tracking-wider">#{idx + 1}</p>
@@ -413,9 +413,9 @@ function QuestionsTab() {
                   </div>
                   <div className="flex items-center gap-1.5 flex-shrink-0">
                     <button onClick={() => startEdit(q)} className="p-1.5 text-gray-600 hover:text-gray-300 transition-colors"
-                      style={{ background: '#0a0a0a', border: '1px solid #1a1a1a' }}><Edit3 size={13} /></button>
-                    <button onClick={() => deleteQuestion(q.id)} className="p-1.5 text-gray-600 hover:text-[#ff1744] transition-colors"
-                      style={{ background: '#0a0a0a', border: '1px solid #1a1a1a' }}><Trash2 size={13} /></button>
+                      style={{ background: '#0a1628', border: '1px solid #1a2d45' }}><Edit3 size={13} /></button>
+                    <button onClick={() => deleteQuestion(q.id)} className="p-1.5 text-gray-600 hover:text-[#0891b2] transition-colors"
+                      style={{ background: '#0a1628', border: '1px solid #1a2d45' }}><Trash2 size={13} /></button>
                   </div>
                 </div>
               </div>
@@ -457,13 +457,13 @@ function BranchesTab() {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
       <div className="p-4 text-xs text-gray-600 uppercase tracking-wider"
-        style={{ background: '#111', borderLeft: '3px solid #ff1744', border: '1px solid #1a1a1a' }}>
+        style={{ background: '#111', borderLeft: '3px solid #0891b2', border: '1px solid #1a1a1a' }}>
         Her branş için bir arka plan görseli URL'si girebilirsiniz. Boş bırakırsanız varsayılan gradient kullanılır.
       </div>
 
       {BRANCHES.map(branch => (
         <div key={branch.id} className="p-4 flex items-center gap-4"
-          style={{ background: '#111', border: '1px solid #1a1a1a' }}>
+          style={{ background: '#0d1e35', border: '1px solid #1a2d45' }}>
           <div className="flex-shrink-0">
             <span className="text-xl">{branch.icon}</span>
           </div>
@@ -482,7 +482,7 @@ function BranchesTab() {
             disabled={saving[branch.id]}
             className="flex-shrink-0 flex items-center gap-1.5 px-4 py-2 text-xs font-semibold transition-all disabled:opacity-50"
             style={{
-              background: saved[branch.id] ? '#166534' : '#ff1744',
+              background: saved[branch.id] ? '#166534' : '#0891b2',
               color: 'white',
               border: 'none',
             }}
@@ -537,16 +537,16 @@ function ImportTab() {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-      <div className="p-5 space-y-4" style={{ background: '#111', border: '1px solid #1a1a1a', borderLeft: '3px solid #ff1744' }}>
+      <div className="p-5 space-y-4" style={{ background: '#0d1e35', border: '1px solid #1a2d45', borderLeft: '3px solid #0891b2' }}>
         <div className="flex items-center gap-2">
-          <FileText size={16} className="text-[#ff1744]" />
+          <FileText size={16} className="text-[#0891b2]" />
           <h3 className="font-bebas tracking-widest text-white">JSON İLE TOPLU SORU İÇE AKTARMA</h3>
         </div>
         <p className="text-[10px] text-gray-600 uppercase tracking-wider">
           Sorular aşağıdaki formatta JSON olarak yapıştırın:
         </p>
         <pre className="text-xs p-3 text-gray-500 overflow-x-auto"
-          style={{ background: '#0a0a0a', border: '1px solid #1a1a1a', fontFamily: 'monospace' }}>
+          style={{ background: '#0a1628', border: '1px solid #1a2d45', fontFamily: 'monospace' }}>
           {exampleJson}
         </pre>
         <textarea className="input min-h-[200px] font-mono text-xs resize-y" placeholder="JSON verisi buraya yapıştırın..."
@@ -554,8 +554,8 @@ function ImportTab() {
         {result && (
           <div className={`text-xs px-3 py-2 uppercase tracking-wider ${result.success ? 'text-emerald-400' : 'text-[#ff6b6b]'}`}
             style={{
-              background: result.success ? 'rgba(16,185,129,0.08)' : 'rgba(255,23,68,0.08)',
-              borderLeft: `3px solid ${result.success ? '#22c55e' : '#ff1744'}`,
+              background: result.success ? 'rgba(16,185,129,0.08)' : 'rgba(8,145,178,0.08)',
+              borderLeft: `3px solid ${result.success ? '#22c55e' : '#0891b2'}`,
             }}>
             {result.success ? `✓ ${result.count} soru başarıyla içe aktarıldı!` : `Hata: ${result.message}`}
           </div>

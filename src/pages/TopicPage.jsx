@@ -142,7 +142,7 @@ export default function TopicPage() {
         <div className="flex items-center justify-between mb-8">
           <Link
             to={branch ? `/branch/${branch.id}` : '/'}
-            className="inline-flex items-center gap-1.5 text-gray-600 hover:text-[#ff1744] text-xs uppercase tracking-widest transition-colors"
+            className="inline-flex items-center gap-1.5 text-gray-600 hover:text-[#0891b2] text-xs uppercase tracking-widest transition-colors"
           >
             <ChevronLeft size={14} />
             <span>{branch?.name || 'Geri'}</span>
@@ -156,7 +156,7 @@ export default function TopicPage() {
                 onClick={() => setShowQuestions(true)}
                 className="font-bebas text-sm tracking-[0.1em] text-white px-4 py-1.5 flex items-center gap-2"
                 style={{
-                  background: '#ff1744',
+                  background: '#0891b2',
                   clipPath: 'polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px))',
                 }}
               >
@@ -179,7 +179,7 @@ export default function TopicPage() {
                 whileTap={{ scale: 0.97 }}
                 onClick={() => setShowEditor(true)}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-gray-600 hover:text-gray-300 transition-colors text-xs uppercase tracking-wider"
-                style={{ background: '#111', border: '1px solid #222' }}
+                style={{ background: '#0d1e35', border: '1px solid #1e3050' }}
               >
                 <Pencil size={12} />
                 Düzenle
@@ -194,10 +194,10 @@ export default function TopicPage() {
           animate={{ opacity: 1, y: 0 }}
           className="mb-8 relative"
         >
-          <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#ff1744]" />
+          <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#0891b2]" />
           <div className="pl-5">
             {branch && (
-              <p className="text-[#ff1744] text-[10px] font-bebas tracking-[0.2em] mb-2">
+              <p className="text-[#0891b2] text-[10px] font-bebas tracking-[0.2em] mb-2">
                 {branch.name.toUpperCase()}
               </p>
             )}
@@ -228,9 +228,9 @@ export default function TopicPage() {
           transition={{ delay: 0.1 }}
           className="mb-10"
           style={{
-            background: '#0f0f0f',
-            border: '1px solid #1a1a1a',
-            borderLeft: '3px solid #1a1a1a',
+            background: '#0f1d32',
+            border: '1px solid #1a2d45',
+            borderLeft: '3px solid #1a2d45',
             padding: '2rem 2rem',
           }}
         >
@@ -261,8 +261,8 @@ export default function TopicPage() {
                 color: '#f0c040',
                 clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px))',
               } : {
-                background: '#111',
-                border: '2px solid #2a2a2a',
+                background: '#0d1e35',
+                border: '2px solid #243550',
                 color: '#aaa',
                 clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px))',
               }}
@@ -284,7 +284,7 @@ export default function TopicPage() {
             <Link
               to="/login"
               className="flex items-center gap-2.5 px-6 py-3 font-bebas tracking-[0.1em] text-sm text-gray-600 hover:text-gray-400 transition-all"
-              style={{ background: '#111', border: '1px solid #1f1f1f' }}
+              style={{ background: '#0d1e35', border: '1px solid #1a2d45' }}
             >
               <BookOpen size={15} />
               <span>İLERLEMEYİ TAKİP ETMEK İÇİN GİRİŞ YAP</span>
@@ -303,9 +303,9 @@ export default function TopicPage() {
           onClick={() => setShowQuestions(true)}
           className="fixed bottom-8 right-6 z-20 font-bebas tracking-[0.1em] text-sm text-white flex items-center gap-2 px-5 py-3"
           style={{
-            background: '#ff1744',
+            background: '#0891b2',
             clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))',
-            boxShadow: '0 4px 24px rgba(255,23,68,0.4)',
+            boxShadow: '0 4px 24px rgba(8,145,178,0.4)',
             animation: 'pulseRed 2s ease-in-out infinite',
           }}
         >

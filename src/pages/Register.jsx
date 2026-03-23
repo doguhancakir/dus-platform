@@ -39,18 +39,18 @@ export default function Register() {
   return (
     <div
       className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden"
-      style={{ background: '#0a0a0a' }}
+      style={{ background: '#0a1628' }}
     >
       {/* Background diagonals */}
       <div className="absolute inset-0 pointer-events-none">
         <div
           className="absolute top-0 right-0 w-1/2 h-full opacity-[0.025]"
           style={{
-            background: '#ff1744',
+            background: '#0891b2',
             clipPath: 'polygon(40% 0, 100% 0, 100% 100%, 60% 100%)',
           }}
         />
-        <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#ff1744] opacity-60" />
+        <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#0891b2] opacity-60" />
       </div>
 
       <motion.div
@@ -71,7 +71,7 @@ export default function Register() {
               style={{ fontSize: '3.5rem', transform: 'skewX(-6deg)', display: 'inline-block' }}
             >
               DAVY'S{' '}
-              <span style={{ color: '#ff1744' }}>DENTAL</span>
+              <span style={{ color: '#0891b2' }}>DENTAL</span>
             </h1>
             <p className="text-gray-600 text-[10px] uppercase tracking-[0.3em] mt-2">
               HESAP OLUŞTUR
@@ -84,7 +84,7 @@ export default function Register() {
           style={{
             background: '#111',
             border: '1px solid #222',
-            borderLeft: '3px solid #ff1744',
+            borderLeft: '3px solid #0891b2',
             padding: '2rem',
           }}
         >
@@ -148,7 +148,7 @@ export default function Register() {
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 className="text-xs text-[#ff6b6b] px-3 py-2 uppercase tracking-wider"
-                style={{ background: 'rgba(255,23,68,0.08)', borderLeft: '2px solid #ff1744' }}
+                style={{ background: 'rgba(8,145,178,0.08)', borderLeft: '2px solid #0891b2' }}
               >
                 {error}
               </motion.div>
@@ -159,11 +159,11 @@ export default function Register() {
               disabled={loading || !nickname.trim() || !password || !confirm}
               className="w-full flex items-center justify-center gap-2 py-3 mt-2 font-bebas tracking-[0.15em] text-base text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed"
               style={{
-                background: '#ff1744',
+                background: '#0891b2',
                 clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px))',
               }}
-              onMouseEnter={e => !loading && (e.currentTarget.style.background = '#e8143c')}
-              onMouseLeave={e => (e.currentTarget.style.background = '#ff1744')}
+              onMouseEnter={e => !loading && (e.currentTarget.style.background = '#0779a0')}
+              onMouseLeave={e => (e.currentTarget.style.background = '#0891b2')}
             >
               {loading ? <Loader2 size={16} className="animate-spin" /> : null}
               {loading ? 'KAYIT YAPILIYOR...' : 'HESAP OLUŞTUR'}
@@ -175,7 +175,7 @@ export default function Register() {
           Hesabın var mı?{' '}
           <Link
             to="/login"
-            className="text-[#ff1744] hover:text-[#e8143c] transition-colors font-semibold"
+            className="text-[#0891b2] hover:text-[#0779a0] transition-colors font-semibold"
           >
             Giriş Yap
           </Link>

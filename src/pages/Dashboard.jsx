@@ -126,13 +126,13 @@ export default function Dashboard() {
           className="absolute right-0 top-0 bottom-0 pointer-events-none"
           style={{
             width: '35%',
-            background: 'linear-gradient(to left, rgba(255,23,68,0.04), transparent)',
+            background: 'linear-gradient(to left, rgba(8,145,178,0.04), transparent)',
             transform: 'skewX(-8deg)',
             transformOrigin: 'top right',
           }}
         />
         {/* Left red stripe */}
-        <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#ff1744]" />
+        <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#0891b2]" />
 
         <div className="relative z-10 px-6 sm:px-10 pb-2 w-full">
           <motion.div
@@ -149,7 +149,7 @@ export default function Dashboard() {
               }}
             >
               DAVY'S{' '}
-              <span style={{ color: '#ff1744' }}>DENTAL</span>
+              <span style={{ color: '#0891b2'}}>DENTAL</span>
             </h1>
 
             <motion.p
@@ -169,7 +169,7 @@ export default function Dashboard() {
                 className="text-gray-600 text-sm mt-2"
               >
                 HOŞ GELDİN,{' '}
-                <span className="font-bebas text-[#ff1744] text-xl tracking-widest" style={{ verticalAlign: 'baseline' }}>
+                <span className="font-bebas text-[#0891b2] text-xl tracking-widest" style={{ verticalAlign: 'baseline' }}>
                   {user.nickname.toUpperCase()}
                 </span>
               </motion.p>
@@ -185,7 +185,7 @@ export default function Dashboard() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
           className="grid grid-cols-2 md:grid-cols-4 mb-8"
-          style={{ background: '#111', borderTop: '1px solid #1a1a1a', borderBottom: '1px solid #1a1a1a', gap: '1px' }}
+          style={{ background: '#0d1e35', borderTop: '1px solid #1a2d45', borderBottom: '1px solid #1a2d45', gap: '1px' }}
         >
           {[
             { label: 'BEKLEYEN KART', value: totalDue },
@@ -193,8 +193,8 @@ export default function Dashboard() {
             { label: 'GENEL İLERLEME', value: `${overallProgress}%` },
             { label: 'KLİNİK ALAN', value: 8 },
           ].map((stat, i) => (
-            <div key={i} className="bg-[#0a0a0a] px-5 sm:px-7 py-5 relative overflow-hidden">
-              <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#ff1744]" />
+            <div key={i} className="bg-[#0a1628] px-5 sm:px-7 py-5 relative overflow-hidden">
+              <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#0891b2]" />
               <div className="font-bebas text-3xl sm:text-4xl text-white tracking-wider">{stat.value}</div>
               <div className="text-[9px] sm:text-[10px] text-gray-600 uppercase tracking-[0.18em] mt-1">{stat.label}</div>
             </div>
@@ -210,11 +210,11 @@ export default function Dashboard() {
           transition={{ delay: 0.25 }}
           className="mx-6 sm:mx-10 mb-8 relative overflow-hidden"
           style={{
-            background: '#111',
-            borderLeft: '4px solid #ff1744',
-            border: '1px solid #1f1f1f',
+            background: '#0d1e35',
+            borderLeft: '4px solid #0891b2',
+            border: '1px solid #1a2d45',
             borderLeftWidth: 4,
-            borderLeftColor: '#ff1744',
+            borderLeftColor: '#0891b2',
           }}
         >
           <div className="flex flex-col sm:flex-row sm:items-center justify-between p-5 gap-4">
@@ -230,7 +230,7 @@ export default function Dashboard() {
               to="/register"
               className="flex-shrink-0 font-bebas tracking-[0.12em] text-sm text-white px-6 py-2.5 transition-all"
               style={{
-                background: '#ff1744',
+                background: '#0891b2',
                 clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))',
               }}
             >
@@ -247,8 +247,8 @@ export default function Dashboard() {
           <h2 className="font-bebas text-xl sm:text-2xl text-white tracking-[0.22em] flex-shrink-0">
             KLİNİK BİLİMLER
           </h2>
-          <div className="relative flex-1 h-px" style={{ background: '#1a1a1a' }}>
-            <div className="absolute left-0 top-0 h-full w-16 bg-[#ff1744]" />
+          <div className="relative flex-1 h-px" style={{ background: '#1a2d45' }}>
+            <div className="absolute left-0 top-0 h-full w-16 bg-[#0891b2]" />
           </div>
         </div>
 
@@ -289,7 +289,7 @@ function BranchCard({ branch, stats, loading, showProgress, isHovered, isDimmed,
         <div className="shimmer absolute inset-0" />
         <div
           className="absolute right-0 top-0 bottom-0 w-8"
-          style={{ background: '#1a1a1a', clipPath: 'polygon(16px 0, 100% 0, 100% 100%, 0 100%)' }}
+          style={{ background: '#1a2d45', clipPath: 'polygon(16px 0, 100% 0, 100% 100%, 0 100%)' }}
         />
       </div>
     )
@@ -318,9 +318,9 @@ function BranchCard({ branch, stats, loading, showProgress, isHovered, isDimmed,
         className="relative overflow-hidden cursor-pointer"
         style={{
           background: imageUrl ? `url(${imageUrl}) center/cover` : branch.p5gradient,
-          borderLeft: isHovered ? '4px solid #ff1744' : '4px solid transparent',
+          borderLeft: isHovered ? '4px solid #0891b2' : '4px solid transparent',
           boxShadow: isHovered
-            ? '0 8px 48px rgba(0,0,0,0.9), 0 0 32px rgba(255,23,68,0.18)'
+            ? '0 8px 48px rgba(0,0,0,0.9), 0 0 32px rgba(8,145,178,0.18)'
             : '0 2px 6px rgba(0,0,0,0.5)',
         }}
       >
@@ -333,7 +333,7 @@ function BranchCard({ branch, stats, loading, showProgress, isHovered, isDimmed,
         {isHovered && (
           <div
             className="absolute inset-0 pointer-events-none"
-            style={{ boxShadow: 'inset 0 0 50px rgba(255,23,68,0.08)' }}
+            style={{ boxShadow: 'inset 0 0 50px rgba(8,145,178,0.08)' }}
           />
         )}
 
@@ -359,7 +359,7 @@ function BranchCard({ branch, stats, loading, showProgress, isHovered, isDimmed,
                 <div className="h-[2px] w-44 max-w-full" style={{ background: '#2a2a2a' }}>
                   <motion.div
                     className="h-full"
-                    style={{ background: '#ff1744' }}
+                    style={{ background: '#0891b2' }}
                     animate={{ width: `${progress}%` }}
                     transition={{ duration: 0.8, delay: 0.1 }}
                   />
@@ -369,7 +369,7 @@ function BranchCard({ branch, stats, loading, showProgress, isHovered, isDimmed,
                     {completedCount}/{topicCount} konu
                   </span>
                   {dueCount > 0 && (
-                    <span className="text-[10px] text-[#ff1744] uppercase tracking-wider">
+                    <span className="text-[10px] text-[#0891b2] uppercase tracking-wider">
                       {dueCount} bekliyor
                     </span>
                   )}
@@ -397,7 +397,7 @@ function BranchCard({ branch, stats, loading, showProgress, isHovered, isDimmed,
           >
             {showProgress ? (
               <>
-                <div className="font-bebas text-[#ff1744] text-3xl leading-none">{progress}%</div>
+                <div className="font-bebas text-[#0891b2] text-3xl leading-none">{progress}%</div>
                 <div className="text-[9px] text-gray-600 uppercase tracking-widest mt-0.5">tamamlandı</div>
               </>
             ) : (
@@ -417,7 +417,7 @@ function BranchCard({ branch, stats, loading, showProgress, isHovered, isDimmed,
           transition={{ duration: 0.2 }}
           className="absolute right-0 top-0 bottom-0 flex items-center justify-center"
           style={{
-            background: isHovered ? '#ff1744' : '#141414',
+            background: isHovered ? '#0891b2' : '#162544',
             clipPath: 'polygon(18px 0, 100% 0, 100% 100%, 0 100%)',
           }}
         >
