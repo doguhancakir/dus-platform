@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Flame, BookOpen, TrendingUp, Clock } from 'lucide-react'
+import { Flame, BookOpen, TrendingUp, Clock, LogIn } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { BRANCHES } from '../lib/data'
@@ -22,20 +22,24 @@ export default function Dashboard() {
   const { user } = useAuth()
   const [branchStats, setBranchStats] = useState({})
   const [totalDue, setTotalDue] = useState(0)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(!!user)
 
   useEffect(() => {
-    loadStats()
-  }, [user.id])
+    if (user) {
+      setLoading(true)
+      loadStats()
+    } else {
+      setLoading(false)
+      setBranchStats({})
+    }
+  }, [user?.id])
 
   async function loadStats() {
     try {
-      // Tüm konular
       const { data: topics } = await supabase
         .from('topics')
         .select('id, branch_id')
 
-      // Kullanıcının tamamladığı konular
       const { data: progress } = await supabase
         .from('user_topic_progress')
         .select('topic_id')
@@ -44,7 +48,6 @@ export default function Dashboard() {
 
       const completedIds = new Set(progress?.map(p => p.topic_id) || [])
 
-      // Due kartlar
       const now = new Date().toISOString()
       const { data: dueCards } = await supabase
         .from('user_cards')
@@ -53,7 +56,6 @@ export default function Dashboard() {
         .lte('due_date', now)
         .neq('status', 'new')
 
-      // Sorular ve branch ilişkisi
       const { data: questions } = await supabase
         .from('questions')
         .select('id, topic_id, topics(branch_id)')
@@ -63,7 +65,6 @@ export default function Dashboard() {
         questionBranchMap[q.id] = q.topics?.branch_id
       })
 
-      // Branch bazlı due sayı
       const branchDue = {}
       dueCards?.forEach(c => {
         const branchId = questionBranchMap[c.question_id]
@@ -72,7 +73,6 @@ export default function Dashboard() {
         }
       })
 
-      // Branch bazlı konu ilerlemesi
       const stats = {}
       BRANCHES.forEach(b => {
         const branchTopics = topics?.filter(t => t.branch_id === b.id) || []
@@ -105,63 +105,89 @@ export default function Dashboard() {
         {/* Header */}
         <div className="mb-8">
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-            <h1 className="text-2xl font-bold text-gray-100 mb-1">
-              Hoş geldin, <span className="text-accent">{user.nickname}</span> 👋
-            </h1>
-            <p className="text-gray-500 text-sm">DUS sınavına hazırlanmaya devam et</p>
+            {user ? (
+              <>
+                <h1 className="text-2xl font-bold text-gray-100 mb-1">
+                  Hoş geldin, <span className="text-accent">{user.nickname}</span> 👋
+                </h1>
+                <p className="text-gray-500 text-sm">DUS sınavına hazırlanmaya devam et</p>
+              </>
+            ) : (
+              <>
+                <h1 className="text-2xl font-bold text-gray-100 mb-1">DUS Hazırlık Platformu</h1>
+                <p className="text-gray-500 text-sm">Branş seç ve çalışmaya başla</p>
+              </>
+            )}
           </motion.div>
         </div>
 
-        {/* Overview Cards */}
-        <motion.div
-          variants={container}
-          initial="hidden"
-          animate="show"
-          className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8"
-        >
-          <motion.div variants={item} className="card p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Clock size={14} className="text-accent" />
-              <span className="text-xs text-gray-500">Bugün bekleyen</span>
-            </div>
-            <div className="text-2xl font-bold text-gray-100">{totalDue}</div>
-            <div className="text-xs text-gray-600 mt-0.5">kart</div>
-          </motion.div>
+        {/* Overview Cards — only for logged-in users */}
+        {user ? (
+          <motion.div
+            variants={container}
+            initial="hidden"
+            animate="show"
+            className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8"
+          >
+            <motion.div variants={item} className="card p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Clock size={14} className="text-accent" />
+                <span className="text-xs text-gray-500">Bugün bekleyen</span>
+              </div>
+              <div className="text-2xl font-bold text-gray-100">{totalDue}</div>
+              <div className="text-xs text-gray-600 mt-0.5">kart</div>
+            </motion.div>
 
-          <motion.div variants={item} className="card p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <BookOpen size={14} className="text-blue-400" />
-              <span className="text-xs text-gray-500">Tamamlanan</span>
-            </div>
-            <div className="text-2xl font-bold text-gray-100">{completedTopics}</div>
-            <div className="text-xs text-gray-600 mt-0.5">/ {totalTopics} konu</div>
-          </motion.div>
+            <motion.div variants={item} className="card p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <BookOpen size={14} className="text-blue-400" />
+                <span className="text-xs text-gray-500">Tamamlanan</span>
+              </div>
+              <div className="text-2xl font-bold text-gray-100">{completedTopics}</div>
+              <div className="text-xs text-gray-600 mt-0.5">/ {totalTopics} konu</div>
+            </motion.div>
 
-          <motion.div variants={item} className="card p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <TrendingUp size={14} className="text-emerald-400" />
-              <span className="text-xs text-gray-500">Genel ilerleme</span>
-            </div>
-            <div className="text-2xl font-bold text-gray-100">{overallProgress}%</div>
-            <div className="progress-bar mt-2">
-              <motion.div
-                className="progress-fill bg-accent"
-                initial={{ width: 0 }}
-                animate={{ width: `${overallProgress}%` }}
-                transition={{ duration: 0.8, delay: 0.3 }}
-              />
-            </div>
-          </motion.div>
+            <motion.div variants={item} className="card p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <TrendingUp size={14} className="text-emerald-400" />
+                <span className="text-xs text-gray-500">Genel ilerleme</span>
+              </div>
+              <div className="text-2xl font-bold text-gray-100">{overallProgress}%</div>
+              <div className="progress-bar mt-2">
+                <motion.div
+                  className="progress-fill bg-accent"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${overallProgress}%` }}
+                  transition={{ duration: 0.8, delay: 0.3 }}
+                />
+              </div>
+            </motion.div>
 
-          <motion.div variants={item} className="card p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Flame size={14} className="text-orange-400" />
-              <span className="text-xs text-gray-500">Branşlar</span>
-            </div>
-            <div className="text-2xl font-bold text-gray-100">8</div>
-            <div className="text-xs text-gray-600 mt-0.5">aktif alan</div>
+            <motion.div variants={item} className="card p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Flame size={14} className="text-orange-400" />
+                <span className="text-xs text-gray-500">Branşlar</span>
+              </div>
+              <div className="text-2xl font-bold text-gray-100">8</div>
+              <div className="text-xs text-gray-600 mt-0.5">aktif alan</div>
+            </motion.div>
           </motion.div>
-        </motion.div>
+        ) : (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="card p-4 mb-8 flex items-center justify-between"
+          >
+            <p className="text-sm text-gray-400">İlerleni takip etmek ve "öğrendim" özelliğini kullanmak için giriş yap.</p>
+            <Link
+              to="/login"
+              className="flex items-center gap-2 text-sm font-medium text-accent hover:text-accent/80 transition-colors shrink-0 ml-4"
+            >
+              <LogIn size={15} />
+              Giriş yap
+            </Link>
+          </motion.div>
+        )}
 
         {/* Branch Grid */}
         <div className="mb-4">
@@ -178,7 +204,7 @@ export default function Dashboard() {
             const stats = branchStats[branch.id]
             return (
               <motion.div key={branch.id} variants={item}>
-                <BranchCard branch={branch} stats={stats} loading={loading} />
+                <BranchCard branch={branch} stats={stats} loading={loading} showProgress={!!user} />
               </motion.div>
             )
           })}
@@ -188,7 +214,7 @@ export default function Dashboard() {
   )
 }
 
-function BranchCard({ branch, stats, loading }) {
+function BranchCard({ branch, stats, loading, showProgress }) {
   if (loading) return <SkeletonCard />
 
   const progress = stats?.progress || 0
@@ -212,12 +238,14 @@ function BranchCard({ branch, stats, loading }) {
           >
             {branch.icon}
           </div>
-          <ProgressRing
-            progress={progress}
-            size={40}
-            strokeWidth={3}
-            color={branch.color}
-          />
+          {showProgress && (
+            <ProgressRing
+              progress={progress}
+              size={40}
+              strokeWidth={3}
+              color={branch.color}
+            />
+          )}
         </div>
 
         {/* Name */}
@@ -225,29 +253,31 @@ function BranchCard({ branch, stats, loading }) {
           {branch.name}
         </h3>
 
-        {/* Stats */}
-        <div className="flex items-center justify-between text-xs text-gray-600 mb-3">
-          <span>{completedCount}/{topicCount} konu</span>
-          <span>{progress}%</span>
-        </div>
+        {/* Stats — only for logged-in users */}
+        {showProgress && (
+          <>
+            <div className="flex items-center justify-between text-xs text-gray-600 mb-3">
+              <span>{completedCount}/{topicCount} konu</span>
+              <span>{progress}%</span>
+            </div>
 
-        {/* Progress bar */}
-        <div className="progress-bar">
-          <motion.div
-            className="progress-fill"
-            style={{ backgroundColor: branch.color, width: `${progress}%` }}
-            initial={{ width: 0 }}
-            animate={{ width: `${progress}%` }}
-            transition={{ duration: 0.8, delay: 0.1 }}
-          />
-        </div>
+            <div className="progress-bar">
+              <motion.div
+                className="progress-fill"
+                style={{ backgroundColor: branch.color, width: `${progress}%` }}
+                initial={{ width: 0 }}
+                animate={{ width: `${progress}%` }}
+                transition={{ duration: 0.8, delay: 0.1 }}
+              />
+            </div>
 
-        {/* Due count */}
-        {dueCount > 0 && (
-          <div className="mt-3 flex items-center gap-1.5">
-            <div className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-            <span className="text-xs text-accent">{dueCount} kart bekliyor</span>
-          </div>
+            {dueCount > 0 && (
+              <div className="mt-3 flex items-center gap-1.5">
+                <div className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
+                <span className="text-xs text-accent">{dueCount} kart bekliyor</span>
+              </div>
+            )}
+          </>
         )}
       </motion.div>
     </Link>

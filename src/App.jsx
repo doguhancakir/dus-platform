@@ -41,9 +41,7 @@ function AppRoutes() {
       <Route path="/register" element={
         <PublicRoute><Register /></PublicRoute>
       } />
-      <Route path="/" element={
-        <ProtectedRoute><Dashboard /></ProtectedRoute>
-      } />
+      <Route path="/" element={<Dashboard />} />
       <Route path="/branch/:id" element={<BranchPage />} />
       <Route path="/topic/:id" element={<TopicPage />} />
       <Route path="/admin" element={
