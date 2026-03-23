@@ -506,13 +506,21 @@ function BranchesTab() {
 
 /* ── IMPORT TAB ── */
 function ImportTab() {
+  const [selectedBranchId, setSelectedBranchId] = useState('')
+  const [topics, setTopics] = useState([])
+  const [selectedTopicId, setSelectedTopicId] = useState('')
   const [jsonText, setJsonText] = useState('')
   const [importing, setImporting] = useState(false)
   const [result, setResult] = useState(null)
 
+  useEffect(() => {
+    if (!selectedBranchId) { setTopics([]); setSelectedTopicId(''); return }
+    supabase.from('topics').select('id, title').eq('branch_id', selectedBranchId).order('sort_order')
+      .then(({ data }) => { setTopics(data || []); setSelectedTopicId('') })
+  }, [selectedBranchId])
+
   const exampleJson = JSON.stringify([
     {
-      "topic_id": 1,
       "question_text": "Örnek soru metni",
       "options": ["A şıkkı", "B şıkkı", "C şıkkı", "D şıkkı"],
       "correct_answer": 0,
@@ -526,13 +534,20 @@ function ImportTab() {
     try {
       const data = JSON.parse(jsonText)
       if (!Array.isArray(data)) throw new Error('JSON array olmalı')
-      const { data: inserted, error } = await supabase.from('questions').insert(data).select()
+      const withTopic = data.map(q => ({ ...q, topic_id: Number(selectedTopicId) }))
+      const { data: inserted, error } = await supabase.from('questions').insert(withTopic).select()
       if (error) throw error
       setResult({ success: true, count: inserted.length })
     } catch (err) {
       setResult({ success: false, message: err.message })
     }
     setImporting(false)
+  }
+
+  const selectStyle = {
+    background: '#0a1628', border: '1px solid #1a2d45', color: '#e2e8f0',
+    padding: '0.5rem 0.75rem', fontSize: '0.75rem', width: '100%',
+    outline: 'none', appearance: 'none',
   }
 
   return (
@@ -542,29 +557,54 @@ function ImportTab() {
           <FileText size={16} className="text-[#0891b2]" />
           <h3 className="font-bebas tracking-widest text-white">JSON İLE TOPLU SORU İÇE AKTARMA</h3>
         </div>
-        <p className="text-[10px] text-gray-600 uppercase tracking-wider">
-          Sorular aşağıdaki formatta JSON olarak yapıştırın:
-        </p>
-        <pre className="text-xs p-3 text-gray-500 overflow-x-auto"
-          style={{ background: '#0a1628', border: '1px solid #1a2d45', fontFamily: 'monospace' }}>
-          {exampleJson}
-        </pre>
-        <textarea className="input min-h-[200px] font-mono text-xs resize-y" placeholder="JSON verisi buraya yapıştırın..."
-          value={jsonText} onChange={e => setJsonText(e.target.value)} />
-        {result && (
-          <div className={`text-xs px-3 py-2 uppercase tracking-wider ${result.success ? 'text-emerald-400' : 'text-[#ff6b6b]'}`}
-            style={{
-              background: result.success ? 'rgba(16,185,129,0.08)' : 'rgba(8,145,178,0.08)',
-              borderLeft: `3px solid ${result.success ? '#22c55e' : '#0891b2'}`,
-            }}>
-            {result.success ? `✓ ${result.count} soru başarıyla içe aktarıldı!` : `Hata: ${result.message}`}
-          </div>
+
+        {/* Branch selector */}
+        <div className="space-y-1">
+          <label className="text-[10px] text-gray-600 uppercase tracking-wider">1. Branş Seçin</label>
+          <select style={selectStyle} value={selectedBranchId} onChange={e => setSelectedBranchId(e.target.value)}>
+            <option value="">— Branş seçin —</option>
+            {BRANCHES.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+          </select>
+        </div>
+
+        {/* Topic selector */}
+        <div className="space-y-1">
+          <label className="text-[10px] text-gray-600 uppercase tracking-wider">2. Konu Seçin</label>
+          <select style={selectStyle} value={selectedTopicId} onChange={e => setSelectedTopicId(e.target.value)}
+            disabled={!selectedBranchId || topics.length === 0}>
+            <option value="">— Konu seçin —</option>
+            {topics.map(t => <option key={t.id} value={t.id}>{t.title}</option>)}
+          </select>
+        </div>
+
+        {/* JSON area — only shown once a topic is selected */}
+        {selectedTopicId && (
+          <>
+            <p className="text-[10px] text-gray-600 uppercase tracking-wider">
+              3. Sorular aşağıdaki formatta JSON olarak yapıştırın (topic_id otomatik atanır):
+            </p>
+            <pre className="text-xs p-3 text-gray-500 overflow-x-auto"
+              style={{ background: '#0a1628', border: '1px solid #1a2d45', fontFamily: 'monospace' }}>
+              {exampleJson}
+            </pre>
+            <textarea className="input min-h-[200px] font-mono text-xs resize-y" placeholder="JSON verisi buraya yapıştırın..."
+              value={jsonText} onChange={e => setJsonText(e.target.value)} />
+            {result && (
+              <div className={`text-xs px-3 py-2 uppercase tracking-wider ${result.success ? 'text-emerald-400' : 'text-[#ff6b6b]'}`}
+                style={{
+                  background: result.success ? 'rgba(16,185,129,0.08)' : 'rgba(8,145,178,0.08)',
+                  borderLeft: `3px solid ${result.success ? '#22c55e' : '#0891b2'}`,
+                }}>
+                {result.success ? `✓ ${result.count} soru başarıyla içe aktarıldı!` : `Hata: ${result.message}`}
+              </div>
+            )}
+            <button className="btn-primary flex items-center gap-1.5 text-sm" onClick={handleImport}
+              disabled={importing || !jsonText.trim()}>
+              {importing ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+              İçe Aktar
+            </button>
+          </>
         )}
-        <button className="btn-primary flex items-center gap-1.5 text-sm" onClick={handleImport}
-          disabled={importing || !jsonText.trim()}>
-          {importing ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
-          İçe Aktar
-        </button>
       </div>
     </motion.div>
   )
