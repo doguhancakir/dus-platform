@@ -14,8 +14,8 @@ function ProtectedRoute({ children }) {
     return (
       <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 border-2 border-[rgba(20,184,166,0.3)] border-t-[#14b8a6] rounded-full animate-spin" />
-          <p className="text-gray-600 text-sm">Yükleniyor...</p>
+          <div className="w-10 h-10 border-2 border-[rgba(255,23,68,0.2)] border-t-[#ff1744] rounded-full animate-spin" />
+          <p className="text-gray-600 text-xs uppercase tracking-widest">Yükleniyor...</p>
         </div>
       </div>
     )

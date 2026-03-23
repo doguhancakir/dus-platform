@@ -1,21 +1,23 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Flame, BookOpen, TrendingUp, Clock, LogIn } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { BRANCHES } from '../lib/data'
-import ProgressRing from '../components/ProgressRing'
-import SkeletonCard from '../components/SkeletonCard'
 import Layout from '../components/Layout'
 
-const container = {
+const containerVariants = {
   hidden: {},
-  show: { transition: { staggerChildren: 0.06 } },
+  show: { transition: { staggerChildren: 0.07, delayChildren: 0.15 } },
 }
-const item = {
-  hidden: { opacity: 0, y: 12 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.25 } },
+
+const cardVariants = {
+  hidden: { opacity: 0, x: -50 },
+  show: {
+    opacity: 1,
+    x: 0,
+    transition: { duration: 0.3, ease: [0.7, 0, 0.3, 1] },
+  },
 }
 
 export default function Dashboard() {
@@ -23,8 +25,11 @@ export default function Dashboard() {
   const [branchStats, setBranchStats] = useState({})
   const [totalDue, setTotalDue] = useState(0)
   const [loading, setLoading] = useState(!!user)
+  const [hoveredId, setHoveredId] = useState(null)
+  const [branchImages, setBranchImages] = useState({})
 
   useEffect(() => {
+    loadBranchImages()
     if (user) {
       setLoading(true)
       loadStats()
@@ -33,6 +38,19 @@ export default function Dashboard() {
       setBranchStats({})
     }
   }, [user?.id])
+
+  async function loadBranchImages() {
+    try {
+      const { data } = await supabase.from('branch_images').select('branch_id, image_url')
+      if (data) {
+        const map = {}
+        data.forEach(r => { map[r.branch_id] = r.image_url })
+        setBranchImages(map)
+      }
+    } catch {
+      // Table may not exist yet — use gradients
+    }
+  }
 
   async function loadStats() {
     try {
@@ -101,113 +119,160 @@ export default function Dashboard() {
 
   return (
     <Layout>
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 pb-24 lg:pb-10">
-        {/* Hero */}
-        <div className="mb-10">
-          <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-            <h1 className="text-4xl sm:text-5xl font-black text-white tracking-tight mb-2 leading-none">
-              Davy's <span className="text-accent">Dental</span>
+      {/* ── HERO ── */}
+      <section className="relative pt-14 pb-10 overflow-hidden" style={{ minHeight: '46vh', display: 'flex', alignItems: 'flex-end' }}>
+        {/* Background red slash */}
+        <div
+          className="absolute right-0 top-0 bottom-0 pointer-events-none"
+          style={{
+            width: '35%',
+            background: 'linear-gradient(to left, rgba(255,23,68,0.04), transparent)',
+            transform: 'skewX(-8deg)',
+            transformOrigin: 'top right',
+          }}
+        />
+        {/* Left red stripe */}
+        <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#ff1744]" />
+
+        <div className="relative z-10 px-6 sm:px-10 pb-2 w-full">
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, ease: [0.7, 0, 0.3, 1] }}
+          >
+            <h1
+              className="font-bebas text-white leading-[0.88] tracking-wider"
+              style={{
+                fontSize: 'clamp(60px, 11vw, 136px)',
+                transform: 'skewX(-4deg)',
+                display: 'inline-block',
+              }}
+            >
+              DAVY'S{' '}
+              <span style={{ color: '#ff1744' }}>DENTAL</span>
             </h1>
-            <p className="text-gray-500 text-sm font-light tracking-wide mb-4">
-              Diş Hekimliği Uzmanlık Sınavı Hazırlık Platformu
-            </p>
+
+            <motion.p
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.2, duration: 0.3 }}
+              className="text-gray-600 text-[10px] sm:text-xs uppercase tracking-[0.35em] mt-4"
+            >
+              DİŞ HEKİMLİĞİ UZMANLIK SINAVI HAZIRLIK PLATFORMU
+            </motion.p>
+
             {user && (
-              <p className="text-sm text-gray-400">
-                Hoş geldin, <span className="text-accent font-semibold">{user.nickname}</span> 👋
-              </p>
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.35 }}
+                className="text-gray-600 text-sm mt-2"
+              >
+                HOŞ GELDİN,{' '}
+                <span className="font-bebas text-[#ff1744] text-xl tracking-widest" style={{ verticalAlign: 'baseline' }}>
+                  {user.nickname.toUpperCase()}
+                </span>
+              </motion.p>
             )}
           </motion.div>
         </div>
+      </section>
 
-        {/* Overview Cards — only for logged-in users */}
-        {user ? (
-          <motion.div
-            variants={container}
-            initial="hidden"
-            animate="show"
-            className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8"
-          >
-            <motion.div variants={item} className="card p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <Clock size={14} className="text-accent" />
-                <span className="text-xs text-gray-500 font-medium">Bugün bekleyen</span>
-              </div>
-              <div className="text-3xl font-black text-white">{totalDue}</div>
-              <div className="text-xs text-gray-600 mt-0.5">kart</div>
-            </motion.div>
+      {/* ── STATS ROW (logged in) ── */}
+      {user && !loading && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="grid grid-cols-2 md:grid-cols-4 mb-8"
+          style={{ background: '#111', borderTop: '1px solid #1a1a1a', borderBottom: '1px solid #1a1a1a', gap: '1px' }}
+        >
+          {[
+            { label: 'BEKLEYEN KART', value: totalDue },
+            { label: 'TAMAMLANAN KONU', value: completedTopics },
+            { label: 'GENEL İLERLEME', value: `${overallProgress}%` },
+            { label: 'KLİNİK ALAN', value: 8 },
+          ].map((stat, i) => (
+            <div key={i} className="bg-[#0a0a0a] px-5 sm:px-7 py-5 relative overflow-hidden">
+              <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#ff1744]" />
+              <div className="font-bebas text-3xl sm:text-4xl text-white tracking-wider">{stat.value}</div>
+              <div className="text-[9px] sm:text-[10px] text-gray-600 uppercase tracking-[0.18em] mt-1">{stat.label}</div>
+            </div>
+          ))}
+        </motion.div>
+      )}
 
-            <motion.div variants={item} className="card p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <BookOpen size={14} className="text-blue-400" />
-                <span className="text-xs text-gray-500 font-medium">Tamamlanan</span>
-              </div>
-              <div className="text-3xl font-black text-white">{completedTopics}</div>
-              <div className="text-xs text-gray-600 mt-0.5">/ {totalTopics} konu</div>
-            </motion.div>
-
-            <motion.div variants={item} className="card p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <TrendingUp size={14} className="text-emerald-400" />
-                <span className="text-xs text-gray-500 font-medium">Genel ilerleme</span>
-              </div>
-              <div className="text-3xl font-black text-white">{overallProgress}%</div>
-              <div className="progress-bar mt-2">
-                <motion.div
-                  className="progress-fill bg-accent"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${overallProgress}%` }}
-                  transition={{ duration: 0.8, delay: 0.3 }}
-                />
-              </div>
-            </motion.div>
-
-            <motion.div variants={item} className="card p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <Flame size={14} className="text-orange-400" />
-                <span className="text-xs text-gray-500 font-medium">Branşlar</span>
-              </div>
-              <div className="text-3xl font-black text-white">8</div>
-              <div className="text-xs text-gray-600 mt-0.5">klinik alan</div>
-            </motion.div>
-          </motion.div>
-        ) : (
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="card p-5 mb-8 flex items-center justify-between"
-            style={{ borderColor: 'rgba(0,212,170,0.15)' }}
-          >
+      {/* ── CTA BANNER (not logged in) ── */}
+      {!user && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25 }}
+          className="mx-6 sm:mx-10 mb-8 relative overflow-hidden"
+          style={{
+            background: '#111',
+            borderLeft: '4px solid #ff1744',
+            border: '1px solid #1f1f1f',
+            borderLeftWidth: 4,
+            borderLeftColor: '#ff1744',
+          }}
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-5 gap-4">
             <div>
-              <p className="text-sm font-semibold text-gray-200">Hesap oluştur ve ilerlemeni takip et</p>
-              <p className="text-xs text-gray-500 mt-0.5">Öğrendiğin konuları işaretle, tekrar kartlarını yönet</p>
+              <p className="font-bebas text-lg sm:text-xl text-white tracking-widest">
+                HESAP OLUŞTUR, İLERLEMENİ TAKİP ET
+              </p>
+              <p className="text-gray-600 text-[11px] mt-0.5 uppercase tracking-wider">
+                Öğrendiğin konuları işaretle, tekrar kartlarını yönet
+              </p>
             </div>
             <Link
-              to="/login"
-              className="flex items-center gap-2 text-sm font-semibold text-white px-4 py-2 rounded-lg transition-all shrink-0 ml-4"
-              style={{ background: 'rgba(0,212,170,0.15)', border: '1px solid rgba(0,212,170,0.25)' }}
+              to="/register"
+              className="flex-shrink-0 font-bebas tracking-[0.12em] text-sm text-white px-6 py-2.5 transition-all"
+              style={{
+                background: '#ff1744',
+                clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))',
+              }}
             >
-              <LogIn size={15} />
-              Giriş yap
+              KAYIT OL
             </Link>
-          </motion.div>
-        )}
+          </div>
+        </motion.div>
+      )}
 
-        {/* Branch Grid */}
-        <div className="mb-6">
-          <h2 className="text-[11px] font-semibold text-gray-600 mb-5 uppercase tracking-widest">Klinik Bilimler</h2>
+      {/* ── BRANCH CARDS ── */}
+      <div className="px-6 sm:px-10 pb-16">
+        {/* Section header */}
+        <div className="flex items-center gap-4 mb-5">
+          <h2 className="font-bebas text-xl sm:text-2xl text-white tracking-[0.22em] flex-shrink-0">
+            KLİNİK BİLİMLER
+          </h2>
+          <div className="relative flex-1 h-px" style={{ background: '#1a1a1a' }}>
+            <div className="absolute left-0 top-0 h-full w-16 bg-[#ff1744]" />
+          </div>
         </div>
 
         <motion.div
-          variants={container}
+          variants={containerVariants}
           initial="hidden"
           animate="show"
-          className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3"
+          className="flex flex-col"
+          style={{ gap: '2px' }}
         >
           {BRANCHES.map((branch) => {
             const stats = branchStats[branch.id]
             return (
-              <motion.div key={branch.id} variants={item}>
-                <BranchCard branch={branch} stats={stats} loading={loading} showProgress={!!user} />
+              <motion.div key={branch.id} variants={cardVariants}>
+                <BranchCard
+                  branch={branch}
+                  stats={stats}
+                  loading={loading}
+                  showProgress={!!user}
+                  isHovered={hoveredId === branch.id}
+                  isDimmed={hoveredId !== null && hoveredId !== branch.id}
+                  onHover={setHoveredId}
+                  imageUrl={branchImages[branch.id]}
+                />
               </motion.div>
             )
           })}
@@ -217,71 +282,154 @@ export default function Dashboard() {
   )
 }
 
-function BranchCard({ branch, stats, loading, showProgress }) {
-  if (loading) return <SkeletonCard />
+function BranchCard({ branch, stats, loading, showProgress, isHovered, isDimmed, onHover, imageUrl }) {
+  if (loading) {
+    return (
+      <div className="relative overflow-hidden" style={{ height: 112 }}>
+        <div className="shimmer absolute inset-0" />
+        <div
+          className="absolute right-0 top-0 bottom-0 w-8"
+          style={{ background: '#1a1a1a', clipPath: 'polygon(16px 0, 100% 0, 100% 100%, 0 100%)' }}
+        />
+      </div>
+    )
+  }
 
   const progress = stats?.progress || 0
-  const topicCount = stats?.topicCount || 0
+  const topicCount = stats?.topicCount ?? '—'
   const completedCount = stats?.completedCount || 0
   const dueCount = stats?.dueCount || 0
 
   return (
-    <Link to={`/branch/${branch.id}`}>
+    <Link
+      to={`/branch/${branch.id}`}
+      onMouseEnter={() => onHover(branch.id)}
+      onMouseLeave={() => onHover(null)}
+      onTouchStart={() => onHover(branch.id)}
+      onTouchEnd={() => setTimeout(() => onHover(null), 300)}
+    >
       <motion.div
-        whileHover={{ y: -3, scale: 1.02 }}
-        whileTap={{ scale: 0.97 }}
-        className="card p-4 cursor-pointer group"
-        style={{ '--branch-color': branch.color }}
+        animate={{
+          opacity: isDimmed ? 0.42 : 1,
+          scale: isDimmed ? 0.992 : isHovered ? 1.012 : 1,
+          height: isHovered ? 144 : 112,
+        }}
+        transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
+        className="relative overflow-hidden cursor-pointer"
+        style={{
+          background: imageUrl ? `url(${imageUrl}) center/cover` : branch.p5gradient,
+          borderLeft: isHovered ? '4px solid #ff1744' : '4px solid transparent',
+          boxShadow: isHovered
+            ? '0 8px 48px rgba(0,0,0,0.9), 0 0 32px rgba(255,23,68,0.18)'
+            : '0 2px 6px rgba(0,0,0,0.5)',
+        }}
       >
-        {/* Top row */}
-        <div className="flex items-start justify-between mb-3">
+        {/* Image overlay */}
+        {imageUrl && (
+          <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.62)' }} />
+        )}
+
+        {/* Red glow on hover */}
+        {isHovered && (
           <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center text-xl"
-            style={{ background: `${branch.color}15`, border: `1px solid ${branch.color}25` }}
-          >
-            {branch.icon}
-          </div>
-          {showProgress && (
-            <ProgressRing
-              progress={progress}
-              size={40}
-              strokeWidth={3}
-              color={branch.color}
-            />
-          )}
-        </div>
+            className="absolute inset-0 pointer-events-none"
+            style={{ boxShadow: 'inset 0 0 50px rgba(255,23,68,0.08)' }}
+          />
+        )}
 
-        {/* Name */}
-        <h3 className="text-sm font-bold text-gray-200 leading-snug mb-2 group-hover:text-white transition-colors">
-          {branch.name}
-        </h3>
+        {/* Content */}
+        <div className="relative z-10 h-full flex items-center pl-5 sm:pl-7 pr-3 gap-4">
+          {/* Left: Name + progress */}
+          <div className="flex-1 min-w-0 pr-4">
+            <motion.div
+              animate={{ scale: isHovered ? 1.08 : 1 }}
+              transition={{ duration: 0.2 }}
+              style={{ transformOrigin: 'left center' }}
+            >
+              <span
+                className="font-bebas text-white tracking-wider leading-none block truncate"
+                style={{ fontSize: isHovered ? '1.75rem' : '1.35rem', transition: 'font-size 0.2s ease' }}
+              >
+                {branch.name.toUpperCase()}
+              </span>
+            </motion.div>
 
-        {/* Stats — only for logged-in users */}
-        {showProgress && (
-          <>
-            <div className="flex items-center justify-between text-xs text-gray-600 mb-3">
-              <span>{completedCount}/{topicCount} konu</span>
-              <span>{progress}%</span>
-            </div>
-
-            <div className="progress-bar">
-              <motion.div
-                className="progress-fill"
-                style={{ backgroundColor: branch.color, width: `${progress}%` }}
-                initial={{ width: 0 }}
-                animate={{ width: `${progress}%` }}
-                transition={{ duration: 0.8, delay: 0.1 }}
-              />
-            </div>
-
-            {dueCount > 0 && (
-              <div className="mt-3 flex items-center gap-1.5">
-                <div className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-                <span className="text-xs text-accent">{dueCount} kart bekliyor</span>
+            {showProgress && (
+              <div className="mt-2.5">
+                <div className="h-[2px] w-44 max-w-full" style={{ background: '#2a2a2a' }}>
+                  <motion.div
+                    className="h-full"
+                    style={{ background: '#ff1744' }}
+                    animate={{ width: `${progress}%` }}
+                    transition={{ duration: 0.8, delay: 0.1 }}
+                  />
+                </div>
+                <div className="flex items-center gap-3 mt-1.5">
+                  <span className="text-[10px] text-gray-600 uppercase tracking-wider">
+                    {completedCount}/{topicCount} konu
+                  </span>
+                  {dueCount > 0 && (
+                    <span className="text-[10px] text-[#ff1744] uppercase tracking-wider">
+                      {dueCount} bekliyor
+                    </span>
+                  )}
+                </div>
               </div>
             )}
-          </>
-        )}
+
+            {!showProgress && typeof topicCount === 'number' && topicCount > 0 && (
+              <div className="mt-2">
+                <span className="text-[10px] text-gray-600 uppercase tracking-wider">
+                  {topicCount} konu
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Right: Stats (hover reveal) */}
+          <motion.div
+            animate={{
+              opacity: isHovered ? 1 : 0,
+              x: isHovered ? 0 : 16,
+            }}
+            transition={{ duration: 0.18 }}
+            className="text-right flex-shrink-0 mr-20"
+          >
+            {showProgress ? (
+              <>
+                <div className="font-bebas text-[#ff1744] text-3xl leading-none">{progress}%</div>
+                <div className="text-[9px] text-gray-600 uppercase tracking-widest mt-0.5">tamamlandı</div>
+              </>
+            ) : (
+              <>
+                <div className="font-bebas text-white text-3xl leading-none">
+                  {typeof topicCount === 'number' ? topicCount : '—'}
+                </div>
+                <div className="text-[9px] text-gray-600 uppercase tracking-widest mt-0.5">konu</div>
+              </>
+            )}
+          </motion.div>
+        </div>
+
+        {/* Right diagonal slash accent */}
+        <motion.div
+          animate={{ width: isHovered ? 72 : 36 }}
+          transition={{ duration: 0.2 }}
+          className="absolute right-0 top-0 bottom-0 flex items-center justify-center"
+          style={{
+            background: isHovered ? '#ff1744' : '#141414',
+            clipPath: 'polygon(18px 0, 100% 0, 100% 100%, 0 100%)',
+          }}
+        >
+          {isHovered && (
+            <span
+              className="font-bebas text-white text-xl pl-4 select-none"
+              style={{ letterSpacing: '0.05em' }}
+            >
+              →
+            </span>
+          )}
+        </motion.div>
       </motion.div>
     </Link>
   )

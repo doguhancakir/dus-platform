@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronLeft, CheckCircle2, BookOpen, Clock, FileQuestion, X, Pencil } from 'lucide-react'
+import { ChevronLeft, CheckCircle2, BookOpen, FileQuestion, Pencil } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useAuth } from '../contexts/AuthContext'
@@ -22,18 +22,15 @@ export default function TopicPage() {
   const [showQuestions, setShowQuestions] = useState(false)
   const [showEditor, setShowEditor] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [completingAnim, setCompletingAnim] = useState(false)
   const bottomRef = useRef(null)
 
   useEffect(() => {
-    console.log('Current user:', user)
     loadData()
   }, [id, user?.id])
 
   async function loadData() {
     setLoading(true)
     try {
-      // Konu
       const { data: topicData } = await supabase
         .from('topics')
         .select('*')
@@ -46,7 +43,6 @@ export default function TopicPage() {
       const b = getBranchById(topicData.branch_id)
       setBranch(b)
 
-      // Soru sayısı (herkese açık)
       const { data: questions } = await supabase
         .from('questions')
         .select('id')
@@ -55,7 +51,6 @@ export default function TopicPage() {
       const qIds = questions?.map(q => q.id) || []
 
       if (user) {
-        // Tamamlama durumu
         const { data: progress } = await supabase
           .from('user_topic_progress')
           .select('completed')
@@ -65,7 +60,6 @@ export default function TopicPage() {
 
         setIsCompleted(progress?.completed || false)
 
-        // Kart istatistikleri
         if (qIds.length > 0) {
           const { data: cards } = await supabase
             .from('user_cards')
@@ -98,10 +92,8 @@ export default function TopicPage() {
   }
 
   async function toggleCompleted() {
-    setCompletingAnim(true)
     const newVal = !isCompleted
     setIsCompleted(newVal)
-
     try {
       await supabase
         .from('user_topic_progress')
@@ -113,29 +105,19 @@ export default function TopicPage() {
         })
     } catch (err) {
       console.error(err)
-      setIsCompleted(!newVal) // revert
+      setIsCompleted(!newVal)
     }
-
-    setTimeout(() => setCompletingAnim(false), 600)
   }
-
-  const dueLabel = cardStats.dueCount > 0
-    ? `${cardStats.dueCount} bekliyor`
-    : cardStats.newCount > 0
-    ? `${cardStats.newCount} yeni`
-    : cardStats.totalCount > 0
-    ? `${cardStats.totalCount} soru`
-    : 'Soru yok'
 
   if (loading) {
     return (
       <Layout>
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-10">
-          <div className="shimmer h-6 w-32 rounded mb-8" />
-          <div className="shimmer h-8 w-2/3 rounded mb-4" />
+        <div className="max-w-3xl mx-auto px-6 sm:px-10 py-10">
+          <div className="shimmer h-4 w-28 mb-8" />
+          <div className="shimmer h-8 w-2/3 mb-6" />
           <div className="space-y-3">
             {[1, 2, 3, 4, 5].map(i => (
-              <div key={i} className="shimmer h-4 rounded" style={{ width: `${90 - i * 5}%` }} />
+              <div key={i} className="shimmer h-4" style={{ width: `${92 - i * 5}%` }} />
             ))}
           </div>
         </div>
@@ -147,7 +129,7 @@ export default function TopicPage() {
     return (
       <Layout>
         <div className="flex items-center justify-center h-64">
-          <p className="text-gray-500">Konu bulunamadı.</p>
+          <p className="text-gray-600 text-xs uppercase tracking-widest">Konu bulunamadı.</p>
         </div>
       </Layout>
     )
@@ -155,65 +137,88 @@ export default function TopicPage() {
 
   return (
     <Layout>
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-10 pb-32 lg:pb-12">
-        {/* Back */}
-        <div className="flex items-center justify-between mb-6">
+      <div className="max-w-3xl mx-auto px-6 sm:px-10 py-10 pb-32">
+        {/* Top bar */}
+        <div className="flex items-center justify-between mb-8">
           <Link
             to={branch ? `/branch/${branch.id}` : '/'}
-            className="inline-flex items-center gap-1.5 text-gray-500 hover:text-accent text-sm transition-colors"
+            className="inline-flex items-center gap-1.5 text-gray-600 hover:text-[#ff1744] text-xs uppercase tracking-widest transition-colors"
           >
-            <ChevronLeft size={16} />
+            <ChevronLeft size={14} />
             <span>{branch?.name || 'Geri'}</span>
           </Link>
 
-          {/* Admin Edit Button */}
-          {user?.is_admin && (
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={() => setShowEditor(true)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-gray-500 hover:text-gray-300 transition-all text-xs font-medium"
-              style={{ background: 'rgba(20,20,40,0.6)', border: '1px solid rgba(37,37,64,0.6)' }}
-            >
-              <Pencil size={13} />
-              <span>Düzenle</span>
-            </motion.button>
-          )}
+          <div className="flex items-center gap-2">
+            {user && cardStats.totalCount > 0 && (
+              <motion.button
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.96 }}
+                onClick={() => setShowQuestions(true)}
+                className="font-bebas text-sm tracking-[0.1em] text-white px-4 py-1.5 flex items-center gap-2"
+                style={{
+                  background: '#ff1744',
+                  clipPath: 'polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px))',
+                }}
+              >
+                <FileQuestion size={13} />
+                SORULAR
+                {(cardStats.dueCount > 0 || cardStats.newCount > 0) && (
+                  <span
+                    className="font-sans text-[10px] font-bold px-1.5 py-0.5 leading-none"
+                    style={{ background: 'rgba(255,255,255,0.2)' }}
+                  >
+                    {cardStats.dueCount || cardStats.newCount}
+                  </span>
+                )}
+              </motion.button>
+            )}
+
+            {user?.is_admin && (
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => setShowEditor(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-gray-600 hover:text-gray-300 transition-colors text-xs uppercase tracking-wider"
+                style={{ background: '#111', border: '1px solid #222' }}
+              >
+                <Pencil size={12} />
+                Düzenle
+              </motion.button>
+            )}
+          </div>
         </div>
 
-        {/* Topic Header */}
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-          <div className="flex items-start gap-3">
+        {/* Topic header */}
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8 relative"
+        >
+          <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#ff1744]" />
+          <div className="pl-5">
             {branch && (
-              <div
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-base flex-shrink-0 mt-0.5"
-                style={{ background: `${branch.color}15`, border: `1px solid ${branch.color}25` }}
-              >
-                {branch.icon}
+              <p className="text-[#ff1744] text-[10px] font-bebas tracking-[0.2em] mb-2">
+                {branch.name.toUpperCase()}
+              </p>
+            )}
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-100 leading-tight">
+              {topic.title}
+            </h1>
+
+            {user && cardStats.totalCount > 0 && (
+              <div className="flex items-center gap-2 mt-3 flex-wrap">
+                {cardStats.newCount > 0 && (
+                  <span className="badge-blue">{cardStats.newCount} yeni</span>
+                )}
+                {cardStats.dueCount > 0 && (
+                  <span className="badge-red">{cardStats.dueCount} bekliyor</span>
+                )}
+                {cardStats.learnedCount > 0 && (
+                  <span className="badge-green">{cardStats.learnedCount} öğrenildi</span>
+                )}
               </div>
             )}
-            <div>
-              <h1 className="text-2xl font-bold text-gray-100 leading-tight">{topic.title}</h1>
-              {branch && (
-                <p className="text-sm text-gray-500 mt-1">{branch.name}</p>
-              )}
-            </div>
           </div>
-
-          {/* Card stats (logged-in users only) */}
-          {user && cardStats.totalCount > 0 && (
-            <div className="flex items-center gap-3 mt-4">
-              {cardStats.newCount > 0 && (
-                <span className="badge-blue">{cardStats.newCount} yeni</span>
-              )}
-              {cardStats.dueCount > 0 && (
-                <span className="badge-red">{cardStats.dueCount} bekliyor</span>
-              )}
-              {cardStats.learnedCount > 0 && (
-                <span className="badge-green">{cardStats.learnedCount} öğrenildi</span>
-              )}
-            </div>
-          )}
         </motion.div>
 
         {/* Content */}
@@ -221,7 +226,13 @@ export default function TopicPage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.1 }}
-          className="card p-6 sm:p-10 mb-8"
+          className="mb-10"
+          style={{
+            background: '#0f0f0f',
+            border: '1px solid #1a1a1a',
+            borderLeft: '3px solid #1a1a1a',
+            padding: '2rem 2rem',
+          }}
         >
           {topic.content ? (
             <div className="markdown-content">
@@ -231,90 +242,87 @@ export default function TopicPage() {
             </div>
           ) : (
             <div className="text-center py-12">
-              <div className="text-3xl mb-3">📝</div>
-              <p className="text-gray-500">Bu konu için henüz içerik eklenmemiş.</p>
+              <p className="font-bebas text-xl text-gray-700 tracking-widest">İÇERİK BEKLENİYOR</p>
+              <p className="text-gray-600 text-xs mt-2 uppercase tracking-wider">Bu konu için henüz içerik eklenmemiş.</p>
             </div>
           )}
         </motion.div>
 
-        {/* Complete Button / Login Prompt */}
+        {/* Complete / Login CTA */}
         <div ref={bottomRef} className="flex justify-center">
           {user ? (
             <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.97 }}
+              whileTap={{ scale: 0.96 }}
               onClick={toggleCompleted}
-              className={`flex items-center gap-2.5 px-8 py-3.5 rounded-xl font-semibold text-sm
-                transition-all duration-300 ${
-                isCompleted
-                  ? 'text-emerald-400'
-                  : 'text-gray-300 hover:text-white'
-              }`}
+              className="flex items-center gap-3 px-8 py-3.5 font-bebas tracking-[0.12em] text-base transition-all duration-250"
               style={isCompleted ? {
-                background: 'rgba(16,185,129,0.1)',
-                border: '1px solid rgba(16,185,129,0.3)',
-                boxShadow: '0 0 20px rgba(16,185,129,0.15)',
+                background: 'rgba(240,192,64,0.1)',
+                border: '2px solid rgba(240,192,64,0.4)',
+                color: '#f0c040',
+                clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px))',
               } : {
-                background: 'rgba(20,20,40,0.7)',
-                border: '1px solid rgba(37,37,64,0.7)',
+                background: '#111',
+                border: '2px solid #2a2a2a',
+                color: '#aaa',
+                clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px))',
               }}
             >
               <AnimatePresence mode="wait">
                 {isCompleted ? (
-                  <motion.div
-                    key="check"
-                    initial={{ scale: 0, rotate: -90 }}
-                    animate={{ scale: 1, rotate: 0 }}
-                    transition={{ type: 'spring', stiffness: 300, damping: 15 }}
-                  >
-                    <CheckCircle2 size={18} className="text-emerald-400" />
+                  <motion.div key="check" initial={{ scale: 0, rotate: -90 }} animate={{ scale: 1, rotate: 0 }}>
+                    <CheckCircle2 size={16} />
                   </motion.div>
                 ) : (
-                  <motion.div key="circle" initial={{ scale: 1 }}>
-                    <BookOpen size={18} />
+                  <motion.div key="book">
+                    <BookOpen size={16} />
                   </motion.div>
                 )}
               </AnimatePresence>
-              <span>{isCompleted ? 'Tamamlandı ✓' : 'Konuyu Tamamladım'}</span>
+              {isCompleted ? 'TAMAMLANDI ✓' : 'KONUYU TAMAMLADIM'}
             </motion.button>
           ) : (
             <Link
               to="/login"
-              className="flex items-center gap-2.5 px-6 py-3 rounded-xl font-medium text-sm transition-all text-gray-500 hover:text-gray-300"
-              style={{ background: 'rgba(20,20,40,0.6)', border: '1px solid rgba(37,37,64,0.6)' }}
+              className="flex items-center gap-2.5 px-6 py-3 font-bebas tracking-[0.1em] text-sm text-gray-600 hover:text-gray-400 transition-all"
+              style={{ background: '#111', border: '1px solid #1f1f1f' }}
             >
-              <BookOpen size={18} />
-              <span>İlerlemeyi takip etmek için giriş yap</span>
+              <BookOpen size={15} />
+              <span>İLERLEMEYİ TAKİP ETMEK İÇİN GİRİŞ YAP</span>
             </Link>
           )}
         </div>
       </div>
 
-      {/* Floating Sorular Button */}
+      {/* Floating Sorular button — logged in */}
       {user && cardStats.totalCount > 0 && (
         <motion.button
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
-          whileHover={{ scale: 1.05 }}
+          whileHover={{ scale: 1.04 }}
           whileTap={{ scale: 0.95 }}
           onClick={() => setShowQuestions(true)}
-          className="fixed bottom-24 right-6 lg:bottom-8 lg:right-8 z-20 flex items-center gap-2.5 px-5 py-3 rounded-full font-semibold text-sm text-white animate-pulse-glow"
+          className="fixed bottom-8 right-6 z-20 font-bebas tracking-[0.1em] text-sm text-white flex items-center gap-2 px-5 py-3"
           style={{
-            background: 'linear-gradient(135deg, #00d4aa 0%, #00b894 100%)',
-            boxShadow: '0 4px 20px rgba(0,212,170,0.35)',
+            background: '#ff1744',
+            clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))',
+            boxShadow: '0 4px 24px rgba(255,23,68,0.4)',
+            animation: 'pulseRed 2s ease-in-out infinite',
           }}
         >
-          <FileQuestion size={17} />
-          <span>Sorular</span>
+          <FileQuestion size={15} />
+          SORULAR
           {(cardStats.dueCount > 0 || cardStats.newCount > 0) && (
-            <span className="bg-white/20 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
+            <span
+              className="font-sans text-[10px] font-bold px-1.5 py-0.5 leading-none"
+              style={{ background: 'rgba(255,255,255,0.25)' }}
+            >
               {cardStats.dueCount || cardStats.newCount}
             </span>
           )}
         </motion.button>
       )}
 
-      {/* Question Panel Modal */}
+      {/* Question Panel */}
       <AnimatePresence>
         {showQuestions && (
           <QuestionPanel
@@ -324,7 +332,7 @@ export default function TopicPage() {
         )}
       </AnimatePresence>
 
-      {/* Admin Topic Editor */}
+      {/* Topic Editor */}
       <AnimatePresence>
         {showEditor && topic && (
           <TopicEditor

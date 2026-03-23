@@ -10,14 +10,14 @@
   }
 
   html {
-    font-family: 'Outfit', 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     scroll-behavior: smooth;
   }
 
   body {
-    background-color: #0a0a0f;
+    background-color: #0a0a0a;
     color: #e8e8e8;
     min-height: 100vh;
   }
@@ -28,26 +28,25 @@
   }
 
   ::selection {
-    background: rgba(0, 212, 170, 0.25);
-    color: #f0fdfa;
+    background: rgba(255, 23, 68, 0.3);
+    color: #ffffff;
   }
 
   ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 4px;
+    height: 4px;
   }
 
   ::-webkit-scrollbar-track {
-    background: #0d0d18;
+    background: #0a0a0a;
   }
 
   ::-webkit-scrollbar-thumb {
-    background: #252540;
-    border-radius: 3px;
+    background: #2a2a2a;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: #353560;
+    background: #ff1744;
   }
 }
 
@@ -55,68 +54,78 @@
   .shimmer {
     background: linear-gradient(
       90deg,
-      #141420 0%,
-      #1e1e38 50%,
-      #141420 100%
+      #141414 0%,
+      #222222 50%,
+      #141414 100%
     );
     background-size: 200% 100%;
     animation: shimmer 1.8s infinite;
   }
 
-  .glass {
-    background: rgba(20, 20, 40, 0.65);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.07);
-  }
-
   .card {
-    background: rgba(20, 20, 40, 0.6);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.07);
-    @apply rounded-xl shadow-card transition-all duration-300;
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    @apply transition-all duration-200;
   }
 
   .card:hover {
-    border-color: rgba(0, 212, 170, 0.18);
-    @apply shadow-card-hover;
+    border-color: rgba(255, 23, 68, 0.3);
   }
 
   .btn-primary {
-    @apply bg-accent hover:bg-accent-hover text-white font-semibold px-5 py-2.5 rounded-lg
-           transition-all duration-150 active:scale-95 shadow-sm hover:shadow-glow
-           disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100;
+    background: #ff1744;
+    color: #ffffff;
+    border-radius: 0;
+    @apply font-semibold px-5 py-2.5 text-sm
+           transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    background: #e8143c;
+    box-shadow: 0 0 20px rgba(255, 23, 68, 0.3);
+  }
+
+  .btn-primary:active:not(:disabled) {
+    transform: scale(0.97);
   }
 
   .btn-ghost {
-    @apply bg-transparent hover:bg-[#1e1e30] text-gray-400 hover:text-gray-200
-           font-medium px-4 py-2 rounded-lg transition-all duration-150;
+    background: transparent;
+    border-radius: 0;
+    @apply text-gray-400 hover:text-gray-200
+           font-medium px-4 py-2 transition-all duration-150;
+  }
+
+  .btn-ghost:hover {
+    background: #1a1a1a;
   }
 
   .input {
-    background: rgba(12, 12, 24, 0.8);
-    border: 1px solid rgba(37, 37, 64, 0.9);
-    @apply rounded-lg px-4 py-2.5 text-gray-200
-           placeholder-gray-600 focus:outline-none focus:border-accent
-           focus:ring-1 focus:ring-accent/30 transition-all duration-200 w-full;
+    background: #111111;
+    border: 1px solid #2a2a2a;
+    border-radius: 0;
+    @apply px-4 py-2.5 text-gray-200
+           placeholder-gray-600 focus:outline-none
+           transition-all duration-200 w-full;
   }
 
   .input:focus {
-    box-shadow: 0 0 0 3px rgba(0, 212, 170, 0.08), 0 0 12px rgba(0, 212, 170, 0.1);
+    border-color: #ff1744;
+    box-shadow: 0 0 0 2px rgba(255, 23, 68, 0.1), 0 0 12px rgba(255, 23, 68, 0.12);
   }
 
   .progress-bar {
-    @apply h-1.5 rounded-full overflow-hidden;
-    background: rgba(37, 37, 64, 0.8);
+    @apply h-1 overflow-hidden;
+    background: #2a2a2a;
   }
 
   .progress-fill {
-    @apply h-full rounded-full transition-all duration-700 ease-out;
+    @apply h-full transition-all duration-700 ease-out;
   }
 
   .badge {
-    @apply inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full;
+    @apply inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5;
+    border-radius: 0;
   }
 
   .badge-blue {
@@ -140,11 +149,14 @@
   }
 }
 
-/* Markdown content styles */
+/* ========================
+   MARKDOWN CONTENT
+   ======================== */
 .markdown-content {
   color: #c8ccd4;
-  line-height: 1.8;
+  line-height: 1.85;
   font-size: 16.5px;
+  font-family: 'Inter', sans-serif;
 }
 
 .markdown-content h1,
@@ -153,22 +165,22 @@
 .markdown-content h4 {
   color: #f0f0f8;
   font-weight: 700;
-  margin-top: 1.8em;
+  margin-top: 2em;
   margin-bottom: 0.6em;
   line-height: 1.3;
 }
 
 .markdown-content h1 {
   font-size: 1.85em;
-  border-left: 4px solid #00d4aa;
+  border-left: 4px solid #ff1744;
   padding-left: 0.7em;
 }
 
 .markdown-content h2 {
   font-size: 1.45em;
-  border-left: 3px solid rgba(0, 212, 170, 0.5);
+  border-left: 3px solid rgba(255, 23, 68, 0.5);
   padding-left: 0.6em;
-  border-bottom: 1px solid rgba(37, 37, 64, 0.6);
+  border-bottom: 1px solid #222;
   padding-bottom: 0.35em;
 }
 
@@ -201,19 +213,18 @@
 }
 
 .markdown-content code {
-  background: rgba(0, 212, 170, 0.07);
-  border: 1px solid rgba(0, 212, 170, 0.2);
+  background: rgba(255, 23, 68, 0.07);
+  border: 1px solid rgba(255, 23, 68, 0.18);
   padding: 0.15em 0.45em;
-  border-radius: 5px;
   font-size: 0.875em;
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  color: #00d4aa;
+  color: #ff6b6b;
 }
 
 .markdown-content pre {
-  background: rgba(10, 10, 20, 0.8);
-  border: 1px solid rgba(37, 37, 64, 0.8);
-  border-radius: 10px;
+  background: #111111;
+  border: 1px solid #2a2a2a;
+  border-left: 3px solid #ff1744;
   padding: 1.2em;
   overflow-x: auto;
   margin-bottom: 1.2em;
@@ -227,13 +238,12 @@
 }
 
 .markdown-content blockquote {
-  border-left: 3px solid #00d4aa;
+  border-left: 4px solid #ff1744;
   padding: 0.8em 1.1em;
   margin-left: 0;
   margin-bottom: 1.1em;
   color: #9ca3b0;
-  background: rgba(0, 212, 170, 0.05);
-  border-radius: 0 8px 8px 0;
+  background: rgba(255, 23, 68, 0.05);
 }
 
 .markdown-content table {
@@ -241,73 +251,69 @@
   border-collapse: collapse;
   margin-bottom: 1.2em;
   font-size: 0.9em;
-  border-radius: 8px;
-  overflow: hidden;
 }
 
 .markdown-content th {
-  background: rgba(0, 212, 170, 0.08);
+  background: rgba(255, 23, 68, 0.12);
   color: #f0f0f8;
   font-weight: 700;
   padding: 0.65em 0.9em;
-  border: 1px solid rgba(37, 37, 64, 0.8);
+  border: 1px solid #2a2a2a;
   text-align: left;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.03em;
 }
 
 .markdown-content td {
   padding: 0.55em 0.9em;
-  border: 1px solid rgba(37, 37, 64, 0.6);
+  border: 1px solid #222;
   color: #c8ccd4;
 }
 
 .markdown-content tr:nth-child(even) td {
-  background: rgba(20, 20, 40, 0.4);
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .markdown-content tr:hover td {
-  background: rgba(0, 212, 170, 0.04);
+  background: rgba(255, 23, 68, 0.04);
 }
 
 .markdown-content hr {
   border: none;
-  border-top: 1px solid rgba(37, 37, 64, 0.8);
-  margin: 1.8em 0;
+  border-top: 1px solid #2a2a2a;
+  margin: 2em 0;
 }
 
-/* Critical highlight styles */
+/* ========================
+   HIGHLIGHT CALLOUTS
+   ======================== */
 .highlight-critical {
-  background: rgba(239, 68, 68, 0.08);
-  border-left: 3px solid #ef4444;
+  background: rgba(255, 23, 68, 0.08);
+  border-left: 4px solid #ff1744;
   padding: 0.7em 1.1em;
-  border-radius: 0 8px 8px 0;
   margin-bottom: 0.85em;
-  color: #fca5a5;
+  color: #ffaaaa;
 }
 
 .highlight-important {
   background: rgba(249, 115, 22, 0.08);
-  border-left: 3px solid #f97316;
+  border-left: 4px solid #f97316;
   padding: 0.7em 1.1em;
-  border-radius: 0 8px 8px 0;
   margin-bottom: 0.85em;
   color: #fdba74;
 }
 
 .highlight-tip {
   background: rgba(59, 130, 246, 0.07);
-  border: 1px solid rgba(59, 130, 246, 0.18);
+  border-left: 4px solid #3b82f6;
   padding: 0.7em 1.1em;
-  border-radius: 8px;
   margin-bottom: 0.85em;
   color: #93c5fd;
 }
 
 .highlight-summary {
-  background: rgba(0, 212, 170, 0.07);
-  border: 1px solid rgba(0, 212, 170, 0.2);
+  background: rgba(240, 192, 64, 0.08);
+  border-left: 4px solid #f0c040;
   padding: 0.7em 1.1em;
-  border-radius: 8px;
   margin-bottom: 0.85em;
-  color: #86efac;
+  color: #fde68a;
 }

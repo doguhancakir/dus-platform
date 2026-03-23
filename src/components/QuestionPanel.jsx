@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, ChevronRight, Trophy, RotateCcw } from 'lucide-react'
+import { X, ChevronRight, Trophy } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { processCard, newCard, getEstimatedTime, RATINGS, CARD_STATUS, isDue } from '../lib/sm2'
@@ -8,39 +8,39 @@ import { processCard, newCard, getEstimatedTime, RATINGS, CARD_STATUS, isDue } f
 const RATING_CONFIG = [
   {
     rating: RATINGS.AGAIN,
-    label: 'Tekrar',
-    emoji: '🔴',
-    color: 'border-red-500/30 bg-red-500/5 hover:bg-red-500/10 text-red-400',
-    activeColor: 'border-red-500 bg-red-500/15',
+    label: 'TEKRAR',
+    color: '#cc0000',
+    textColor: '#fff',
+    borderColor: '#cc0000',
   },
   {
     rating: RATINGS.HARD,
-    label: 'Zor',
-    emoji: '🟠',
-    color: 'border-orange-500/30 bg-orange-500/5 hover:bg-orange-500/10 text-orange-400',
-    activeColor: 'border-orange-500 bg-orange-500/15',
+    label: 'ZOR',
+    color: '#ff6600',
+    textColor: '#fff',
+    borderColor: '#ff6600',
   },
   {
     rating: RATINGS.GOOD,
-    label: 'İyi',
-    emoji: '🩵',
-    color: 'border-accent/30 bg-accent/5 hover:bg-accent/10 text-accent',
-    activeColor: 'border-accent bg-accent/15',
+    label: 'İYİ',
+    color: 'transparent',
+    textColor: '#fff',
+    borderColor: '#fff',
   },
   {
     rating: RATINGS.EASY,
-    label: 'Kolay',
-    emoji: '🟢',
-    color: 'border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10 text-emerald-400',
-    activeColor: 'border-emerald-500 bg-emerald-500/15',
+    label: 'KOLAY',
+    color: '#f0c040',
+    textColor: '#000',
+    borderColor: '#f0c040',
   },
 ]
 
 export default function QuestionPanel({ topicId, onClose }) {
   const { user } = useAuth()
   const [questions, setQuestions] = useState([])
-  const [cards, setCards] = useState({}) // questionId → card data
-  const [queue, setQueue] = useState([]) // question IDs to show
+  const [cards, setCards] = useState({})
+  const [queue, setQueue] = useState([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [showAnswer, setShowAnswer] = useState(false)
   const [selectedOption, setSelectedOption] = useState(null)
@@ -53,7 +53,6 @@ export default function QuestionPanel({ topicId, onClose }) {
 
   useEffect(() => {
     loadData()
-    // ESC key to close
     const handler = (e) => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
@@ -62,7 +61,6 @@ export default function QuestionPanel({ topicId, onClose }) {
   async function loadData() {
     setLoading(true)
     try {
-      // Sorular
       const { data: qs } = await supabase
         .from('questions')
         .select('*')
@@ -77,7 +75,6 @@ export default function QuestionPanel({ topicId, onClose }) {
       setQuestions(qs)
       const qIds = qs.map(q => q.id)
 
-      // Kullanıcının kart verileri
       const { data: userCards } = await supabase
         .from('user_cards')
         .select('*')
@@ -96,7 +93,6 @@ export default function QuestionPanel({ topicId, onClose }) {
   }
 
   function buildQueue(qs, cardsMap) {
-    const now = new Date()
     const due = []
     const newOnes = []
 
@@ -106,18 +102,16 @@ export default function QuestionPanel({ topicId, onClose }) {
         newOnes.push(q.id)
       } else if (isDue(card)) {
         if (card.status === CARD_STATUS.LEARNING || card.status === CARD_STATUS.RELEARNING) {
-          due.unshift(q.id) // Learning kartlar önce
+          due.unshift(q.id)
         } else {
-          due.push(q.id) // Review kartlar
+          due.push(q.id)
         }
       }
     })
 
-    // Yeni kartları günlük limite göre sınırla
     const todayNew = newOnes.slice(0, DAILY_NEW_LIMIT)
     const fullQueue = [...due, ...todayNew]
 
-    // İstatistikler
     const newCount = qs.filter(q => !cardsMap[q.id] || cardsMap[q.id]?.status === CARD_STATUS.NEW).length
     const learningCount = qs.filter(q => {
       const c = cardsMap[q.id]
@@ -145,34 +139,25 @@ export default function QuestionPanel({ topicId, onClose }) {
     const existingCard = cards[currentQId] || newCard(user.id, currentQId)
     const updatedCard = processCard(existingCard, rating)
 
-    // Supabase'e kaydet
     try {
       await supabase
         .from('user_cards')
-        .upsert({
-          ...updatedCard,
-          user_id: user.id,
-          question_id: currentQId,
-        })
+        .upsert({ ...updatedCard, user_id: user.id, question_id: currentQId })
 
       const newCardsMap = { ...cards, [currentQId]: updatedCard }
       setCards(newCardsMap)
 
-      // Eğer learning/relearning ise ve due_date şimdiden büyükse kuyruğa geri ekle
       let newQueue = [...queue]
       if (
         (updatedCard.status === CARD_STATUS.LEARNING || updatedCard.status === CARD_STATUS.RELEARNING) &&
         isDue(updatedCard)
       ) {
-        // Hemen tekrar göster (kuyruğun biraz ilerisine ekle)
         const insertAt = Math.min(currentIndex + 3, newQueue.length)
         newQueue.splice(insertAt, 0, currentQId)
       }
 
-      // Sonraki karta geç
       const nextIndex = currentIndex + 1
       if (nextIndex >= newQueue.length) {
-        // İstatistikleri güncelle
         const updatedStats = computeStats(questions, newCardsMap)
         setStats(updatedStats)
         setFinished(true)
@@ -206,11 +191,11 @@ export default function QuestionPanel({ topicId, onClose }) {
 
   if (loading) {
     return (
-      <PanelWrapper onClose={onClose}>
+      <PanelWrapper onClose={onClose} stats={null} currentIndex={0} queueLength={0}>
         <div className="flex-1 flex items-center justify-center">
-          <div className="flex flex-col items-center gap-3">
-            <div className="w-10 h-10 border-2 border-accent/20 border-t-accent rounded-full animate-spin" />
-            <p className="text-gray-500 text-sm">Kartlar yükleniyor...</p>
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-10 h-10 border-2 border-[rgba(255,23,68,0.2)] border-t-[#ff1744] rounded-full animate-spin" />
+            <p className="font-bebas text-gray-600 tracking-widest text-sm">KARTLAR YÜKLENİYOR</p>
           </div>
         </div>
       </PanelWrapper>
@@ -219,12 +204,12 @@ export default function QuestionPanel({ topicId, onClose }) {
 
   if (questions.length === 0) {
     return (
-      <PanelWrapper onClose={onClose}>
-        <div className="flex-1 flex items-center justify-center">
+      <PanelWrapper onClose={onClose} stats={null} currentIndex={0} queueLength={0}>
+        <div className="flex-1 flex items-center justify-center p-6">
           <div className="text-center">
-            <div className="text-5xl mb-4">📝</div>
-            <h3 className="text-xl font-semibold text-gray-200 mb-2">Bu konuda soru yok</h3>
-            <p className="text-gray-500 text-sm">Yakında eklenecek.</p>
+            <div className="font-bebas text-6xl text-[#ff1744] mb-4 tracking-widest">—</div>
+            <h3 className="font-bebas text-2xl text-white tracking-widest mb-2">SORU YOK</h3>
+            <p className="text-gray-600 text-xs uppercase tracking-widest">Bu konuda henüz soru eklenmemiş.</p>
           </div>
         </div>
       </PanelWrapper>
@@ -233,7 +218,7 @@ export default function QuestionPanel({ topicId, onClose }) {
 
   if (finished) {
     return (
-      <PanelWrapper onClose={onClose}>
+      <PanelWrapper onClose={onClose} stats={stats} currentIndex={queue.length} queueLength={queue.length}>
         <FinishedScreen stats={stats} total={questions.length} onClose={onClose} />
       </PanelWrapper>
     )
@@ -245,76 +230,88 @@ export default function QuestionPanel({ topicId, onClose }) {
   const correctIndex = currentQuestion.correct_answer
 
   return (
-    <PanelWrapper onClose={onClose}>
-      {/* Stats Bar */}
-      <div className="flex items-center gap-4 px-6 py-3 flex-shrink-0"
-        style={{ borderBottom: '1px solid rgba(37,37,64,0.5)' }}>
-        <StatBadge color="blue" label="Yeni" count={stats.newCount} />
-        <StatBadge color="red" label="Öğrenme" count={stats.learningCount} />
-        <StatBadge color="green" label="İnceleme" count={stats.reviewCount} />
-        <div className="ml-auto text-xs text-gray-600 font-medium">
-          {currentIndex + 1} / {queue.length}
-        </div>
-      </div>
-
-      {/* Progress */}
-      <div className="h-0.5 flex-shrink-0" style={{ background: 'rgba(37,37,64,0.5)' }}>
+    <PanelWrapper onClose={onClose} stats={stats} currentIndex={currentIndex} queueLength={queue.length}>
+      {/* Progress bar */}
+      <div className="h-[3px] flex-shrink-0" style={{ background: '#1a1a1a' }}>
         <motion.div
-          className="h-full bg-accent"
-          animate={{ width: `${((currentIndex) / queue.length) * 100}%` }}
+          className="h-full bg-[#ff1744]"
+          animate={{ width: `${(currentIndex / queue.length) * 100}%` }}
           transition={{ duration: 0.4 }}
         />
       </div>
 
-      {/* Question */}
+      {/* Question area */}
       <div className="flex-1 overflow-y-auto">
         <AnimatePresence mode="wait">
           <motion.div
             key={currentQuestion.id + '-' + showAnswer}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.2 }}
-            className="p-6 max-w-2xl mx-auto w-full"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
+            className="p-6 sm:p-10 max-w-2xl mx-auto w-full"
           >
-            {/* Question Text */}
-            <div className="mb-6">
-              <p className="text-gray-100 text-lg leading-relaxed font-medium">
+            {/* Question text */}
+            <div
+              className="mb-7 p-5 relative"
+              style={{
+                background: '#111',
+                borderLeft: '4px solid #ff1744',
+              }}
+            >
+              <p className="text-gray-100 text-base sm:text-lg leading-relaxed font-medium">
                 {currentQuestion.question_text}
               </p>
             </div>
 
             {/* Options */}
             {options.length > 0 && (
-              <div className="space-y-2.5 mb-6">
+              <div className="space-y-2 mb-6">
                 {options.map((opt, i) => {
-                  let optClass = 'border-[#252540] bg-[#14142a]/60 text-gray-300 hover:border-[#353555] hover:bg-[#1a1a35]/60'
+                  let bg = '#111'
+                  let borderColor = '#2a2a2a'
+                  let textColor = '#aaa'
+
                   if (showAnswer) {
                     if (i === correctIndex) {
-                      optClass = 'border-emerald-500/50 bg-emerald-500/10 text-emerald-300'
+                      bg = 'rgba(16,185,129,0.1)'
+                      borderColor = 'rgba(16,185,129,0.5)'
+                      textColor = '#6ee7b7'
                     } else if (i === selectedOption && i !== correctIndex) {
-                      optClass = 'border-red-500/50 bg-red-500/10 text-red-300'
+                      bg = 'rgba(255,23,68,0.08)'
+                      borderColor = 'rgba(255,23,68,0.4)'
+                      textColor = '#ff8888'
                     } else {
-                      optClass = 'border-[#1e1e35] bg-[#10101e]/40 text-gray-600'
+                      bg = '#0a0a0a'
+                      borderColor = '#1a1a1a'
+                      textColor = '#444'
                     }
                   } else if (i === selectedOption) {
-                    optClass = 'border-accent/50 bg-accent/10 text-accent'
+                    bg = 'rgba(255,23,68,0.08)'
+                    borderColor = '#ff1744'
+                    textColor = '#ff8888'
                   }
 
                   return (
                     <motion.button
                       key={i}
-                      whileHover={!showAnswer ? { x: 2 } : {}}
+                      whileHover={!showAnswer ? { x: 4 } : {}}
                       whileTap={!showAnswer ? { scale: 0.99 } : {}}
                       onClick={() => !showAnswer && setSelectedOption(i)}
-                      className={`w-full text-left px-4 py-3 rounded-xl border transition-all duration-150
-                        flex items-start gap-3 cursor-pointer ${optClass}`}
                       disabled={showAnswer}
+                      className="w-full text-left px-4 py-3 flex items-start gap-3 transition-all duration-150 cursor-pointer disabled:cursor-default"
+                      style={{
+                        background: bg,
+                        border: `1px solid ${borderColor}`,
+                        borderLeft: `3px solid ${borderColor}`,
+                      }}
                     >
-                      <span className="text-xs font-semibold mt-0.5 w-5 flex-shrink-0 opacity-60">
+                      <span className="text-xs font-semibold mt-0.5 w-5 flex-shrink-0" style={{ color: textColor, opacity: 0.7 }}>
                         {String.fromCharCode(65 + i)}.
                       </span>
-                      <span className="text-sm leading-relaxed">{opt}</span>
+                      <span className="text-sm leading-relaxed" style={{ color: textColor }}>
+                        {opt}
+                      </span>
                       {showAnswer && i === correctIndex && (
                         <span className="ml-auto text-emerald-400 flex-shrink-0">✓</span>
                       )}
@@ -327,34 +324,37 @@ export default function QuestionPanel({ topicId, onClose }) {
             {/* Explanation */}
             {showAnswer && currentQuestion.explanation && (
               <motion.div
-                initial={{ opacity: 0, y: 6 }}
+                initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="p-4 rounded-xl mb-6"
-                style={{ background: 'rgba(0,212,170,0.05)', border: '1px solid rgba(0,212,170,0.15)' }}
+                className="p-4 mb-4"
+                style={{ background: 'rgba(255,23,68,0.05)', borderLeft: '3px solid rgba(255,23,68,0.4)' }}
               >
-                <p className="text-xs font-semibold text-accent/60 mb-1.5 uppercase tracking-widest">Açıklama</p>
-                <p className="text-gray-300 text-sm leading-relaxed">{currentQuestion.explanation}</p>
+                <p className="text-[10px] font-semibold text-[#ff1744] mb-1.5 uppercase tracking-[0.2em]">Açıklama</p>
+                <p className="text-gray-400 text-sm leading-relaxed">{currentQuestion.explanation}</p>
               </motion.div>
             )}
           </motion.div>
         </AnimatePresence>
       </div>
 
-      {/* Bottom Actions */}
-      <div className="p-4 flex-shrink-0" style={{ borderTop: '1px solid rgba(37,37,64,0.5)' }}>
+      {/* Bottom actions */}
+      <div
+        className="p-4 sm:p-6 flex-shrink-0"
+        style={{ borderTop: '1px solid #1a1a1a', background: '#0a0a0a' }}
+      >
         {!showAnswer ? (
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.97 }}
             onClick={() => setShowAnswer(true)}
-            className="w-full max-w-sm mx-auto flex items-center justify-center gap-2
-              text-white font-bold py-4 px-6 rounded-2xl transition-all duration-150"
+            className="w-full max-w-sm mx-auto flex items-center justify-center gap-2 py-4 px-6 font-bebas tracking-[0.15em] text-base text-white"
             style={{
-              background: 'linear-gradient(135deg, #00d4aa 0%, #00b894 100%)',
-              boxShadow: '0 4px 20px rgba(0,212,170,0.3)',
+              background: '#ff1744',
+              clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px))',
+              boxShadow: '0 4px 24px rgba(255,23,68,0.3)',
             }}
           >
-            <span>Cevabı Göster</span>
+            CEVABI GÖSTER
             <ChevronRight size={18} />
           </motion.button>
         ) : (
@@ -362,16 +362,24 @@ export default function QuestionPanel({ topicId, onClose }) {
             {RATING_CONFIG.map((cfg) => (
               <motion.button
                 key={cfg.rating}
-                whileHover={{ scale: 1.02, y: -1 }}
-                whileTap={{ scale: 0.97 }}
+                whileHover={{ scale: 1.04, y: -2 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={() => handleRating(cfg.rating)}
                 disabled={answering}
-                className={`flex flex-col items-center gap-1 py-3 px-2 rounded-xl border
-                  transition-all duration-150 cursor-pointer disabled:opacity-50 ${cfg.color}`}
+                className="flex flex-col items-center gap-1 py-3 px-2 transition-all duration-150 cursor-pointer disabled:opacity-50"
+                style={{
+                  background: cfg.color,
+                  border: `2px solid ${cfg.borderColor}`,
+                  clipPath: 'polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px))',
+                }}
               >
-                <span className="text-xl">{cfg.emoji}</span>
-                <span className="text-xs font-semibold">{cfg.label}</span>
-                <span className="text-[10px] opacity-60">
+                <span
+                  className="font-bebas text-sm tracking-[0.12em] leading-none"
+                  style={{ color: cfg.textColor }}
+                >
+                  {cfg.label}
+                </span>
+                <span className="text-[9px] uppercase tracking-wider" style={{ color: cfg.textColor, opacity: 0.6 }}>
                   {currentCard ? getEstimatedTime(currentCard, cfg.rating) : '—'}
                 </span>
               </motion.button>
@@ -383,47 +391,72 @@ export default function QuestionPanel({ topicId, onClose }) {
   )
 }
 
-function PanelWrapper({ children, onClose }) {
+function PanelWrapper({ children, onClose, stats, currentIndex, queueLength }) {
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 flex flex-col"
-      style={{ background: '#0a0a0f' }}
+      style={{ background: '#0a0a0a' }}
     >
       {/* Top bar */}
-      <div className="flex items-center justify-between px-5 py-3.5 flex-shrink-0"
-        style={{ borderBottom: '1px solid rgba(37,37,64,0.6)', background: 'rgba(10,10,20,0.8)', backdropFilter: 'blur(12px)' }}>
-        <div className="flex items-center gap-2.5">
-          <span className="text-lg">🦷</span>
-          <span className="text-sm font-bold text-white tracking-tight">Davy's Dental</span>
-          <span className="text-gray-600 text-xs mx-1">·</span>
-          <span className="text-xs text-gray-500 font-medium">Soru Modu</span>
+      <div
+        className="flex items-center justify-between px-5 py-3.5 flex-shrink-0 relative"
+        style={{ borderBottom: '1px solid #1a1a1a', background: '#0a0a0a' }}
+      >
+        {/* Left red accent */}
+        <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#ff1744]" />
+
+        <div className="flex items-center gap-4 pl-3">
+          <span
+            className="font-bebas text-white tracking-[0.15em] text-lg"
+            style={{ transform: 'skewX(-4deg)', display: 'inline-block' }}
+          >
+            DAVY'S <span className="text-[#ff1744]">DENTAL</span>
+          </span>
+          <span
+            className="font-bebas text-[#ff1744] text-xs tracking-[0.2em] px-2 py-0.5"
+            style={{ background: 'rgba(255,23,68,0.1)', border: '1px solid rgba(255,23,68,0.2)' }}
+          >
+            SORU MODU
+          </span>
         </div>
-        <button
-          onClick={onClose}
-          className="p-1.5 rounded-lg text-gray-500 hover:text-gray-200 transition-colors"
-          style={{ background: 'rgba(20,20,40,0.5)' }}
-        >
-          <X size={18} />
-        </button>
+
+        <div className="flex items-center gap-4">
+          {stats && queueLength > 0 && (
+            <div className="hidden sm:flex items-center gap-3">
+              <StatPill color="#4466ff" label="Yeni" count={stats.newCount} />
+              <StatPill color="#ff1744" label="Öğrenme" count={stats.learningCount} />
+              <StatPill color="#22c55e" label="İnceleme" count={stats.reviewCount} />
+              <span className="text-[10px] text-gray-700 uppercase tracking-wider font-semibold">
+                {currentIndex}/{queueLength}
+              </span>
+            </div>
+          )}
+          <button
+            onClick={onClose}
+            className="p-2 text-gray-600 hover:text-white transition-colors"
+            style={{ background: '#111', border: '1px solid #1a1a1a' }}
+          >
+            <X size={16} />
+          </button>
+        </div>
       </div>
+
       {children}
     </motion.div>
   )
 }
 
-function StatBadge({ color, label, count }) {
-  const colors = {
-    blue: 'text-blue-400 bg-blue-500/10',
-    red: 'text-red-400 bg-red-500/10',
-    green: 'text-emerald-400 bg-emerald-500/10',
-  }
+function StatPill({ color, label, count }) {
   return (
-    <div className={`flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-md ${colors[color]}`}>
+    <div
+      className="flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 uppercase tracking-wider"
+      style={{ color, background: `${color}18`, border: `1px solid ${color}30` }}
+    >
       <span className="font-bold">{count}</span>
-      <span className="opacity-70">{label}</span>
+      <span style={{ opacity: 0.7 }}>{label}</span>
     </div>
   )
 }
@@ -433,42 +466,83 @@ function FinishedScreen({ stats, total, onClose }) {
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="flex-1 flex items-center justify-center p-6"
+      className="flex-1 flex items-center justify-center p-6 relative overflow-hidden"
     >
-      <div className="text-center max-w-sm">
+      {/* Background slash elements */}
+      <div
+        className="absolute top-0 right-0 w-48 h-48 pointer-events-none"
+        style={{ background: '#ff1744', opacity: 0.05, clipPath: 'polygon(100% 0, 100% 100%, 0 100%)' }}
+      />
+      <div
+        className="absolute bottom-0 left-0 w-48 h-48 pointer-events-none"
+        style={{ background: '#ff1744', opacity: 0.05, clipPath: 'polygon(0 0, 100% 0, 0 100%)' }}
+      />
+
+      <div className="text-center max-w-sm relative z-10">
+        {/* Big TEBRİKLER text */}
         <motion.div
-          initial={{ scale: 0, rotate: -180 }}
-          animate={{ scale: 1, rotate: 0 }}
-          transition={{ type: 'spring', stiffness: 200, damping: 15, delay: 0.1 }}
-          className="text-6xl mb-4"
+          initial={{ y: -40, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ type: 'spring', stiffness: 250, damping: 18, delay: 0.1 }}
         >
-          🎉
+          <h2
+            className="font-bebas text-[#ff1744] tracking-widest leading-none mb-1"
+            style={{ fontSize: 'clamp(48px, 10vw, 80px)', transform: 'skewX(-4deg)', display: 'inline-block' }}
+          >
+            TEBRİKLER!
+          </h2>
         </motion.div>
-        <h2 className="text-2xl font-bold text-gray-100 mb-2">Tebrikler!</h2>
-        <p className="text-gray-500 mb-6">Bugünlük bu kadar. Harika iş çıkardın!</p>
 
-        <div className="grid grid-cols-3 gap-3 mb-8">
-          <div className="card p-4 text-center">
-            <div className="text-2xl font-black text-blue-400">{stats.newCount}</div>
-            <div className="text-[10px] text-gray-600 mt-1 uppercase tracking-wider">Yeni</div>
-          </div>
-          <div className="card p-4 text-center">
-            <div className="text-2xl font-black text-orange-400">{stats.learningCount}</div>
-            <div className="text-[10px] text-gray-600 mt-1 uppercase tracking-wider">Öğrenme</div>
-          </div>
-          <div className="card p-4 text-center">
-            <div className="text-2xl font-black text-accent">{stats.reviewCount}</div>
-            <div className="text-[10px] text-gray-600 mt-1 uppercase tracking-wider">İnceleme</div>
-          </div>
-        </div>
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3 }}
+          className="text-gray-600 text-xs uppercase tracking-[0.25em] mb-8"
+        >
+          Bugünlük bu kadar. Harika iş çıkardın!
+        </motion.p>
 
-        <button
+        {/* Stats */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25 }}
+          className="grid grid-cols-3 mb-8"
+          style={{ gap: '2px', background: '#111' }}
+        >
+          <div className="bg-[#0a0a0a] px-4 py-4 relative">
+            <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-blue-500" />
+            <div className="font-bebas text-3xl text-blue-400">{stats.newCount}</div>
+            <div className="text-[9px] text-gray-600 uppercase tracking-wider mt-0.5">Yeni</div>
+          </div>
+          <div className="bg-[#0a0a0a] px-4 py-4 relative">
+            <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-[#ff6600]" />
+            <div className="font-bebas text-3xl text-orange-400">{stats.learningCount}</div>
+            <div className="text-[9px] text-gray-600 uppercase tracking-wider mt-0.5">Öğrenme</div>
+          </div>
+          <div className="bg-[#0a0a0a] px-4 py-4 relative">
+            <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-emerald-500" />
+            <div className="font-bebas text-3xl text-emerald-400">{stats.reviewCount}</div>
+            <div className="text-[9px] text-gray-600 uppercase tracking-wider mt-0.5">İnceleme</div>
+          </div>
+        </motion.div>
+
+        <motion.button
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.4 }}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.97 }}
           onClick={onClose}
-          className="btn-primary w-full flex items-center justify-center gap-2"
+          className="w-full flex items-center justify-center gap-2 py-3.5 font-bebas tracking-[0.15em] text-base text-white"
+          style={{
+            background: '#ff1744',
+            clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px))',
+          }}
         >
           <Trophy size={16} />
-          <span>Konuya Dön</span>
-        </button>
+          KONUYA DÖN
+        </motion.button>
       </div>
     </motion.div>
   )

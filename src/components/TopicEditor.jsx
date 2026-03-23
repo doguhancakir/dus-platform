@@ -34,28 +34,37 @@ export default function TopicEditor({ topic, onClose, onSaved }) {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 flex flex-col"
-      style={{ background: '#0a0a0f' }}
+      style={{ background: '#0a0a0a' }}
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-4 sm:px-6 h-14 flex-shrink-0"
-        style={{ borderBottom: '1px solid rgba(37,37,64,0.5)', background: 'rgba(10,10,20,0.8)' }}>
-        <div className="flex items-center gap-2">
+      <div
+        className="flex items-center justify-between px-4 sm:px-6 h-14 flex-shrink-0 relative"
+        style={{ borderBottom: '1px solid #1a1a1a', background: '#0a0a0a' }}
+      >
+        {/* Left red accent */}
+        <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#ff1744]" />
+
+        <div className="flex items-center gap-2 pl-3">
           <button
             onClick={() => setTab('edit')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
-              ${tab === 'edit'
-                ? 'bg-accent/10 text-accent border border-accent/20'
-                : 'text-gray-500 hover:text-gray-300'}`}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium transition-colors"
+            style={{
+              background: tab === 'edit' ? 'rgba(255,23,68,0.1)' : 'transparent',
+              color: tab === 'edit' ? '#ff1744' : '#555',
+              border: `1px solid ${tab === 'edit' ? 'rgba(255,23,68,0.25)' : 'transparent'}`,
+            }}
           >
             <Code2 size={14} />
             Düzenle
           </button>
           <button
             onClick={() => setTab('preview')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
-              ${tab === 'preview'
-                ? 'bg-accent/10 text-accent border border-accent/20'
-                : 'text-gray-500 hover:text-gray-300'}`}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium transition-colors"
+            style={{
+              background: tab === 'preview' ? 'rgba(255,23,68,0.1)' : 'transparent',
+              color: tab === 'preview' ? '#ff1744' : '#555',
+              border: `1px solid ${tab === 'preview' ? 'rgba(255,23,68,0.25)' : 'transparent'}`,
+            }}
           >
             <Eye size={14} />
             Önizleme
@@ -64,23 +73,24 @@ export default function TopicEditor({ topic, onClose, onSaved }) {
 
         <div className="flex items-center gap-2">
           {error && (
-            <span className="text-red-400 text-xs hidden sm:block">{error}</span>
+            <span className="text-[#ff6b6b] text-xs hidden sm:block uppercase tracking-wider">{error}</span>
           )}
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.97 }}
             onClick={handleSave}
             disabled={saving}
-            className="flex items-center gap-2 px-4 py-1.5 rounded-lg bg-accent text-white text-sm font-medium
-              hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="flex items-center gap-2 px-4 py-1.5 text-sm font-bebas tracking-widest text-white
+              disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            style={{ background: '#ff1744' }}
           >
             <Save size={14} />
-            {saving ? 'Kaydediliyor…' : 'Kaydet'}
+            {saving ? 'KAYDEDİLİYOR…' : 'KAYDET'}
           </motion.button>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-gray-500 hover:text-gray-200 transition-colors"
-            style={{ background: 'rgba(20,20,40,0.5)' }}
+            className="p-1.5 text-gray-600 hover:text-gray-200 transition-colors"
+            style={{ background: '#111', border: '1px solid #1a1a1a' }}
           >
             <X size={18} />
           </button>
@@ -88,15 +98,20 @@ export default function TopicEditor({ topic, onClose, onSaved }) {
       </div>
 
       {/* Topic title strip */}
-      <div className="px-4 sm:px-6 py-2.5 flex-shrink-0"
-        style={{ borderBottom: '1px solid rgba(37,37,64,0.4)', background: 'rgba(8,8,16,0.6)' }}>
-        <p className="text-[10px] text-gray-600 uppercase tracking-wider font-semibold mb-0.5">Düzenleniyor</p>
-        <h2 className="text-gray-300 font-medium text-sm truncate">{topic.title}</h2>
+      <div
+        className="px-5 sm:px-7 py-2.5 flex-shrink-0"
+        style={{ borderBottom: '1px solid #111', background: '#080808' }}
+      >
+        <p className="text-[9px] text-gray-700 uppercase tracking-[0.2em] mb-0.5">Düzenleniyor</p>
+        <h2 className="text-gray-400 font-medium text-sm truncate">{topic.title}</h2>
       </div>
 
       {/* Error banner (mobile) */}
       {error && (
-        <div className="sm:hidden px-4 py-2 bg-red-500/10 border-b border-red-500/20 text-red-400 text-xs">
+        <div
+          className="sm:hidden px-4 py-2 text-[#ff6b6b] text-xs uppercase tracking-wider"
+          style={{ background: 'rgba(255,23,68,0.08)', borderBottom: '1px solid rgba(255,23,68,0.2)' }}
+        >
           {error}
         </div>
       )}
@@ -107,20 +122,20 @@ export default function TopicEditor({ topic, onClose, onSaved }) {
           <textarea
             value={content}
             onChange={e => setContent(e.target.value)}
-            className="w-full h-full bg-transparent text-gray-200 text-sm font-mono p-4 sm:p-6
+            className="w-full h-full bg-transparent text-gray-300 text-sm font-mono p-4 sm:p-6
               resize-none outline-none leading-relaxed placeholder-gray-700"
             placeholder="Markdown içerik girin…"
             spellCheck={false}
             autoFocus
           />
         ) : (
-          <div className="h-full overflow-y-auto p-4 sm:p-6">
+          <div className="h-full overflow-y-auto p-4 sm:p-8">
             {content ? (
               <div className="markdown-content max-w-3xl mx-auto">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
               </div>
             ) : (
-              <p className="text-gray-600 text-sm">İçerik yok.</p>
+              <p className="text-gray-700 text-xs uppercase tracking-wider">İçerik yok.</p>
             )}
           </div>
         )}

@@ -1,35 +1,11 @@
+import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../contexts/AuthContext'
-import { BRANCHES } from '../lib/data'
-import {
-  LayoutDashboard,
-  LogOut,
-  LogIn,
-  Settings,
-  BookOpen,
-} from 'lucide-react'
-
-function NavItem({ to, icon: Icon, label, active }) {
-  return (
-    <Link to={to}>
-      <motion.div
-        className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all duration-200 cursor-pointer
-          ${active
-            ? 'bg-accent/10 text-accent border border-accent/20 shadow-glow-sm'
-            : 'text-gray-500 hover:text-gray-200 hover:bg-[#1e1e30]'
-          }`}
-        whileHover={{ x: 2 }}
-        whileTap={{ scale: 0.98 }}
-      >
-        <Icon size={16} />
-        <span className="font-medium">{label}</span>
-      </motion.div>
-    </Link>
-  )
-}
+import { Menu, X, LogOut, Settings } from 'lucide-react'
 
 export default function Layout({ children }) {
+  const [menuOpen, setMenuOpen] = useState(false)
   const { user, logout } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
@@ -37,166 +13,234 @@ export default function Layout({ children }) {
   function handleLogout() {
     logout()
     navigate('/login')
+    setMenuOpen(false)
   }
 
   const isActive = (path) => location.pathname === path
 
   return (
-    <div className="flex min-h-screen bg-[#0a0a0f]">
-      {/* Sidebar — Desktop */}
-      <aside className="hidden lg:flex flex-col w-60 fixed inset-y-0 left-0 z-30"
-        style={{ background: 'rgba(10,10,20,0.95)', borderRight: '1px solid rgba(37,37,64,0.6)', backdropFilter: 'blur(20px)' }}>
+    <div className="min-h-screen bg-[#0a0a0a]">
+      {/* ── TOP NAV ── */}
+      <nav
+        className="fixed top-0 left-0 right-0 z-40 h-16 flex items-center px-5 sm:px-8"
+        style={{
+          background: 'rgba(10,10,10,0.97)',
+          borderBottom: '1px solid #1a1a1a',
+          backdropFilter: 'blur(20px)',
+        }}
+      >
+        {/* Left red accent bar */}
+        <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#ff1744]" />
+
         {/* Logo */}
-        <div className="flex items-center gap-3 px-5 py-5" style={{ borderBottom: '1px solid rgba(37,37,64,0.5)' }}>
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center text-lg flex-shrink-0"
-            style={{ background: 'rgba(0,212,170,0.1)', border: '1px solid rgba(0,212,170,0.25)' }}>
-            🦷
-          </div>
-          <div>
-            <div className="text-sm font-bold text-white tracking-tight leading-none">Davy's Dental</div>
-            <div className="text-[10px] text-gray-600 mt-0.5 font-light">DUS Hazırlık</div>
-          </div>
-        </div>
+        <Link
+          to="/"
+          className="flex items-baseline gap-0 ml-1"
+          onClick={() => setMenuOpen(false)}
+        >
+          <span
+            className="font-bebas text-[20px] sm:text-[22px] text-white tracking-[0.15em] leading-none"
+            style={{ transform: 'skewX(-8deg)', display: 'inline-block' }}
+          >
+            DAVY'S
+          </span>
+          <span
+            className="font-bebas text-[20px] sm:text-[22px] text-[#ff1744] tracking-[0.15em] leading-none ml-2"
+            style={{ transform: 'skewX(-8deg)', display: 'inline-block' }}
+          >
+            DENTAL
+          </span>
+        </Link>
 
-        {/* Nav */}
-        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-          <NavItem
-            to="/"
-            icon={LayoutDashboard}
-            label="Ana Sayfa"
-            active={isActive('/')}
-          />
+        {/* ── Desktop Nav ── */}
+        <div className="hidden md:flex items-center gap-1 ml-auto">
+          <NavLink to="/" label="ANA SAYFA" active={isActive('/')} />
 
-          <div className="pt-4 pb-1 px-3">
-            <span className="text-[10px] font-semibold text-gray-600 uppercase tracking-widest">Klinik Bilimler</span>
-          </div>
-
-          {BRANCHES.map((branch) => (
-            <Link key={branch.id} to={`/branch/${branch.id}`}>
-              <motion.div
-                className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 cursor-pointer
-                  ${location.pathname === `/branch/${branch.id}`
-                    ? 'text-gray-200 border'
-                    : 'text-gray-600 hover:text-gray-300 hover:bg-[#16162a]'
-                  }`}
-                style={location.pathname === `/branch/${branch.id}` ? {
-                  background: `${branch.color}12`,
-                  borderColor: `${branch.color}30`,
-                  borderLeftWidth: '2px',
-                } : {}}
-                whileHover={{ x: 2 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                <span className="text-base leading-none flex-shrink-0">{branch.icon}</span>
-                <span className="font-medium truncate text-xs">{branch.name}</span>
-              </motion.div>
-            </Link>
-          ))}
-        </nav>
-
-        {/* Footer */}
-        <div className="p-3 space-y-1" style={{ borderTop: '1px solid rgba(37,37,64,0.5)' }}>
           {user ? (
             <>
               {user.is_admin && (
-                <NavItem to="/admin" icon={Settings} label="Admin Panel" active={isActive('/admin')} />
+                <NavLink to="/admin" label="ADMİN" active={isActive('/admin')} />
               )}
-              <div className="flex items-center gap-2.5 px-3 py-2 mt-1">
-                <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-accent flex-shrink-0"
-                  style={{ background: 'rgba(0,212,170,0.1)', border: '1px solid rgba(0,212,170,0.25)' }}>
-                  {user.nickname?.charAt(0).toUpperCase()}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs font-semibold text-gray-300 truncate">{user.nickname}</div>
-                  <div className="text-[10px] text-gray-600">Öğrenci</div>
-                </div>
+              <div
+                className="flex items-center gap-3 ml-4 pl-4"
+                style={{ borderLeft: '1px solid #2a2a2a' }}
+              >
+                <span className="text-gray-500 text-[11px] font-medium uppercase tracking-[0.15em]">
+                  {user.nickname}
+                </span>
                 <button
                   onClick={handleLogout}
-                  className="text-gray-600 hover:text-gray-300 transition-colors p-1.5 rounded-lg hover:bg-[#1e1e30]"
-                  title="Çıkış"
+                  className="text-gray-600 hover:text-[#ff1744] transition-colors p-1.5"
+                  title="Çıkış Yap"
                 >
-                  <LogOut size={14} />
+                  <LogOut size={15} />
                 </button>
               </div>
             </>
           ) : (
-            <Link to="/login">
-              <motion.div
-                className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-500 hover:text-gray-200 hover:bg-[#1e1e30] transition-all cursor-pointer"
-                whileHover={{ x: 2 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                <LogIn size={16} />
-                <span className="font-medium">Giriş Yap</span>
-              </motion.div>
+            <Link
+              to="/login"
+              className="ml-4 font-bebas text-sm tracking-[0.12em] px-5 py-2 text-white transition-all"
+              style={{
+                background: '#ff1744',
+                clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#e8143c'; e.currentTarget.style.boxShadow = '0 0 20px rgba(255,23,68,0.4)' }}
+              onMouseLeave={e => { e.currentTarget.style.background = '#ff1744'; e.currentTarget.style.boxShadow = 'none' }}
+            >
+              GİRİŞ YAP
             </Link>
           )}
         </div>
-      </aside>
 
-      {/* Mobile Header */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 z-30 flex items-center justify-between px-4 h-14"
-        style={{ background: 'rgba(10,10,20,0.92)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(37,37,64,0.5)' }}>
-        <div className="flex items-center gap-2">
-          <span className="text-lg">🦷</span>
-          <span className="text-sm font-bold text-white tracking-tight">Davy's Dental</span>
-        </div>
-        <div className="flex items-center gap-2">
-          {user ? (
-            <>
-              {user.is_admin && (
-                <Link to="/admin" className="text-gray-500 hover:text-gray-300 p-1.5">
-                  <Settings size={18} />
-                </Link>
-              )}
-              <button onClick={handleLogout} className="text-gray-500 hover:text-gray-300 p-1.5">
-                <LogOut size={18} />
-              </button>
-            </>
-          ) : (
-            <Link to="/login" className="text-gray-500 hover:text-gray-300 p-1.5">
-              <LogIn size={18} />
-            </Link>
-          )}
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="flex-1 lg:ml-60">
-        <div className="pt-14 lg:pt-0 min-h-screen">
-          <motion.div
-            key={location.pathname}
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.25 }}
-          >
-            {children}
+        {/* ── Mobile Hamburger ── */}
+        <button
+          onClick={() => setMenuOpen(!menuOpen)}
+          className="md:hidden ml-auto p-2 text-gray-400 hover:text-white transition-colors"
+          aria-label="Menu"
+        >
+          <motion.div animate={{ rotate: menuOpen ? 90 : 0 }} transition={{ duration: 0.2 }}>
+            {menuOpen ? <X size={22} /> : <Menu size={22} />}
           </motion.div>
-        </div>
-      </main>
-
-      {/* Mobile Bottom Nav */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-30 flex items-center justify-around px-4 h-16"
-        style={{ background: 'rgba(10,10,20,0.94)', backdropFilter: 'blur(20px)', borderTop: '1px solid rgba(37,37,64,0.5)' }}>
-        {user ? (
-          <MobileNavItem to="/" icon={LayoutDashboard} label="Ana Sayfa" active={isActive('/')} />
-        ) : (
-          <MobileNavItem to="/login" icon={LogIn} label="Giriş Yap" active={isActive('/login')} />
-        )}
-        <MobileNavItem to="/branch/7" icon={BookOpen} label="Çalış" active={location.pathname.startsWith('/branch')} />
-        {user?.is_admin && (
-          <MobileNavItem to="/admin" icon={Settings} label="Admin" active={isActive('/admin')} />
-        )}
+        </button>
       </nav>
+
+      {/* ── Mobile Full-Screen Menu ── */}
+      <AnimatePresence>
+        {menuOpen && (
+          <motion.div
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            transition={{ duration: 0.28, ease: [0.7, 0, 0.3, 1] }}
+            className="fixed inset-0 z-30 flex flex-col"
+            style={{ background: '#0a0a0a', paddingTop: 64 }}
+          >
+            {/* Corner diagonal accent */}
+            <div
+              className="absolute bottom-0 right-0 w-64 h-64 pointer-events-none"
+              style={{
+                background: '#ff1744',
+                opacity: 0.06,
+                clipPath: 'polygon(100% 0, 100% 100%, 0 100%)',
+              }}
+            />
+            {/* Left red stripe */}
+            <div className="absolute left-0 top-16 bottom-0 w-[3px] bg-[#ff1744]" />
+
+            <div className="flex-1 flex flex-col justify-center px-8 relative z-10">
+              <div className="space-y-0">
+                <MobileMenuItem
+                  to="/"
+                  label="ANA SAYFA"
+                  active={isActive('/')}
+                  onClick={() => setMenuOpen(false)}
+                />
+                {user ? (
+                  <>
+                    {user.is_admin && (
+                      <MobileMenuItem
+                        to="/admin"
+                        label="ADMİN"
+                        active={isActive('/admin')}
+                        onClick={() => setMenuOpen(false)}
+                      />
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <MobileMenuItem
+                      to="/login"
+                      label="GİRİŞ YAP"
+                      active={isActive('/login')}
+                      onClick={() => setMenuOpen(false)}
+                    />
+                    <MobileMenuItem
+                      to="/register"
+                      label="KAYIT OL"
+                      active={isActive('/register')}
+                      onClick={() => setMenuOpen(false)}
+                    />
+                  </>
+                )}
+              </div>
+
+              {user && (
+                <div
+                  className="mt-10 pt-8"
+                  style={{ borderTop: '1px solid #1a1a1a' }}
+                >
+                  <p className="text-gray-700 text-[10px] uppercase tracking-[0.25em] mb-4">Hesap</p>
+                  <div className="flex items-center justify-between">
+                    <span className="font-bebas text-3xl text-white tracking-wider">
+                      {user.nickname.toUpperCase()}
+                    </span>
+                    <button
+                      onClick={handleLogout}
+                      className="flex items-center gap-2 text-gray-600 hover:text-[#ff1744] transition-colors"
+                    >
+                      <LogOut size={18} />
+                      <span className="text-sm uppercase tracking-wider">Çıkış</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Main Content ── */}
+      <main className="pt-16">
+        <motion.div
+          key={location.pathname}
+          initial={{ opacity: 0, x: -10 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+        >
+          {children}
+        </motion.div>
+      </main>
     </div>
   )
 }
 
-function MobileNavItem({ to, icon: Icon, label, active }) {
+function NavLink({ to, label, active }) {
   return (
-    <Link to={to} className="flex flex-col items-center gap-0.5 py-2 px-4">
-      <Icon size={20} className={active ? 'text-accent' : 'text-gray-600'} />
-      <span className={`text-[10px] font-medium ${active ? 'text-accent' : 'text-gray-600'}`}>{label}</span>
+    <Link
+      to={to}
+      className="font-bebas text-sm tracking-[0.12em] px-4 py-2 transition-all duration-150"
+      style={{
+        color: active ? '#ff1744' : '#666',
+        borderBottom: active ? '2px solid #ff1744' : '2px solid transparent',
+      }}
+    >
+      {label}
+    </Link>
+  )
+}
+
+function MobileMenuItem({ to, label, active, onClick }) {
+  return (
+    <Link to={to} onClick={onClick}>
+      <motion.div
+        initial={{ x: -30, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        whileTap={{ scale: 0.97 }}
+        className="py-5 pl-6"
+        style={{ borderBottom: '1px solid #111' }}
+      >
+        <span
+          className="font-bebas tracking-widest"
+          style={{
+            fontSize: '2.8rem',
+            color: active ? '#ff1744' : '#ffffff',
+            display: 'inline-block',
+          }}
+        >
+          {label}
+        </span>
+      </motion.div>
     </Link>
   )
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, Trash2, Edit3, Save, X, ChevronDown, ChevronRight, Loader2, Upload, FileText } from 'lucide-react'
+import { Plus, Trash2, Edit3, Save, X, Loader2, Upload, FileText, Image } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { BRANCHES } from '../lib/data'
@@ -18,11 +18,10 @@ export default function AdminPage() {
   if (!user?.is_admin && !unlocked) {
     return (
       <Layout>
-        <div className="max-w-md mx-auto px-4 py-16">
-          <div className="card p-8 text-center">
-            <div className="text-4xl mb-4">🔒</div>
-            <h2 className="text-xl font-bold text-gray-100 mb-2">Admin Paneli</h2>
-            <p className="text-gray-500 text-sm mb-6">Erişim için şifre girin</p>
+        <div className="max-w-md mx-auto px-6 py-16">
+          <div style={{ background: '#111', border: '1px solid #222', borderLeft: '3px solid #ff1744', padding: '2rem' }}>
+            <h2 className="font-bebas text-2xl text-white tracking-widest mb-2">ADMİN PANELİ</h2>
+            <p className="text-gray-600 text-xs uppercase tracking-wider mb-6">Erişim için şifre girin</p>
             <input
               className="input mb-3"
               type="password"
@@ -36,15 +35,15 @@ export default function AdminPage() {
                 }
               }}
             />
-            {pwError && <p className="text-red-400 text-sm mb-3">{pwError}</p>}
+            {pwError && <p className="text-[#ff1744] text-xs mb-3 uppercase tracking-wider">{pwError}</p>}
             <button
-              className="btn-primary w-full"
+              className="btn-primary w-full font-bebas tracking-widest"
               onClick={() => {
                 if (adminPw === ADMIN_PASSWORD) setUnlocked(true)
                 else setPwError('Hatalı şifre')
               }}
             >
-              Giriş
+              GİRİŞ
             </button>
           </div>
         </div>
@@ -54,25 +53,32 @@ export default function AdminPage() {
 
   return (
     <Layout>
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 pb-24 lg:pb-8">
-        <div className="mb-6">
-          <h1 className="text-xl font-bold text-gray-100">Admin Paneli</h1>
-          <p className="text-gray-500 text-sm mt-0.5">İçerik yönetimi</p>
+      <div className="max-w-5xl mx-auto px-6 sm:px-10 py-8 pb-20">
+        <div className="mb-6 relative pl-4">
+          <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#ff1744]" />
+          <h1 className="font-bebas text-3xl text-white tracking-widest">ADMİN PANELİ</h1>
+          <p className="text-gray-600 text-[10px] uppercase tracking-widest mt-0.5">İçerik yönetimi</p>
         </div>
 
         {/* Tabs */}
-        <div className="flex items-center gap-1 p-1 bg-[#1a1a1a] rounded-xl mb-6 w-fit">
-          {['topics', 'questions', 'import'].map(tab => (
+        <div className="flex items-center mb-6" style={{ borderBottom: '2px solid #1a1a1a' }}>
+          {[
+            { id: 'topics', label: 'KONULAR' },
+            { id: 'questions', label: 'SORULAR' },
+            { id: 'branches', label: 'BRANŞLAR' },
+            { id: 'import', label: 'İÇE AKTAR' },
+          ].map(tab => (
             <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150 ${
-                activeTab === tab
-                  ? 'bg-[#2a2a2a] text-gray-100 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-300'
-              }`}
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className="font-bebas tracking-[0.12em] px-5 py-2.5 text-sm transition-all duration-150 relative"
+              style={{
+                color: activeTab === tab.id ? '#ff1744' : '#555',
+                borderBottom: activeTab === tab.id ? '2px solid #ff1744' : '2px solid transparent',
+                marginBottom: -2,
+              }}
             >
-              {tab === 'topics' ? 'Konular' : tab === 'questions' ? 'Sorular' : 'İçe Aktar'}
+              {tab.label}
             </button>
           ))}
         </div>
@@ -80,6 +86,7 @@ export default function AdminPage() {
         <AnimatePresence mode="wait">
           {activeTab === 'topics' && <TopicsTab key="topics" />}
           {activeTab === 'questions' && <QuestionsTab key="questions" />}
+          {activeTab === 'branches' && <BranchesTab key="branches" />}
           {activeTab === 'import' && <ImportTab key="import" />}
         </AnimatePresence>
       </div>
@@ -87,6 +94,7 @@ export default function AdminPage() {
   )
 }
 
+/* ── TOPICS TAB ── */
 function TopicsTab() {
   const [topics, setTopics] = useState([])
   const [selectedBranch, setSelectedBranch] = useState(1)
@@ -147,7 +155,6 @@ function TopicsTab() {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-      {/* Branch Select */}
       <div className="flex items-center gap-3 flex-wrap">
         <select
           className="input w-auto"
@@ -163,87 +170,71 @@ function TopicsTab() {
           onClick={() => { setShowNew(true); setEditingId(null); setForm({ title: '', content: '', sort_order: topics.length }) }}
         >
           <Plus size={15} />
-          <span>Yeni Konu</span>
+          Yeni Konu
         </button>
       </div>
 
-      {/* New / Edit Form */}
       <AnimatePresence>
         {(showNew || editingId) && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="card p-5 space-y-3"
+            className="overflow-hidden"
           >
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-gray-300">
-                {editingId ? 'Konuyu Düzenle' : 'Yeni Konu'}
-              </h3>
-              <button onClick={() => { setEditingId(null); setShowNew(false) }} className="text-gray-600 hover:text-gray-400">
-                <X size={16} />
-              </button>
-            </div>
-            <input
-              className="input"
-              placeholder="Konu başlığı"
-              value={form.title}
-              onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-            />
-            <input
-              className="input"
-              type="number"
-              placeholder="Sıralama"
-              value={form.sort_order}
-              onChange={e => setForm(f => ({ ...f, sort_order: e.target.value }))}
-            />
-            <textarea
-              className="input min-h-[200px] font-mono text-xs resize-y"
-              placeholder="İçerik (Markdown formatında)..."
-              value={form.content}
-              onChange={e => setForm(f => ({ ...f, content: e.target.value }))}
-            />
-            <div className="flex gap-2">
-              <button
-                className="btn-primary flex items-center gap-1.5 text-sm"
-                onClick={saveTopic}
-                disabled={saving || !form.title.trim()}
-              >
-                {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-                <span>Kaydet</span>
-              </button>
-              <button
-                className="btn-ghost text-sm"
-                onClick={() => { setEditingId(null); setShowNew(false) }}
-              >
-                İptal
-              </button>
+            <div className="p-5 space-y-3" style={{ background: '#111', border: '1px solid #222', borderLeft: '3px solid #ff1744' }}>
+              <div className="flex items-center justify-between">
+                <h3 className="font-bebas tracking-widest text-white">{editingId ? 'KONUYU DÜZENLE' : 'YENİ KONU'}</h3>
+                <button onClick={() => { setEditingId(null); setShowNew(false) }} className="text-gray-600 hover:text-gray-300">
+                  <X size={16} />
+                </button>
+              </div>
+              <input className="input" placeholder="Konu başlığı" value={form.title}
+                onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
+              <input className="input" type="number" placeholder="Sıralama" value={form.sort_order}
+                onChange={e => setForm(f => ({ ...f, sort_order: e.target.value }))} />
+              <textarea className="input min-h-[200px] font-mono text-xs resize-y" placeholder="İçerik (Markdown)..."
+                value={form.content} onChange={e => setForm(f => ({ ...f, content: e.target.value }))} />
+              <div className="flex gap-2">
+                <button className="btn-primary flex items-center gap-1.5 text-sm" onClick={saveTopic}
+                  disabled={saving || !form.title.trim()}>
+                  {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                  Kaydet
+                </button>
+                <button className="btn-ghost text-sm" onClick={() => { setEditingId(null); setShowNew(false) }}>İptal</button>
+              </div>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Topics List */}
       {loading ? (
         <div className="flex justify-center py-8">
-          <Loader2 size={24} className="animate-spin text-gray-600" />
+          <Loader2 size={24} className="animate-spin text-[#ff1744]" />
         </div>
       ) : topics.length === 0 ? (
-        <div className="card p-8 text-center text-gray-500 text-sm">Bu branşta henüz konu yok.</div>
+        <div className="p-8 text-center text-gray-600 text-xs uppercase tracking-widest" style={{ background: '#111', border: '1px solid #1a1a1a' }}>
+          Bu branşta henüz konu yok.
+        </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-[2px]">
           {topics.map(topic => (
-            <div key={topic.id} className="card p-4 flex items-center justify-between gap-3">
+            <div key={topic.id} className="flex items-center justify-between gap-3 p-4"
+              style={{ background: '#111', border: '1px solid #1a1a1a' }}>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-200 truncate">{topic.title}</p>
-                <p className="text-xs text-gray-600">Sıra: {topic.sort_order}</p>
+                <p className="text-[10px] text-gray-600 uppercase tracking-wider mt-0.5">Sıra: {topic.sort_order}</p>
               </div>
               <div className="flex items-center gap-1.5">
-                <button onClick={() => startEdit(topic)} className="p-2 rounded-lg text-gray-500 hover:text-gray-300 hover:bg-[#2a2a2a] transition-colors">
-                  <Edit3 size={14} />
+                <button onClick={() => startEdit(topic)}
+                  className="p-2 text-gray-600 hover:text-gray-300 transition-colors"
+                  style={{ background: '#0a0a0a', border: '1px solid #1a1a1a' }}>
+                  <Edit3 size={13} />
                 </button>
-                <button onClick={() => deleteTopic(topic.id)} className="p-2 rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-colors">
-                  <Trash2 size={14} />
+                <button onClick={() => deleteTopic(topic.id)}
+                  className="p-2 text-gray-600 hover:text-[#ff1744] transition-colors"
+                  style={{ background: '#0a0a0a', border: '1px solid #1a1a1a' }}>
+                  <Trash2 size={13} />
                 </button>
               </div>
             </div>
@@ -254,6 +245,7 @@ function TopicsTab() {
   )
 }
 
+/* ── QUESTIONS TAB ── */
 function QuestionsTab() {
   const [topics, setTopics] = useState([])
   const [selectedTopic, setSelectedTopic] = useState('')
@@ -331,11 +323,8 @@ function QuestionsTab() {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
       <div className="flex items-center gap-3 flex-wrap">
-        <select
-          className="input w-auto flex-1 max-w-sm"
-          value={selectedTopic}
-          onChange={e => setSelectedTopic(e.target.value)}
-        >
+        <select className="input w-auto flex-1 max-w-sm" value={selectedTopic}
+          onChange={e => setSelectedTopic(e.target.value)}>
           <option value="">Konu seçin...</option>
           {BRANCHES.map(branch => (
             <optgroup key={branch.id} label={`${branch.icon} ${branch.name}`}>
@@ -346,123 +335,87 @@ function QuestionsTab() {
           ))}
         </select>
         {selectedTopic && (
-          <button
-            className="btn-primary flex items-center gap-1.5 text-sm"
-            onClick={() => { setShowForm(true); setEditingId(null); resetForm() }}
-          >
+          <button className="btn-primary flex items-center gap-1.5 text-sm"
+            onClick={() => { setShowForm(true); setEditingId(null); resetForm() }}>
             <Plus size={15} />
-            <span>Yeni Soru</span>
+            Yeni Soru
           </button>
         )}
       </div>
 
-      {/* Form */}
       <AnimatePresence>
         {showForm && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="card p-5 space-y-4"
-          >
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-gray-300">{editingId ? 'Soruyu Düzenle' : 'Yeni Soru'}</h3>
-              <button onClick={() => { setShowForm(false); setEditingId(null) }} className="text-gray-600 hover:text-gray-400">
-                <X size={16} />
-              </button>
-            </div>
-
-            <textarea
-              className="input min-h-[100px] resize-y"
-              placeholder="Soru metni..."
-              value={form.question_text}
-              onChange={e => setForm(f => ({ ...f, question_text: e.target.value }))}
-            />
-
-            <div className="space-y-2">
-              <p className="text-xs text-gray-500 font-medium">Şıklar (doğru şıkkı işaretle)</p>
-              {form.options.map((opt, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    name="correct"
-                    checked={form.correct_answer === i}
-                    onChange={() => setForm(f => ({ ...f, correct_answer: i }))}
-                    className="accent-accent"
-                  />
-                  <span className="text-xs text-gray-500 w-5">{String.fromCharCode(65 + i)}.</span>
-                  <input
-                    className="input text-sm"
-                    placeholder={`${String.fromCharCode(65 + i)} şıkkı`}
-                    value={opt}
-                    onChange={e => {
-                      const opts = [...form.options]
-                      opts[i] = e.target.value
-                      setForm(f => ({ ...f, options: opts }))
-                    }}
-                  />
-                </div>
-              ))}
-            </div>
-
-            <textarea
-              className="input resize-y"
-              placeholder="Açıklama (opsiyonel)..."
-              value={form.explanation}
-              onChange={e => setForm(f => ({ ...f, explanation: e.target.value }))}
-            />
-
-            <div className="flex gap-2">
-              <button
-                className="btn-primary flex items-center gap-1.5 text-sm"
-                onClick={saveQuestion}
-                disabled={saving || !form.question_text.trim()}
-              >
-                {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-                <span>Kaydet</span>
-              </button>
-              <button className="btn-ghost text-sm" onClick={() => { setShowForm(false); setEditingId(null) }}>
-                İptal
-              </button>
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+            <div className="p-5 space-y-4" style={{ background: '#111', border: '1px solid #222', borderLeft: '3px solid #ff1744' }}>
+              <div className="flex items-center justify-between">
+                <h3 className="font-bebas tracking-widest text-white">{editingId ? 'SORUYU DÜZENLE' : 'YENİ SORU'}</h3>
+                <button onClick={() => { setShowForm(false); setEditingId(null) }} className="text-gray-600 hover:text-gray-300"><X size={16} /></button>
+              </div>
+              <textarea className="input min-h-[100px] resize-y" placeholder="Soru metni..."
+                value={form.question_text} onChange={e => setForm(f => ({ ...f, question_text: e.target.value }))} />
+              <div className="space-y-2">
+                <p className="text-[10px] text-gray-600 uppercase tracking-widest">Şıklar (doğru şıkkı işaretle)</p>
+                {form.options.map((opt, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <input type="radio" name="correct" checked={form.correct_answer === i}
+                      onChange={() => setForm(f => ({ ...f, correct_answer: i }))}
+                      className="accent-[#ff1744]" />
+                    <span className="text-xs text-gray-600 w-5">{String.fromCharCode(65 + i)}.</span>
+                    <input className="input text-sm" placeholder={`${String.fromCharCode(65 + i)} şıkkı`}
+                      value={opt} onChange={e => {
+                        const opts = [...form.options]
+                        opts[i] = e.target.value
+                        setForm(f => ({ ...f, options: opts }))
+                      }} />
+                  </div>
+                ))}
+              </div>
+              <textarea className="input resize-y" placeholder="Açıklama (opsiyonel)..."
+                value={form.explanation} onChange={e => setForm(f => ({ ...f, explanation: e.target.value }))} />
+              <div className="flex gap-2">
+                <button className="btn-primary flex items-center gap-1.5 text-sm" onClick={saveQuestion}
+                  disabled={saving || !form.question_text.trim()}>
+                  {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                  Kaydet
+                </button>
+                <button className="btn-ghost text-sm" onClick={() => { setShowForm(false); setEditingId(null) }}>İptal</button>
+              </div>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Questions List */}
       {selectedTopic && (
         loading ? (
-          <div className="flex justify-center py-8">
-            <Loader2 size={24} className="animate-spin text-gray-600" />
-          </div>
+          <div className="flex justify-center py-8"><Loader2 size={24} className="animate-spin text-[#ff1744]" /></div>
         ) : questions.length === 0 ? (
-          <div className="card p-8 text-center text-gray-500 text-sm">Bu konuda henüz soru yok.</div>
+          <div className="p-8 text-center text-gray-600 text-xs uppercase tracking-widest" style={{ background: '#111', border: '1px solid #1a1a1a' }}>
+            Bu konuda henüz soru yok.
+          </div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-[2px]">
             {questions.map((q, idx) => (
-              <div key={q.id} className="card p-4">
+              <div key={q.id} className="p-4" style={{ background: '#111', border: '1px solid #1a1a1a' }}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs text-gray-600 mb-1">#{idx + 1}</p>
-                    <p className="text-sm text-gray-200 leading-relaxed">{q.question_text}</p>
+                    <p className="text-[10px] text-gray-700 mb-1 uppercase tracking-wider">#{idx + 1}</p>
+                    <p className="text-sm text-gray-300 leading-relaxed">{q.question_text}</p>
                     {q.options?.length > 0 && (
                       <div className="mt-2 space-y-0.5">
                         {q.options.map((opt, i) => (
                           <p key={i} className={`text-xs ${i === q.correct_answer ? 'text-emerald-400 font-medium' : 'text-gray-600'}`}>
-                            {String.fromCharCode(65 + i)}. {opt}
-                            {i === q.correct_answer && ' ✓'}
+                            {String.fromCharCode(65 + i)}. {opt}{i === q.correct_answer && ' ✓'}
                           </p>
                         ))}
                       </div>
                     )}
                   </div>
                   <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <button onClick={() => startEdit(q)} className="p-1.5 rounded-lg text-gray-500 hover:text-gray-300 hover:bg-[#2a2a2a] transition-colors">
-                      <Edit3 size={13} />
-                    </button>
-                    <button onClick={() => deleteQuestion(q.id)} className="p-1.5 rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-colors">
-                      <Trash2 size={13} />
-                    </button>
+                    <button onClick={() => startEdit(q)} className="p-1.5 text-gray-600 hover:text-gray-300 transition-colors"
+                      style={{ background: '#0a0a0a', border: '1px solid #1a1a1a' }}><Edit3 size={13} /></button>
+                    <button onClick={() => deleteQuestion(q.id)} className="p-1.5 text-gray-600 hover:text-[#ff1744] transition-colors"
+                      style={{ background: '#0a0a0a', border: '1px solid #1a1a1a' }}><Trash2 size={13} /></button>
                   </div>
                 </div>
               </div>
@@ -474,6 +427,84 @@ function QuestionsTab() {
   )
 }
 
+/* ── BRANCHES TAB (image URLs) ── */
+function BranchesTab() {
+  const [images, setImages] = useState({})
+  const [saving, setSaving] = useState({})
+  const [saved, setSaved] = useState({})
+
+  useEffect(() => {
+    supabase.from('branch_images').select('branch_id, image_url').then(({ data }) => {
+      if (data) {
+        const map = {}
+        data.forEach(r => { map[r.branch_id] = r.image_url || '' })
+        setImages(map)
+      }
+    })
+  }, [])
+
+  async function saveImage(branchId) {
+    setSaving(s => ({ ...s, [branchId]: true }))
+    await supabase.from('branch_images').upsert({
+      branch_id: branchId,
+      image_url: images[branchId] || null,
+    })
+    setSaving(s => ({ ...s, [branchId]: false }))
+    setSaved(s => ({ ...s, [branchId]: true }))
+    setTimeout(() => setSaved(s => ({ ...s, [branchId]: false })), 2000)
+  }
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
+      <div className="p-4 text-xs text-gray-600 uppercase tracking-wider"
+        style={{ background: '#111', borderLeft: '3px solid #ff1744', border: '1px solid #1a1a1a' }}>
+        Her branş için bir arka plan görseli URL'si girebilirsiniz. Boş bırakırsanız varsayılan gradient kullanılır.
+      </div>
+
+      {BRANCHES.map(branch => (
+        <div key={branch.id} className="p-4 flex items-center gap-4"
+          style={{ background: '#111', border: '1px solid #1a1a1a' }}>
+          <div className="flex-shrink-0">
+            <span className="text-xl">{branch.icon}</span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-gray-300 mb-2">{branch.name}</p>
+            <input
+              className="input text-sm"
+              type="url"
+              placeholder="https://... (görsel URL)"
+              value={images[branch.id] || ''}
+              onChange={e => setImages(prev => ({ ...prev, [branch.id]: e.target.value }))}
+            />
+          </div>
+          <button
+            onClick={() => saveImage(branch.id)}
+            disabled={saving[branch.id]}
+            className="flex-shrink-0 flex items-center gap-1.5 px-4 py-2 text-xs font-semibold transition-all disabled:opacity-50"
+            style={{
+              background: saved[branch.id] ? '#166534' : '#ff1744',
+              color: 'white',
+              border: 'none',
+            }}
+          >
+            {saving[branch.id] ? (
+              <Loader2 size={13} className="animate-spin" />
+            ) : saved[branch.id] ? (
+              '✓ Kaydedildi'
+            ) : (
+              <>
+                <Save size={13} />
+                Kaydet
+              </>
+            )}
+          </button>
+        </div>
+      ))}
+    </motion.div>
+  )
+}
+
+/* ── IMPORT TAB ── */
 function ImportTab() {
   const [jsonText, setJsonText] = useState('')
   const [importing, setImporting] = useState(false)
@@ -495,12 +526,7 @@ function ImportTab() {
     try {
       const data = JSON.parse(jsonText)
       if (!Array.isArray(data)) throw new Error('JSON array olmalı')
-
-      const { data: inserted, error } = await supabase
-        .from('questions')
-        .insert(data)
-        .select()
-
+      const { data: inserted, error } = await supabase.from('questions').insert(data).select()
       if (error) throw error
       setResult({ success: true, count: inserted.length })
     } catch (err) {
@@ -511,39 +537,33 @@ function ImportTab() {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-      <div className="card p-5">
-        <div className="flex items-center gap-2 mb-3">
-          <FileText size={16} className="text-accent" />
-          <h3 className="text-sm font-semibold text-gray-300">JSON ile Toplu Soru İçe Aktarma</h3>
+      <div className="p-5 space-y-4" style={{ background: '#111', border: '1px solid #1a1a1a', borderLeft: '3px solid #ff1744' }}>
+        <div className="flex items-center gap-2">
+          <FileText size={16} className="text-[#ff1744]" />
+          <h3 className="font-bebas tracking-widest text-white">JSON İLE TOPLU SORU İÇE AKTARMA</h3>
         </div>
-        <p className="text-xs text-gray-500 mb-4">
+        <p className="text-[10px] text-gray-600 uppercase tracking-wider">
           Sorular aşağıdaki formatta JSON olarak yapıştırın:
         </p>
-        <pre className="text-xs bg-[#141414] p-3 rounded-lg border border-[#2a2a2a] text-gray-400 overflow-x-auto mb-4">
+        <pre className="text-xs p-3 text-gray-500 overflow-x-auto"
+          style={{ background: '#0a0a0a', border: '1px solid #1a1a1a', fontFamily: 'monospace' }}>
           {exampleJson}
         </pre>
-        <textarea
-          className="input min-h-[200px] font-mono text-xs resize-y mb-3"
-          placeholder="JSON verisi buraya yapıştırın..."
-          value={jsonText}
-          onChange={e => setJsonText(e.target.value)}
-        />
+        <textarea className="input min-h-[200px] font-mono text-xs resize-y" placeholder="JSON verisi buraya yapıştırın..."
+          value={jsonText} onChange={e => setJsonText(e.target.value)} />
         {result && (
-          <div className={`mb-3 text-sm px-3 py-2 rounded-lg border ${
-            result.success
-              ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
-              : 'text-red-400 bg-red-500/10 border-red-500/20'
-          }`}>
+          <div className={`text-xs px-3 py-2 uppercase tracking-wider ${result.success ? 'text-emerald-400' : 'text-[#ff6b6b]'}`}
+            style={{
+              background: result.success ? 'rgba(16,185,129,0.08)' : 'rgba(255,23,68,0.08)',
+              borderLeft: `3px solid ${result.success ? '#22c55e' : '#ff1744'}`,
+            }}>
             {result.success ? `✓ ${result.count} soru başarıyla içe aktarıldı!` : `Hata: ${result.message}`}
           </div>
         )}
-        <button
-          className="btn-primary flex items-center gap-1.5 text-sm"
-          onClick={handleImport}
-          disabled={importing || !jsonText.trim()}
-        >
+        <button className="btn-primary flex items-center gap-1.5 text-sm" onClick={handleImport}
+          disabled={importing || !jsonText.trim()}>
           {importing ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
-          <span>İçe Aktar</span>
+          İçe Aktar
         </button>
       </div>
     </motion.div>
