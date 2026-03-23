@@ -26,6 +26,7 @@ export default function TopicPage() {
   const bottomRef = useRef(null)
 
   useEffect(() => {
+    console.log('Current user:', user)
     loadData()
   }, [id, user?.id])
 
