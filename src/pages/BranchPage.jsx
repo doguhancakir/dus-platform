@@ -135,9 +135,9 @@ export default function BranchPage() {
 
   return (
     <Layout>
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 pb-24 lg:pb-8">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-10 pb-24 lg:pb-10">
         {/* Back */}
-        <Link to="/" className="inline-flex items-center gap-1.5 text-gray-500 hover:text-gray-300 text-sm mb-6 transition-colors">
+        <Link to="/" className="inline-flex items-center gap-1.5 text-gray-500 hover:text-accent text-sm mb-6 transition-colors">
           <ChevronLeft size={16} />
           <span>Genel Bakış</span>
         </Link>
@@ -216,8 +216,8 @@ function TopicCard({ topic, stats, isCompleted, branchColor, showProgress }) {
   return (
     <Link to={`/topic/${topic.id}`}>
       <motion.div
-        whileHover={{ x: 2 }}
-        whileTap={{ scale: 0.99 }}
+        whileHover={{ x: 3, scale: 1.01 }}
+        whileTap={{ scale: 0.98 }}
         className="card p-4 cursor-pointer group flex items-center gap-4"
       >
         {/* Completion Icon */}
@@ -233,8 +233,8 @@ function TopicCard({ topic, stats, isCompleted, branchColor, showProgress }) {
 
         {/* Content */}
         <div className="flex-1 min-w-0">
-          <h3 className={`text-sm font-medium mb-1 group-hover:text-white transition-colors
-            ${isCompleted && showProgress ? 'text-gray-400' : 'text-gray-200'}`}>
+          <h3 className={`text-sm font-semibold mb-1 group-hover:text-white transition-colors
+            ${isCompleted && showProgress ? 'text-gray-400' : 'text-gray-100'}`}>
             {topic.title}
           </h3>
           <div className="flex items-center gap-3 text-xs">

@@ -101,22 +101,20 @@ export default function Dashboard() {
 
   return (
     <Layout>
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 pb-24 lg:pb-8">
-        {/* Header */}
-        <div className="mb-8">
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-            {user ? (
-              <>
-                <h1 className="text-2xl font-bold text-gray-100 mb-1">
-                  Hoş geldin, <span className="text-accent">{user.nickname}</span> 👋
-                </h1>
-                <p className="text-gray-500 text-sm">DUS sınavına hazırlanmaya devam et</p>
-              </>
-            ) : (
-              <>
-                <h1 className="text-2xl font-bold text-gray-100 mb-1">DUS Hazırlık Platformu</h1>
-                <p className="text-gray-500 text-sm">Branş seç ve çalışmaya başla</p>
-              </>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 pb-24 lg:pb-10">
+        {/* Hero */}
+        <div className="mb-10">
+          <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+            <h1 className="text-4xl sm:text-5xl font-black text-white tracking-tight mb-2 leading-none">
+              Davy's <span className="text-accent">Dental</span>
+            </h1>
+            <p className="text-gray-500 text-sm font-light tracking-wide mb-4">
+              Diş Hekimliği Uzmanlık Sınavı Hazırlık Platformu
+            </p>
+            {user && (
+              <p className="text-sm text-gray-400">
+                Hoş geldin, <span className="text-accent font-semibold">{user.nickname}</span> 👋
+              </p>
             )}
           </motion.div>
         </div>
@@ -130,29 +128,29 @@ export default function Dashboard() {
             className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8"
           >
             <motion.div variants={item} className="card p-4">
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center gap-2 mb-3">
                 <Clock size={14} className="text-accent" />
-                <span className="text-xs text-gray-500">Bugün bekleyen</span>
+                <span className="text-xs text-gray-500 font-medium">Bugün bekleyen</span>
               </div>
-              <div className="text-2xl font-bold text-gray-100">{totalDue}</div>
+              <div className="text-3xl font-black text-white">{totalDue}</div>
               <div className="text-xs text-gray-600 mt-0.5">kart</div>
             </motion.div>
 
             <motion.div variants={item} className="card p-4">
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center gap-2 mb-3">
                 <BookOpen size={14} className="text-blue-400" />
-                <span className="text-xs text-gray-500">Tamamlanan</span>
+                <span className="text-xs text-gray-500 font-medium">Tamamlanan</span>
               </div>
-              <div className="text-2xl font-bold text-gray-100">{completedTopics}</div>
+              <div className="text-3xl font-black text-white">{completedTopics}</div>
               <div className="text-xs text-gray-600 mt-0.5">/ {totalTopics} konu</div>
             </motion.div>
 
             <motion.div variants={item} className="card p-4">
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center gap-2 mb-3">
                 <TrendingUp size={14} className="text-emerald-400" />
-                <span className="text-xs text-gray-500">Genel ilerleme</span>
+                <span className="text-xs text-gray-500 font-medium">Genel ilerleme</span>
               </div>
-              <div className="text-2xl font-bold text-gray-100">{overallProgress}%</div>
+              <div className="text-3xl font-black text-white">{overallProgress}%</div>
               <div className="progress-bar mt-2">
                 <motion.div
                   className="progress-fill bg-accent"
@@ -164,24 +162,29 @@ export default function Dashboard() {
             </motion.div>
 
             <motion.div variants={item} className="card p-4">
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center gap-2 mb-3">
                 <Flame size={14} className="text-orange-400" />
-                <span className="text-xs text-gray-500">Branşlar</span>
+                <span className="text-xs text-gray-500 font-medium">Branşlar</span>
               </div>
-              <div className="text-2xl font-bold text-gray-100">8</div>
-              <div className="text-xs text-gray-600 mt-0.5">aktif alan</div>
+              <div className="text-3xl font-black text-white">8</div>
+              <div className="text-xs text-gray-600 mt-0.5">klinik alan</div>
             </motion.div>
           </motion.div>
         ) : (
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            className="card p-4 mb-8 flex items-center justify-between"
+            className="card p-5 mb-8 flex items-center justify-between"
+            style={{ borderColor: 'rgba(0,212,170,0.15)' }}
           >
-            <p className="text-sm text-gray-400">İlerleni takip etmek ve "öğrendim" özelliğini kullanmak için giriş yap.</p>
+            <div>
+              <p className="text-sm font-semibold text-gray-200">Hesap oluştur ve ilerlemeni takip et</p>
+              <p className="text-xs text-gray-500 mt-0.5">Öğrendiğin konuları işaretle, tekrar kartlarını yönet</p>
+            </div>
             <Link
               to="/login"
-              className="flex items-center gap-2 text-sm font-medium text-accent hover:text-accent/80 transition-colors shrink-0 ml-4"
+              className="flex items-center gap-2 text-sm font-semibold text-white px-4 py-2 rounded-lg transition-all shrink-0 ml-4"
+              style={{ background: 'rgba(0,212,170,0.15)', border: '1px solid rgba(0,212,170,0.25)' }}
             >
               <LogIn size={15} />
               Giriş yap
@@ -190,8 +193,8 @@ export default function Dashboard() {
         )}
 
         {/* Branch Grid */}
-        <div className="mb-4">
-          <h2 className="text-sm font-semibold text-gray-400 mb-4 uppercase tracking-wider">Branşlar</h2>
+        <div className="mb-6">
+          <h2 className="text-[11px] font-semibold text-gray-600 mb-5 uppercase tracking-widest">Klinik Bilimler</h2>
         </div>
 
         <motion.div
@@ -225,9 +228,9 @@ function BranchCard({ branch, stats, loading, showProgress }) {
   return (
     <Link to={`/branch/${branch.id}`}>
       <motion.div
-        whileHover={{ y: -2 }}
-        whileTap={{ scale: 0.98 }}
-        className={`card p-4 cursor-pointer group border`}
+        whileHover={{ y: -3, scale: 1.02 }}
+        whileTap={{ scale: 0.97 }}
+        className="card p-4 cursor-pointer group"
         style={{ '--branch-color': branch.color }}
       >
         {/* Top row */}
@@ -249,7 +252,7 @@ function BranchCard({ branch, stats, loading, showProgress }) {
         </div>
 
         {/* Name */}
-        <h3 className="text-sm font-semibold text-gray-200 leading-snug mb-2 group-hover:text-white transition-colors">
+        <h3 className="text-sm font-bold text-gray-200 leading-snug mb-2 group-hover:text-white transition-colors">
           {branch.name}
         </h3>
 

@@ -33,16 +33,18 @@ export default function TopicEditor({ topic, onClose, onSaved }) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 bg-[#0a0a0a] flex flex-col"
+      className="fixed inset-0 z-50 flex flex-col"
+      style={{ background: '#0a0a0f' }}
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-4 sm:px-6 h-14 border-b border-[#1e1e1e] flex-shrink-0">
+      <div className="flex items-center justify-between px-4 sm:px-6 h-14 flex-shrink-0"
+        style={{ borderBottom: '1px solid rgba(37,37,64,0.5)', background: 'rgba(10,10,20,0.8)' }}>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setTab('edit')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
               ${tab === 'edit'
-                ? 'bg-[#1e1e1e] text-gray-200 border border-[#2a2a2a]'
+                ? 'bg-accent/10 text-accent border border-accent/20'
                 : 'text-gray-500 hover:text-gray-300'}`}
           >
             <Code2 size={14} />
@@ -52,7 +54,7 @@ export default function TopicEditor({ topic, onClose, onSaved }) {
             onClick={() => setTab('preview')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
               ${tab === 'preview'
-                ? 'bg-[#1e1e1e] text-gray-200 border border-[#2a2a2a]'
+                ? 'bg-accent/10 text-accent border border-accent/20'
                 : 'text-gray-500 hover:text-gray-300'}`}
           >
             <Eye size={14} />
@@ -77,7 +79,8 @@ export default function TopicEditor({ topic, onClose, onSaved }) {
           </motion.button>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-gray-500 hover:text-gray-300 hover:bg-[#1e1e1e] transition-colors"
+            className="p-1.5 rounded-lg text-gray-500 hover:text-gray-200 transition-colors"
+            style={{ background: 'rgba(20,20,40,0.5)' }}
           >
             <X size={18} />
           </button>
@@ -85,7 +88,8 @@ export default function TopicEditor({ topic, onClose, onSaved }) {
       </div>
 
       {/* Topic title strip */}
-      <div className="px-4 sm:px-6 py-2.5 border-b border-[#1e1e1e] bg-[#0f0f0f] flex-shrink-0">
+      <div className="px-4 sm:px-6 py-2.5 flex-shrink-0"
+        style={{ borderBottom: '1px solid rgba(37,37,64,0.4)', background: 'rgba(8,8,16,0.6)' }}>
         <p className="text-[10px] text-gray-600 uppercase tracking-wider font-semibold mb-0.5">Düzenleniyor</p>
         <h2 className="text-gray-300 font-medium text-sm truncate">{topic.title}</h2>
       </div>

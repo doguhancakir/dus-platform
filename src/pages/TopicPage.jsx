@@ -130,7 +130,7 @@ export default function TopicPage() {
   if (loading) {
     return (
       <Layout>
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-10">
           <div className="shimmer h-6 w-32 rounded mb-8" />
           <div className="shimmer h-8 w-2/3 rounded mb-4" />
           <div className="space-y-3">
@@ -155,12 +155,12 @@ export default function TopicPage() {
 
   return (
     <Layout>
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 pb-32 lg:pb-12">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-10 pb-32 lg:pb-12">
         {/* Back */}
         <div className="flex items-center justify-between mb-6">
           <Link
             to={branch ? `/branch/${branch.id}` : '/'}
-            className="inline-flex items-center gap-1.5 text-gray-500 hover:text-gray-300 text-sm transition-colors"
+            className="inline-flex items-center gap-1.5 text-gray-500 hover:text-accent text-sm transition-colors"
           >
             <ChevronLeft size={16} />
             <span>{branch?.name || 'Geri'}</span>
@@ -172,30 +172,11 @@ export default function TopicPage() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.97 }}
               onClick={() => setShowEditor(true)}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#1e1e1e] border border-[#2a2a2a]
-                text-gray-400 hover:text-gray-200 hover:border-[#3a3a3a] transition-all text-sm font-medium"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-gray-500 hover:text-gray-300 transition-all text-xs font-medium"
+              style={{ background: 'rgba(20,20,40,0.6)', border: '1px solid rgba(37,37,64,0.6)' }}
             >
-              <Pencil size={14} />
+              <Pencil size={13} />
               <span>Düzenle</span>
-            </motion.button>
-          )}
-
-          {/* Question Button */}
-          {user && cardStats.totalCount > 0 && (
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={() => setShowQuestions(true)}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-accent/10 border border-accent/20
-                text-accent hover:bg-accent/15 transition-all text-sm font-medium"
-            >
-              <FileQuestion size={15} />
-              <span>Sorular</span>
-              {(cardStats.dueCount > 0 || cardStats.newCount > 0) && (
-                <span className="bg-accent text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
-                  {cardStats.dueCount || cardStats.newCount}
-                </span>
-              )}
             </motion.button>
           )}
         </div>
@@ -240,7 +221,7 @@ export default function TopicPage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.1 }}
-          className="card p-6 sm:p-8 mb-8"
+          className="card p-6 sm:p-10 mb-8"
         >
           {topic.content ? (
             <div className="markdown-content">
@@ -263,12 +244,20 @@ export default function TopicPage() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.97 }}
               onClick={toggleCompleted}
-              className={`flex items-center gap-2.5 px-6 py-3 rounded-xl border font-medium text-sm
-                transition-all duration-200 ${
+              className={`flex items-center gap-2.5 px-8 py-3.5 rounded-xl font-semibold text-sm
+                transition-all duration-300 ${
                 isCompleted
-                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-                  : 'bg-[#1e1e1e] border-[#2a2a2a] text-gray-400 hover:border-[#3a3a3a] hover:text-gray-200'
+                  ? 'text-emerald-400'
+                  : 'text-gray-300 hover:text-white'
               }`}
+              style={isCompleted ? {
+                background: 'rgba(16,185,129,0.1)',
+                border: '1px solid rgba(16,185,129,0.3)',
+                boxShadow: '0 0 20px rgba(16,185,129,0.15)',
+              } : {
+                background: 'rgba(20,20,40,0.7)',
+                border: '1px solid rgba(37,37,64,0.7)',
+              }}
             >
               <AnimatePresence mode="wait">
                 {isCompleted ? (
@@ -291,8 +280,8 @@ export default function TopicPage() {
           ) : (
             <Link
               to="/login"
-              className="flex items-center gap-2.5 px-6 py-3 rounded-xl border border-[#2a2a2a]
-                bg-[#1e1e1e] text-gray-500 hover:border-[#3a3a3a] hover:text-gray-300 font-medium text-sm transition-all"
+              className="flex items-center gap-2.5 px-6 py-3 rounded-xl font-medium text-sm transition-all text-gray-500 hover:text-gray-300"
+              style={{ background: 'rgba(20,20,40,0.6)', border: '1px solid rgba(37,37,64,0.6)' }}
             >
               <BookOpen size={18} />
               <span>İlerlemeyi takip etmek için giriş yap</span>
@@ -300,6 +289,30 @@ export default function TopicPage() {
           )}
         </div>
       </div>
+
+      {/* Floating Sorular Button */}
+      {user && cardStats.totalCount > 0 && (
+        <motion.button
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => setShowQuestions(true)}
+          className="fixed bottom-24 right-6 lg:bottom-8 lg:right-8 z-20 flex items-center gap-2.5 px-5 py-3 rounded-full font-semibold text-sm text-white animate-pulse-glow"
+          style={{
+            background: 'linear-gradient(135deg, #00d4aa 0%, #00b894 100%)',
+            boxShadow: '0 4px 20px rgba(0,212,170,0.35)',
+          }}
+        >
+          <FileQuestion size={17} />
+          <span>Sorular</span>
+          {(cardStats.dueCount > 0 || cardStats.newCount > 0) && (
+            <span className="bg-white/20 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
+              {cardStats.dueCount || cardStats.newCount}
+            </span>
+          )}
+        </motion.button>
+      )}
 
       {/* Question Panel Modal */}
       <AnimatePresence>

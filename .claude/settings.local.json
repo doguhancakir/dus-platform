@@ -6,7 +6,8 @@
       "Bash(npm run:*)",
       "mcp__claude_ai_Supabase__list_projects",
       "mcp__claude_ai_Supabase__execute_sql",
-      "mcp__claude_ai_Supabase__list_extensions"
+      "mcp__claude_ai_Supabase__list_extensions",
+      "Bash(find /c/Users/Doguhan/dus-platform/src -type f \\\\\\(-name *.jsx -o -name *.js -o -name *.css -o -name *.json \\\\\\))"
     ]
   }
 }

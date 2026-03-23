@@ -23,9 +23,9 @@ const RATING_CONFIG = [
   {
     rating: RATINGS.GOOD,
     label: 'İyi',
-    emoji: '🟡',
-    color: 'border-yellow-500/30 bg-yellow-500/5 hover:bg-yellow-500/10 text-yellow-400',
-    activeColor: 'border-yellow-500 bg-yellow-500/15',
+    emoji: '🩵',
+    color: 'border-accent/30 bg-accent/5 hover:bg-accent/10 text-accent',
+    activeColor: 'border-accent bg-accent/15',
   },
   {
     rating: RATINGS.EASY,
@@ -209,7 +209,7 @@ export default function QuestionPanel({ topicId, onClose }) {
       <PanelWrapper onClose={onClose}>
         <div className="flex-1 flex items-center justify-center">
           <div className="flex flex-col items-center gap-3">
-            <div className="w-10 h-10 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
+            <div className="w-10 h-10 border-2 border-accent/20 border-t-accent rounded-full animate-spin" />
             <p className="text-gray-500 text-sm">Kartlar yükleniyor...</p>
           </div>
         </div>
@@ -247,17 +247,18 @@ export default function QuestionPanel({ topicId, onClose }) {
   return (
     <PanelWrapper onClose={onClose}>
       {/* Stats Bar */}
-      <div className="flex items-center gap-4 px-6 py-3 border-b border-[#1e1e1e] flex-shrink-0">
+      <div className="flex items-center gap-4 px-6 py-3 flex-shrink-0"
+        style={{ borderBottom: '1px solid rgba(37,37,64,0.5)' }}>
         <StatBadge color="blue" label="Yeni" count={stats.newCount} />
         <StatBadge color="red" label="Öğrenme" count={stats.learningCount} />
         <StatBadge color="green" label="İnceleme" count={stats.reviewCount} />
-        <div className="ml-auto text-xs text-gray-600">
+        <div className="ml-auto text-xs text-gray-600 font-medium">
           {currentIndex + 1} / {queue.length}
         </div>
       </div>
 
       {/* Progress */}
-      <div className="h-0.5 bg-[#1e1e1e] flex-shrink-0">
+      <div className="h-0.5 flex-shrink-0" style={{ background: 'rgba(37,37,64,0.5)' }}>
         <motion.div
           className="h-full bg-accent"
           animate={{ width: `${((currentIndex) / queue.length) * 100}%` }}
@@ -287,14 +288,14 @@ export default function QuestionPanel({ topicId, onClose }) {
             {options.length > 0 && (
               <div className="space-y-2.5 mb-6">
                 {options.map((opt, i) => {
-                  let optClass = 'border-[#2a2a2a] bg-[#1a1a1a] text-gray-300 hover:border-[#3a3a3a] hover:bg-[#222]'
+                  let optClass = 'border-[#252540] bg-[#14142a]/60 text-gray-300 hover:border-[#353555] hover:bg-[#1a1a35]/60'
                   if (showAnswer) {
                     if (i === correctIndex) {
                       optClass = 'border-emerald-500/50 bg-emerald-500/10 text-emerald-300'
                     } else if (i === selectedOption && i !== correctIndex) {
                       optClass = 'border-red-500/50 bg-red-500/10 text-red-300'
                     } else {
-                      optClass = 'border-[#242424] bg-[#161616] text-gray-600'
+                      optClass = 'border-[#1e1e35] bg-[#10101e]/40 text-gray-600'
                     }
                   } else if (i === selectedOption) {
                     optClass = 'border-accent/50 bg-accent/10 text-accent'
@@ -328,9 +329,10 @@ export default function QuestionPanel({ topicId, onClose }) {
               <motion.div
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="p-4 rounded-xl bg-[#1a1a1a] border border-[#2a2a2a] mb-6"
+                className="p-4 rounded-xl mb-6"
+                style={{ background: 'rgba(0,212,170,0.05)', border: '1px solid rgba(0,212,170,0.15)' }}
               >
-                <p className="text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wider">Açıklama</p>
+                <p className="text-xs font-semibold text-accent/60 mb-1.5 uppercase tracking-widest">Açıklama</p>
                 <p className="text-gray-300 text-sm leading-relaxed">{currentQuestion.explanation}</p>
               </motion.div>
             )}
@@ -339,15 +341,18 @@ export default function QuestionPanel({ topicId, onClose }) {
       </div>
 
       {/* Bottom Actions */}
-      <div className="border-t border-[#1e1e1e] p-4 flex-shrink-0">
+      <div className="p-4 flex-shrink-0" style={{ borderTop: '1px solid rgba(37,37,64,0.5)' }}>
         {!showAnswer ? (
           <motion.button
-            whileHover={{ scale: 1.01 }}
-            whileTap={{ scale: 0.98 }}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.97 }}
             onClick={() => setShowAnswer(true)}
             className="w-full max-w-sm mx-auto flex items-center justify-center gap-2
-              bg-accent hover:bg-accent-hover text-white font-semibold py-3 px-6
-              rounded-xl transition-all duration-150 shadow-glow"
+              text-white font-bold py-4 px-6 rounded-2xl transition-all duration-150"
+            style={{
+              background: 'linear-gradient(135deg, #00d4aa 0%, #00b894 100%)',
+              boxShadow: '0 4px 20px rgba(0,212,170,0.3)',
+            }}
           >
             <span>Cevabı Göster</span>
             <ChevronRight size={18} />
@@ -384,19 +389,22 @@ function PanelWrapper({ children, onClose }) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 bg-[#0a0a0a] flex flex-col"
+      className="fixed inset-0 z-50 flex flex-col"
+      style={{ background: '#0a0a0f' }}
     >
       {/* Top bar */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-[#1e1e1e] flex-shrink-0">
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-lg bg-accent/10 flex items-center justify-center">
-            <span className="text-sm">📚</span>
-          </div>
-          <span className="text-sm font-semibold text-gray-300">Soru Modu</span>
+      <div className="flex items-center justify-between px-5 py-3.5 flex-shrink-0"
+        style={{ borderBottom: '1px solid rgba(37,37,64,0.6)', background: 'rgba(10,10,20,0.8)', backdropFilter: 'blur(12px)' }}>
+        <div className="flex items-center gap-2.5">
+          <span className="text-lg">🦷</span>
+          <span className="text-sm font-bold text-white tracking-tight">Davy's Dental</span>
+          <span className="text-gray-600 text-xs mx-1">·</span>
+          <span className="text-xs text-gray-500 font-medium">Soru Modu</span>
         </div>
         <button
           onClick={onClose}
-          className="p-1.5 rounded-lg text-gray-500 hover:text-gray-300 hover:bg-[#1e1e1e] transition-colors"
+          className="p-1.5 rounded-lg text-gray-500 hover:text-gray-200 transition-colors"
+          style={{ background: 'rgba(20,20,40,0.5)' }}
         >
           <X size={18} />
         </button>
@@ -440,17 +448,17 @@ function FinishedScreen({ stats, total, onClose }) {
         <p className="text-gray-500 mb-6">Bugünlük bu kadar. Harika iş çıkardın!</p>
 
         <div className="grid grid-cols-3 gap-3 mb-8">
-          <div className="card p-3">
-            <div className="text-xl font-bold text-blue-400">{stats.newCount}</div>
-            <div className="text-[10px] text-gray-600 mt-0.5">Yeni</div>
+          <div className="card p-4 text-center">
+            <div className="text-2xl font-black text-blue-400">{stats.newCount}</div>
+            <div className="text-[10px] text-gray-600 mt-1 uppercase tracking-wider">Yeni</div>
           </div>
-          <div className="card p-3">
-            <div className="text-xl font-bold text-red-400">{stats.learningCount}</div>
-            <div className="text-[10px] text-gray-600 mt-0.5">Öğrenme</div>
+          <div className="card p-4 text-center">
+            <div className="text-2xl font-black text-orange-400">{stats.learningCount}</div>
+            <div className="text-[10px] text-gray-600 mt-1 uppercase tracking-wider">Öğrenme</div>
           </div>
-          <div className="card p-3">
-            <div className="text-xl font-bold text-emerald-400">{stats.reviewCount}</div>
-            <div className="text-[10px] text-gray-600 mt-0.5">İnceleme</div>
+          <div className="card p-4 text-center">
+            <div className="text-2xl font-black text-accent">{stats.reviewCount}</div>
+            <div className="text-[10px] text-gray-600 mt-1 uppercase tracking-wider">İnceleme</div>
           </div>
         </div>
 

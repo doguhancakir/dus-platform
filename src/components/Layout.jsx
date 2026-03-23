@@ -7,19 +7,17 @@ import {
   LogOut,
   LogIn,
   Settings,
-  ChevronRight,
   BookOpen,
-  Stethoscope,
 } from 'lucide-react'
 
 function NavItem({ to, icon: Icon, label, active }) {
   return (
     <Link to={to}>
       <motion.div
-        className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors cursor-pointer
+        className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all duration-200 cursor-pointer
           ${active
-            ? 'bg-accent/10 text-accent border border-accent/20'
-            : 'text-gray-500 hover:text-gray-300 hover:bg-[#242424]'
+            ? 'bg-accent/10 text-accent border border-accent/20 shadow-glow-sm'
+            : 'text-gray-500 hover:text-gray-200 hover:bg-[#1e1e30]'
           }`}
         whileHover={{ x: 2 }}
         whileTap={{ scale: 0.98 }}
@@ -44,17 +42,19 @@ export default function Layout({ children }) {
   const isActive = (path) => location.pathname === path
 
   return (
-    <div className="flex min-h-screen bg-[#0a0a0a]">
+    <div className="flex min-h-screen bg-[#0a0a0f]">
       {/* Sidebar — Desktop */}
-      <aside className="hidden lg:flex flex-col w-60 bg-[#111111] border-r border-[#1e1e1e] fixed inset-y-0 left-0 z-30">
+      <aside className="hidden lg:flex flex-col w-60 fixed inset-y-0 left-0 z-30"
+        style={{ background: 'rgba(10,10,20,0.95)', borderRight: '1px solid rgba(37,37,64,0.6)', backdropFilter: 'blur(20px)' }}>
         {/* Logo */}
-        <div className="flex items-center gap-2.5 px-5 py-5 border-b border-[#1e1e1e]">
-          <div className="w-8 h-8 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center">
-            <Stethoscope size={16} className="text-accent" />
+        <div className="flex items-center gap-3 px-5 py-5" style={{ borderBottom: '1px solid rgba(37,37,64,0.5)' }}>
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center text-lg flex-shrink-0"
+            style={{ background: 'rgba(0,212,170,0.1)', border: '1px solid rgba(0,212,170,0.25)' }}>
+            🦷
           </div>
           <div>
-            <div className="text-sm font-semibold text-gray-100">DUS Platform</div>
-            <div className="text-xs text-gray-600">v1.0</div>
+            <div className="text-sm font-bold text-white tracking-tight leading-none">Davy's Dental</div>
+            <div className="text-[10px] text-gray-600 mt-0.5 font-light">DUS Hazırlık</div>
           </div>
         </div>
 
@@ -63,26 +63,31 @@ export default function Layout({ children }) {
           <NavItem
             to="/"
             icon={LayoutDashboard}
-            label="Genel Bakış"
+            label="Ana Sayfa"
             active={isActive('/')}
           />
 
           <div className="pt-4 pb-1 px-3">
-            <span className="text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Branşlar</span>
+            <span className="text-[10px] font-semibold text-gray-600 uppercase tracking-widest">Klinik Bilimler</span>
           </div>
 
           {BRANCHES.map((branch) => (
             <Link key={branch.id} to={`/branch/${branch.id}`}>
               <motion.div
-                className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors cursor-pointer
+                className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200 cursor-pointer
                   ${location.pathname === `/branch/${branch.id}`
-                    ? 'bg-[#1e1e1e] text-gray-200 border border-[#2a2a2a]'
-                    : 'text-gray-600 hover:text-gray-300 hover:bg-[#1a1a1a]'
+                    ? 'text-gray-200 border'
+                    : 'text-gray-600 hover:text-gray-300 hover:bg-[#16162a]'
                   }`}
+                style={location.pathname === `/branch/${branch.id}` ? {
+                  background: `${branch.color}12`,
+                  borderColor: `${branch.color}30`,
+                  borderLeftWidth: '2px',
+                } : {}}
                 whileHover={{ x: 2 }}
                 whileTap={{ scale: 0.98 }}
               >
-                <span className="text-base leading-none">{branch.icon}</span>
+                <span className="text-base leading-none flex-shrink-0">{branch.icon}</span>
                 <span className="font-medium truncate text-xs">{branch.name}</span>
               </motion.div>
             </Link>
@@ -90,22 +95,24 @@ export default function Layout({ children }) {
         </nav>
 
         {/* Footer */}
-        <div className="border-t border-[#1e1e1e] p-3 space-y-1">
+        <div className="p-3 space-y-1" style={{ borderTop: '1px solid rgba(37,37,64,0.5)' }}>
           {user ? (
             <>
               {user.is_admin && (
                 <NavItem to="/admin" icon={Settings} label="Admin Panel" active={isActive('/admin')} />
               )}
-              <div className="flex items-center gap-2 px-3 py-2">
-                <div className="w-7 h-7 rounded-full bg-accent/10 border border-accent/20 flex items-center justify-center text-xs font-semibold text-accent">
+              <div className="flex items-center gap-2.5 px-3 py-2 mt-1">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-accent flex-shrink-0"
+                  style={{ background: 'rgba(0,212,170,0.1)', border: '1px solid rgba(0,212,170,0.25)' }}>
                   {user.nickname?.charAt(0).toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-xs font-medium text-gray-300 truncate">{user.nickname}</div>
+                  <div className="text-xs font-semibold text-gray-300 truncate">{user.nickname}</div>
+                  <div className="text-[10px] text-gray-600">Öğrenci</div>
                 </div>
                 <button
                   onClick={handleLogout}
-                  className="text-gray-600 hover:text-gray-300 transition-colors p-1 rounded"
+                  className="text-gray-600 hover:text-gray-300 transition-colors p-1.5 rounded-lg hover:bg-[#1e1e30]"
                   title="Çıkış"
                 >
                   <LogOut size={14} />
@@ -115,7 +122,7 @@ export default function Layout({ children }) {
           ) : (
             <Link to="/login">
               <motion.div
-                className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-500 hover:text-gray-300 hover:bg-[#242424] transition-colors cursor-pointer"
+                className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-500 hover:text-gray-200 hover:bg-[#1e1e30] transition-all cursor-pointer"
                 whileHover={{ x: 2 }}
                 whileTap={{ scale: 0.98 }}
               >
@@ -128,10 +135,11 @@ export default function Layout({ children }) {
       </aside>
 
       {/* Mobile Header */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 z-30 bg-[#111111]/90 backdrop-blur-md border-b border-[#1e1e1e] flex items-center justify-between px-4 h-14">
+      <header className="lg:hidden fixed top-0 left-0 right-0 z-30 flex items-center justify-between px-4 h-14"
+        style={{ background: 'rgba(10,10,20,0.92)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(37,37,64,0.5)' }}>
         <div className="flex items-center gap-2">
-          <Stethoscope size={18} className="text-accent" />
-          <span className="text-sm font-semibold text-gray-100">DUS Platform</span>
+          <span className="text-lg">🦷</span>
+          <span className="text-sm font-bold text-white tracking-tight">Davy's Dental</span>
         </div>
         <div className="flex items-center gap-2">
           {user ? (
@@ -160,7 +168,7 @@ export default function Layout({ children }) {
             key={location.pathname}
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.2 }}
+            transition={{ duration: 0.25 }}
           >
             {children}
           </motion.div>
@@ -168,7 +176,8 @@ export default function Layout({ children }) {
       </main>
 
       {/* Mobile Bottom Nav */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-[#111111]/90 backdrop-blur-md border-t border-[#1e1e1e] flex items-center justify-around px-4 h-16">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-30 flex items-center justify-around px-4 h-16"
+        style={{ background: 'rgba(10,10,20,0.94)', backdropFilter: 'blur(20px)', borderTop: '1px solid rgba(37,37,64,0.5)' }}>
         {user ? (
           <MobileNavItem to="/" icon={LayoutDashboard} label="Ana Sayfa" active={isActive('/')} />
         ) : (
