@@ -238,12 +238,15 @@
 }
 
 .markdown-content blockquote {
-  border-left: 4px solid #0891b2;
+  border-left: 4px solid #ff1744;
+  border-top: 1px solid rgba(255, 23, 68, 0.2);
+  border-right: 1px solid rgba(255, 23, 68, 0.08);
+  border-bottom: 1px solid rgba(255, 23, 68, 0.08);
   padding: 0.8em 1.1em;
   margin-left: 0;
   margin-bottom: 1.1em;
-  color: #9ca3b0;
-  background: rgba(8, 145, 178, 0.05);
+  color: #ffcdd2;
+  background: rgba(255, 23, 68, 0.1);
 }
 
 .markdown-content table {
@@ -422,13 +425,13 @@
 
 .toc-container {
   background: rgba(8, 14, 28, 0.92);
-  border: 1px solid #1a2d45;
-  border-left: 3px solid #ff1744;
+  border: 1px solid #2a2a2a;
+  border-left: 3px solid #2a2a2a;
 }
 
 .toc-header {
   padding: 9px 13px;
-  border-bottom: 1px solid #1a2d45;
+  border-bottom: 1px solid #2a2a2a;
   display: flex;
   align-items: center;
   justify-content: space-between;
