@@ -6,6 +6,7 @@ import TopicPage from './pages/TopicPage'
 import AdminPage from './pages/AdminPage'
 import Login from './pages/Login'
 import Register from './pages/Register'
+import MixedQuizPage from './pages/MixedQuizPage'
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
@@ -44,6 +45,7 @@ function AppRoutes() {
       <Route path="/" element={<Dashboard />} />
       <Route path="/branch/:id" element={<BranchPage />} />
       <Route path="/topic/:id" element={<TopicPage />} />
+      <Route path="/mixed-quiz" element={<MixedQuizPage />} />
       <Route path="/admin" element={
         <ProtectedRoute><AdminPage /></ProtectedRoute>
       } />

@@ -44,10 +44,19 @@ export default function QuestionPanel({ topicId, onClose }) {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [showAnswer, setShowAnswer] = useState(false)
   const [selectedOption, setSelectedOption] = useState(null)
+  const [eliminatedOptions, setEliminatedOptions] = useState(new Set())
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState({ newCount: 0, learningCount: 0, reviewCount: 0 })
   const [finished, setFinished] = useState(false)
   const [answering, setAnswering] = useState(false)
+
+  function toggleElimination(i) {
+    setEliminatedOptions(prev => {
+      const next = new Set(prev)
+      next.has(i) ? next.delete(i) : next.add(i)
+      return next
+    })
+  }
 
   const DAILY_NEW_LIMIT = 20
 
@@ -166,6 +175,7 @@ export default function QuestionPanel({ topicId, onClose }) {
         setCurrentIndex(nextIndex)
         setShowAnswer(false)
         setSelectedOption(null)
+        setEliminatedOptions(new Set())
       }
     } catch (err) {
       console.error('Save error:', err)
@@ -268,6 +278,7 @@ export default function QuestionPanel({ topicId, onClose }) {
             {options.length > 0 && (
               <div className="space-y-2 mb-6">
                 {options.map((opt, i) => {
+                  const isEliminated = !showAnswer && eliminatedOptions.has(i)
                   let bg = '#111'
                   let borderColor = '#2a2a2a'
                   let textColor = '#aaa'
@@ -293,29 +304,53 @@ export default function QuestionPanel({ topicId, onClose }) {
                   }
 
                   return (
-                    <motion.button
-                      key={i}
-                      whileHover={!showAnswer ? { x: 4 } : {}}
-                      whileTap={!showAnswer ? { scale: 0.99 } : {}}
-                      onClick={() => !showAnswer && setSelectedOption(i)}
-                      disabled={showAnswer}
-                      className="w-full text-left px-4 py-3 flex items-start gap-3 transition-all duration-150 cursor-pointer disabled:cursor-default"
-                      style={{
-                        background: bg,
-                        border: `1px solid ${borderColor}`,
-                        borderLeft: `3px solid ${borderColor}`,
-                      }}
-                    >
-                      <span className="text-xs font-semibold mt-0.5 w-5 flex-shrink-0" style={{ color: textColor, opacity: 0.7 }}>
-                        {String.fromCharCode(65 + i)}.
-                      </span>
-                      <span className="text-sm leading-relaxed" style={{ color: textColor }}>
-                        {opt}
-                      </span>
-                      {showAnswer && i === correctIndex && (
-                        <span className="ml-auto text-emerald-400 flex-shrink-0">✓</span>
+                    <div key={i} style={{ display: 'flex', gap: '3px', alignItems: 'stretch' }}>
+                      <motion.button
+                        whileHover={!showAnswer ? { x: 4 } : {}}
+                        whileTap={!showAnswer ? { scale: 0.99 } : {}}
+                        onClick={() => !showAnswer && setSelectedOption(i)}
+                        disabled={showAnswer}
+                        className="flex-1 text-left px-4 py-3 flex items-start gap-3 transition-all duration-150 cursor-pointer disabled:cursor-default"
+                        style={{
+                          background: bg,
+                          border: `1px solid ${borderColor}`,
+                          borderLeft: `3px solid ${borderColor}`,
+                          opacity: isEliminated ? 0.35 : 1,
+                        }}
+                      >
+                        <span className="text-xs font-semibold mt-0.5 w-5 flex-shrink-0" style={{ color: textColor, opacity: 0.7 }}>
+                          {String.fromCharCode(65 + i)}.
+                        </span>
+                        <span
+                          className="text-sm leading-relaxed"
+                          style={{
+                            color: textColor,
+                            textDecoration: isEliminated ? 'line-through' : 'none',
+                            textDecorationColor: '#0891b2',
+                            textDecorationThickness: '2px',
+                          }}
+                        >
+                          {opt}
+                        </span>
+                        {showAnswer && i === correctIndex && (
+                          <span className="ml-auto text-emerald-400 flex-shrink-0">✓</span>
+                        )}
+                      </motion.button>
+                      {!showAnswer && (
+                        <button
+                          onClick={() => toggleElimination(i)}
+                          className="w-7 flex-shrink-0 flex items-center justify-center text-[10px] transition-all duration-150"
+                          style={{
+                            background: isEliminated ? 'rgba(8,145,178,0.12)' : 'rgba(255,255,255,0.02)',
+                            border: `1px solid ${isEliminated ? 'rgba(8,145,178,0.5)' : '#1a2d45'}`,
+                            color: isEliminated ? '#0891b2' : '#333',
+                            fontWeight: 700,
+                          }}
+                        >
+                          ✕
+                        </button>
                       )}
-                    </motion.button>
+                    </div>
                   )
                 })}
               </div>
@@ -346,7 +381,7 @@ export default function QuestionPanel({ topicId, onClose }) {
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.97 }}
-            onClick={() => setShowAnswer(true)}
+            onClick={() => { setShowAnswer(true); setEliminatedOptions(new Set()) }}
             className="w-full max-w-sm mx-auto flex items-center justify-center gap-2 py-4 px-6 font-bebas tracking-[0.15em] text-base text-white"
             style={{
               background: '#0891b2',

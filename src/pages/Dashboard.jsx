@@ -240,6 +240,81 @@ export default function Dashboard() {
         </motion.div>
       )}
 
+      {/* ── MIXED QUIZ CTA ── */}
+      <motion.div
+        initial={{ opacity: 0, x: -30 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ delay: 0.28, duration: 0.38, ease: [0.7, 0, 0.3, 1] }}
+        className="px-6 sm:px-10 mb-4"
+      >
+        <Link to="/mixed-quiz" className="block group relative overflow-hidden">
+          <motion.div
+            whileHover={{ scale: 1.008 }}
+            transition={{ duration: 0.2 }}
+            className="relative overflow-hidden"
+            style={{
+              background: 'linear-gradient(120deg, #0d1e35 0%, #0a1628 60%, #091520 100%)',
+              borderLeft: '4px solid #0891b2',
+              border: '1px solid #1a2d45',
+              borderLeftWidth: 4,
+              borderLeftColor: '#0891b2',
+              boxShadow: '0 4px 32px rgba(0,0,0,0.5)',
+            }}
+          >
+            {/* Teal slash diagonal accent */}
+            <div
+              className="absolute right-0 top-0 bottom-0 pointer-events-none"
+              style={{
+                width: '28%',
+                background: 'linear-gradient(to left, rgba(8,145,178,0.06), transparent)',
+                transform: 'skewX(-8deg)',
+                transformOrigin: 'top right',
+              }}
+            />
+            {/* Animated right stripe */}
+            <motion.div
+              className="absolute right-0 top-0 bottom-0 w-14 flex items-center justify-center"
+              style={{
+                background: '#0891b2',
+                clipPath: 'polygon(18px 0, 100% 0, 100% 100%, 0 100%)',
+              }}
+              animate={{ width: 56 }}
+              whileHover={{ width: 80 }}
+              transition={{ duration: 0.2 }}
+            >
+              <span className="font-bebas text-white text-xl pl-4 select-none" style={{ letterSpacing: '0.05em' }}>→</span>
+            </motion.div>
+
+            <div className="flex items-center gap-5 px-5 sm:px-7 py-4 sm:py-5 pr-20">
+              {/* Icon badge */}
+              <div
+                className="flex-shrink-0 w-10 h-10 flex items-center justify-center font-bebas text-xl"
+                style={{
+                  background: 'rgba(8,145,178,0.12)',
+                  border: '1px solid rgba(8,145,178,0.3)',
+                  color: '#0891b2',
+                  clipPath: 'polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px))',
+                }}
+              >
+                ✦
+              </div>
+
+              <div className="flex-1 min-w-0">
+                <div
+                  className="font-bebas text-white tracking-widest leading-none"
+                  style={{ fontSize: 'clamp(18px, 3.5vw, 26px)', transform: 'skewX(-3deg)', display: 'inline-block' }}
+                >
+                  KARIŞIK SORU <span style={{ color: '#0891b2' }}>MODU</span>
+                </div>
+                <div className="text-[10px] text-gray-600 uppercase tracking-[0.22em] mt-1">
+                  Tüm branşlardan karışık soru · SM-2 yok · Sadece pratik
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </Link>
+      </motion.div>
+
       {/* ── BRANCH CARDS ── */}
       <div className="px-6 sm:px-10 pb-16">
         {/* Section header */}
