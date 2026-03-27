@@ -24,6 +24,8 @@ export default function Dashboard() {
   const { user } = useAuth()
   const [branchStats, setBranchStats] = useState({})
   const [totalDue, setTotalDue] = useState(0)
+  const [todayAnswered, setTodayAnswered] = useState(0)
+  const [totalGraduated, setTotalGraduated] = useState(0)
   const [loading, setLoading] = useState(!!user)
   const [hoveredId, setHoveredId] = useState(null)
   const [branchImages, setBranchImages] = useState({})
@@ -105,8 +107,24 @@ export default function Dashboard() {
         }
       })
 
+      const todayStart = new Date()
+      todayStart.setHours(0, 0, 0, 0)
+      const { data: todayCards } = await supabase
+        .from('user_cards')
+        .select('question_id')
+        .eq('user_id', user.id)
+        .gte('last_review', todayStart.toISOString())
+
+      const { data: graduatedCards } = await supabase
+        .from('user_cards')
+        .select('question_id')
+        .eq('user_id', user.id)
+        .eq('status', 'review')
+
       setBranchStats(stats)
       setTotalDue(dueCards?.length || 0)
+      setTodayAnswered(todayCards?.length || 0)
+      setTotalGraduated(graduatedCards?.length || 0)
     } catch (err) {
       console.error(err)
     }
@@ -188,10 +206,10 @@ export default function Dashboard() {
           style={{ background: '#0d1e35', borderTop: '1px solid #1a2d45', borderBottom: '1px solid #1a2d45', gap: '1px' }}
         >
           {[
-            { label: 'BEKLEYEN KART', value: totalDue },
+            { label: 'BUGÜN ÇÖZÜLEN SORU', value: todayAnswered },
+            { label: 'TOPLAM ÇÖZÜLEN SORU', value: totalGraduated },
             { label: 'TAMAMLANAN KONU', value: completedTopics },
             { label: 'GENEL İLERLEME', value: `${overallProgress}%` },
-            { label: 'KLİNİK ALAN', value: 8 },
           ].map((stat, i) => (
             <div key={i} className="bg-[#0a1628] px-5 sm:px-7 py-5 relative overflow-hidden">
               <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#0891b2]" />
