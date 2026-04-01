@@ -1,40 +1,51 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, ChevronRight, Trophy } from 'lucide-react'
+import { X, ChevronRight, Trophy, Zap } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { processCard, newCard, getEstimatedTime, RATINGS, CARD_STATUS, isDue } from '../lib/sm2'
 
+/* ── Rating command config ── */
 const RATING_CONFIG = [
   {
     rating: RATINGS.AGAIN,
     label: 'TEKRAR',
+    sub: 'Yeniden',
     color: '#cc0000',
+    bg: 'rgba(204,0,0,0.12)',
+    border: '#cc0000',
     textColor: '#fff',
-    borderColor: '#cc0000',
   },
   {
     rating: RATINGS.HARD,
     label: 'ZOR',
+    sub: 'Zorlandım',
     color: '#ff6600',
+    bg: 'rgba(255,102,0,0.12)',
+    border: '#ff6600',
     textColor: '#fff',
-    borderColor: '#ff6600',
   },
   {
     rating: RATINGS.GOOD,
     label: 'İYİ',
-    color: 'transparent',
+    sub: 'Bildim',
+    color: '#0891b2',
+    bg: 'rgba(8,145,178,0.12)',
+    border: '#0891b2',
     textColor: '#fff',
-    borderColor: '#fff',
   },
   {
     rating: RATINGS.EASY,
     label: 'KOLAY',
+    sub: 'Ezber',
     color: '#f0c040',
+    bg: 'rgba(240,192,64,0.12)',
+    border: '#f0c040',
     textColor: '#000',
-    borderColor: '#f0c040',
   },
 ]
+
+const DAILY_NEW_LIMIT = 20
 
 export default function QuestionPanel({ topicId, onClose }) {
   const { user } = useAuth()
@@ -58,8 +69,6 @@ export default function QuestionPanel({ topicId, onClose }) {
     })
   }
 
-  const DAILY_NEW_LIMIT = 20
-
   useEffect(() => {
     loadData()
     const handler = (e) => { if (e.key === 'Escape') onClose() }
@@ -76,10 +85,7 @@ export default function QuestionPanel({ topicId, onClose }) {
         .eq('topic_id', topicId)
         .order('id')
 
-      if (!qs || qs.length === 0) {
-        setLoading(false)
-        return
-      }
+      if (!qs || qs.length === 0) { setLoading(false); return }
 
       setQuestions(qs)
       const qIds = qs.map(q => q.id)
@@ -201,36 +207,58 @@ export default function QuestionPanel({ topicId, onClose }) {
 
   if (loading) {
     return (
-      <PanelWrapper onClose={onClose} stats={null} currentIndex={0} queueLength={0}>
+      <BattleScreen onClose={onClose}>
+        <HUDBar stats={null} currentIndex={0} queueLength={0} onClose={onClose} />
         <div className="flex-1 flex items-center justify-center">
-          <div className="flex flex-col items-center gap-4">
-            <div className="w-10 h-10 border-2 border-[rgba(8,145,178,0.2)] border-t-[#0891b2] rounded-full animate-spin" />
-            <p className="font-bebas text-gray-600 tracking-widest text-sm">KARTLAR YÜKLENİYOR</p>
+          <div className="flex flex-col items-center gap-6">
+            {/* Scan-line loader */}
+            <div className="relative w-48 h-[2px] overflow-hidden" style={{ background: '#1a2d45' }}>
+              <motion.div
+                className="absolute inset-y-0 left-0 w-full bg-[#0891b2]"
+                animate={{ scaleX: [0, 1, 0], originX: [0, 0, 1] }}
+                transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
+                style={{ transformOrigin: 'left' }}
+              />
+            </div>
+            <p
+              className="font-barlow font-bold text-[#0891b2] tracking-[0.25em] text-xs uppercase"
+            >
+              KARTLAR YÜKLENİYOR
+            </p>
           </div>
         </div>
-      </PanelWrapper>
+      </BattleScreen>
     )
   }
 
   if (questions.length === 0) {
     return (
-      <PanelWrapper onClose={onClose} stats={null} currentIndex={0} queueLength={0}>
+      <BattleScreen onClose={onClose}>
+        <HUDBar stats={null} currentIndex={0} queueLength={0} onClose={onClose} />
         <div className="flex-1 flex items-center justify-center p-6">
           <div className="text-center">
-            <div className="font-bebas text-6xl text-[#0891b2] mb-4 tracking-widest">—</div>
+            <div
+              className="font-bebas text-[#0891b2] mb-4 tracking-widest"
+              style={{ fontSize: 'clamp(48px, 10vw, 80px)', transform: 'skewX(-4deg)', display: 'inline-block' }}
+            >
+              —
+            </div>
             <h3 className="font-bebas text-2xl text-white tracking-widest mb-2">SORU YOK</h3>
-            <p className="text-gray-600 text-xs uppercase tracking-widest">Bu konuda henüz soru eklenmemiş.</p>
+            <p className="font-barlow font-bold text-[11px] text-gray-600 uppercase tracking-[0.2em]">
+              Bu konuda henüz soru eklenmemiş.
+            </p>
           </div>
         </div>
-      </PanelWrapper>
+      </BattleScreen>
     )
   }
 
   if (finished) {
     return (
-      <PanelWrapper onClose={onClose} stats={stats} currentIndex={queue.length} queueLength={queue.length}>
+      <BattleScreen onClose={onClose}>
+        <HUDBar stats={stats} currentIndex={queue.length} queueLength={queue.length} onClose={onClose} />
         <FinishedScreen stats={stats} total={questions.length} onClose={onClose} />
-      </PanelWrapper>
+      </BattleScreen>
     )
   }
 
@@ -238,291 +266,595 @@ export default function QuestionPanel({ topicId, onClose }) {
 
   const options = currentQuestion.options || []
   const correctIndex = currentQuestion.correct_answer
+  const progress = queue.length > 0 ? currentIndex / queue.length : 0
+
+  // Determine answer state for accent color
+  const answerState = showAnswer && selectedOption !== null
+    ? (selectedOption === correctIndex ? 'correct' : 'wrong')
+    : 'neutral'
+
+  const accentColor = answerState === 'correct'
+    ? '#10b981'
+    : answerState === 'wrong'
+    ? '#ff1744'
+    : '#0891b2'
 
   return (
-    <PanelWrapper onClose={onClose} stats={stats} currentIndex={currentIndex} queueLength={queue.length}>
-      {/* Progress bar */}
-      <div className="h-[3px] flex-shrink-0" style={{ background: '#1a2d45' }}>
+    <BattleScreen onClose={onClose} accentColor={accentColor}>
+      <HUDBar stats={stats} currentIndex={currentIndex} queueLength={queue.length} onClose={onClose} accentColor={accentColor} />
+
+      {/* ── Progress bar ── */}
+      <div className="h-[3px] flex-shrink-0 relative" style={{ background: '#0d1a2e' }}>
         <motion.div
-          className="h-full bg-[#0891b2]"
-          animate={{ width: `${(currentIndex / queue.length) * 100}%` }}
-          transition={{ duration: 0.4 }}
+          className="h-full"
+          animate={{ width: `${progress * 100}%`, background: accentColor }}
+          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+        />
+        {/* Glow dot at tip */}
+        <motion.div
+          className="absolute top-1/2 -translate-y-1/2 w-2 h-2"
+          animate={{ left: `calc(${progress * 100}% - 4px)`, background: accentColor }}
+          transition={{ duration: 0.5 }}
+          style={{
+            boxShadow: `0 0 8px ${accentColor}`,
+            clipPath: 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)',
+          }}
         />
       </div>
 
-      {/* Question area */}
-      <div className="flex-1 overflow-y-auto">
+      {/* ── Question area ── */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden">
         <AnimatePresence mode="wait">
           <motion.div
             key={currentQuestion.id + '-' + showAnswer}
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
-            className="p-6 sm:p-10 max-w-2xl mx-auto w-full"
+            initial={{ opacity: 0, x: 40, skewX: 3 }}
+            animate={{ opacity: 1, x: 0, skewX: 0 }}
+            exit={{ opacity: 0, x: -40, skewX: -3 }}
+            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            className="max-w-2xl mx-auto w-full px-5 sm:px-8 pt-6 pb-4 relative"
           >
-            {/* Question text */}
+            {/* Watermark */}
             <div
-              className="mb-7 p-5 relative"
+              className="absolute top-0 right-0 pointer-events-none select-none overflow-hidden"
               style={{
-                background: '#0d1e35',
-                borderLeft: '4px solid #0891b2',
+                fontFamily: '"Bebas Neue", sans-serif',
+                fontSize: 'clamp(80px, 16vw, 140px)',
+                color: `${accentColor}06`,
+                letterSpacing: '0.05em',
+                lineHeight: 1,
+                transition: 'color 0.5s ease',
+                zIndex: 0,
               }}
             >
-              <p className="text-gray-100 text-base sm:text-lg leading-relaxed font-medium">
-                {currentQuestion.question_text}
-              </p>
+              SORU
             </div>
 
-            {/* Options */}
+            {/* ── Question text ── */}
+            <div className="relative z-10 mb-6">
+              {/* Question number badge */}
+              <div className="flex items-center gap-3 mb-3">
+                <div
+                  className="font-barlow font-bold text-[10px] tracking-[0.2em] uppercase px-2 py-0.5"
+                  style={{
+                    color: accentColor,
+                    background: `${accentColor}14`,
+                    border: `1px solid ${accentColor}30`,
+                    transition: 'all 0.4s ease',
+                  }}
+                >
+                  SORU {currentIndex + 1}
+                </div>
+                <CardStatusBadge card={currentCard} />
+              </div>
+
+              <motion.div
+                className="relative overflow-hidden"
+                animate={{ borderLeftColor: accentColor }}
+                transition={{ duration: 0.4 }}
+                style={{
+                  background: '#080f1e',
+                  borderLeft: `4px solid ${accentColor}`,
+                  padding: '1.25rem 1.5rem',
+                  transition: 'border-left-color 0.4s ease',
+                  clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%)',
+                }}
+              >
+                {/* Diagonal flash line */}
+                <motion.div
+                  key={currentQuestion.id}
+                  className="absolute inset-0 pointer-events-none"
+                  style={{
+                    background: `linear-gradient(105deg, transparent 0%, ${accentColor}18 50%, transparent 100%)`,
+                    transform: 'translateX(-100%) skewX(-20deg)',
+                  }}
+                  animate={{ transform: ['translateX(-100%) skewX(-20deg)', 'translateX(300%) skewX(-20deg)'] }}
+                  transition={{ duration: 0.6, ease: 'easeOut' }}
+                />
+                <p className="text-gray-100 text-base sm:text-lg leading-relaxed font-medium relative z-10">
+                  {currentQuestion.question_text}
+                </p>
+              </motion.div>
+            </div>
+
+            {/* ── Options ── */}
             {options.length > 0 && (
-              <div className="space-y-2 mb-6">
+              <div className="space-y-[3px] mb-5 relative z-10">
                 {options.map((opt, i) => {
                   const isEliminated = !showAnswer && eliminatedOptions.has(i)
-                  let bg = '#111'
-                  let borderColor = '#2a2a2a'
-                  let textColor = '#aaa'
+                  const isSelected = i === selectedOption
+                  const isCorrect = showAnswer && i === correctIndex
+                  const isWrong = showAnswer && isSelected && i !== correctIndex
 
-                  if (showAnswer) {
-                    if (i === correctIndex) {
-                      bg = 'rgba(16,185,129,0.1)'
-                      borderColor = 'rgba(16,185,129,0.5)'
-                      textColor = '#6ee7b7'
-                    } else if (i === selectedOption && i !== correctIndex) {
-                      bg = 'rgba(255,23,68,0.08)'
-                      borderColor = 'rgba(255,23,68,0.4)'
-                      textColor = '#ff8888'
-                    } else {
-                      bg = '#0a1628'
-                      borderColor = '#1a2d45'
-                      textColor = '#444'
-                    }
-                  } else if (i === selectedOption) {
-                    bg = 'rgba(8,145,178,0.08)'
-                    borderColor = '#0891b2'
-                    textColor = '#67d9f0'
+                  let bg = 'rgba(8,14,24,0.6)'
+                  let borderLeft = '#1a2d45'
+                  let textColor = '#6a7a90'
+                  let labelColor = '#3a4a60'
+
+                  if (isCorrect) {
+                    bg = 'rgba(16,185,129,0.08)'
+                    borderLeft = '#10b981'
+                    textColor = '#6ee7b7'
+                    labelColor = '#10b981'
+                  } else if (isWrong) {
+                    bg = 'rgba(255,23,68,0.07)'
+                    borderLeft = '#ff1744'
+                    textColor = '#ff8888'
+                    labelColor = '#ff1744'
+                  } else if (!showAnswer && isSelected) {
+                    bg = `${accentColor}10`
+                    borderLeft = accentColor
+                    textColor = '#c8e8f4'
+                    labelColor = accentColor
+                  } else if (showAnswer) {
+                    bg = '#050c18'
+                    borderLeft = '#111e30'
+                    textColor = '#2a3a50'
+                    labelColor = '#1a2a3a'
                   }
 
                   return (
-                    <div key={i} style={{ display: 'flex', gap: '3px', alignItems: 'stretch' }}>
+                    <motion.div
+                      key={i}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.05, duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                      className="flex gap-[3px] items-stretch"
+                    >
+                      {/* Main option button */}
                       <motion.button
-                        whileHover={!showAnswer ? { x: 4 } : {}}
+                        whileHover={!showAnswer ? { x: 6, transition: { duration: 0.1 } } : {}}
                         whileTap={!showAnswer ? { scale: 0.99 } : {}}
                         onClick={() => !showAnswer && setSelectedOption(i)}
                         disabled={showAnswer}
-                        className="flex-1 text-left px-4 py-3 flex items-start gap-3 transition-all duration-150 cursor-pointer disabled:cursor-default"
+                        className="flex-1 text-left flex items-start gap-3 transition-all duration-200 cursor-pointer disabled:cursor-default relative overflow-hidden"
                         style={{
                           background: bg,
-                          border: `1px solid ${borderColor}`,
-                          borderLeft: `3px solid ${borderColor}`,
-                          opacity: isEliminated ? 0.35 : 1,
+                          borderLeft: `3px solid ${borderLeft}`,
+                          padding: '0.75rem 1rem',
+                          opacity: isEliminated ? 0.28 : 1,
+                          transition: 'background 0.25s ease, border-color 0.25s ease, opacity 0.2s ease',
                         }}
                       >
-                        <span className="text-xs font-semibold mt-0.5 w-5 flex-shrink-0" style={{ color: textColor, opacity: 0.7 }}>
+                        {/* Selected flash */}
+                        {isSelected && !showAnswer && (
+                          <motion.div
+                            className="absolute inset-0 pointer-events-none"
+                            initial={{ opacity: 0.4 }}
+                            animate={{ opacity: 0 }}
+                            transition={{ duration: 0.4 }}
+                            style={{ background: `${accentColor}20` }}
+                          />
+                        )}
+
+                        {/* Letter */}
+                        <span
+                          className="font-barlow font-bold text-[11px] mt-0.5 w-5 flex-shrink-0 tracking-wider"
+                          style={{ color: labelColor, transition: 'color 0.25s ease' }}
+                        >
                           {String.fromCharCode(65 + i)}.
                         </span>
+
+                        {/* Text */}
                         <span
-                          className="text-sm leading-relaxed"
+                          className="text-sm leading-relaxed flex-1"
                           style={{
                             color: textColor,
                             textDecoration: isEliminated ? 'line-through' : 'none',
                             textDecorationColor: '#0891b2',
                             textDecorationThickness: '2px',
+                            transition: 'color 0.25s ease',
                           }}
                         >
                           {opt}
                         </span>
-                        {showAnswer && i === correctIndex && (
-                          <span className="ml-auto text-emerald-400 flex-shrink-0">✓</span>
+
+                        {/* Correct/Wrong icons */}
+                        {isCorrect && (
+                          <motion.span
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+                            className="ml-auto flex-shrink-0 text-[#10b981] font-bold"
+                          >
+                            ✓
+                          </motion.span>
+                        )}
+                        {isWrong && (
+                          <motion.span
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+                            className="ml-auto flex-shrink-0 text-[#ff1744]"
+                          >
+                            ✗
+                          </motion.span>
                         )}
                       </motion.button>
+
+                      {/* Elimination button */}
                       {!showAnswer && (
-                        <button
+                        <motion.button
+                          whileTap={{ scale: 0.9 }}
                           onClick={() => toggleElimination(i)}
-                          className="w-7 flex-shrink-0 flex items-center justify-center text-[10px] transition-all duration-150"
+                          className="w-8 flex-shrink-0 flex items-center justify-center text-[10px] font-bold transition-all duration-150"
                           style={{
-                            background: isEliminated ? 'rgba(8,145,178,0.12)' : 'rgba(255,255,255,0.02)',
+                            background: isEliminated ? 'rgba(8,145,178,0.15)' : 'rgba(255,255,255,0.02)',
                             border: `1px solid ${isEliminated ? 'rgba(8,145,178,0.5)' : '#1a2d45'}`,
-                            color: isEliminated ? '#0891b2' : '#333',
-                            fontWeight: 700,
+                            color: isEliminated ? '#0891b2' : '#2a3a50',
                           }}
                         >
                           ✕
-                        </button>
+                        </motion.button>
                       )}
-                    </div>
+                    </motion.div>
                   )
                 })}
               </div>
             )}
 
-            {/* Explanation */}
-            {showAnswer && currentQuestion.explanation && (
-              <motion.div
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="p-4 mb-4"
-                style={{ background: 'rgba(8,145,178,0.05)', borderLeft: '3px solid rgba(8,145,178,0.4)' }}
-              >
-                <p className="text-[10px] font-semibold text-[#0891b2] mb-1.5 uppercase tracking-[0.2em]">Açıklama</p>
-                <p className="text-gray-400 text-sm leading-relaxed">{currentQuestion.explanation}</p>
-              </motion.div>
-            )}
+            {/* ── Explanation ── */}
+            <AnimatePresence>
+              {showAnswer && currentQuestion.explanation && (
+                <motion.div
+                  initial={{ opacity: 0, y: 12, height: 0 }}
+                  animate={{ opacity: 1, y: 0, height: 'auto' }}
+                  exit={{ opacity: 0, y: -8, height: 0 }}
+                  transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                  className="relative z-10"
+                  style={{
+                    background: 'rgba(8,145,178,0.05)',
+                    borderLeft: '3px solid rgba(8,145,178,0.35)',
+                    padding: '0.9rem 1.1rem',
+                    marginBottom: '0.5rem',
+                    clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
+                  }}
+                >
+                  <p
+                    className="font-barlow font-bold text-[#0891b2] mb-1.5 uppercase tracking-[0.2em]"
+                    style={{ fontSize: '10px' }}
+                  >
+                    Açıklama
+                  </p>
+                  <p className="text-gray-400 text-sm leading-relaxed">{currentQuestion.explanation}</p>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
         </AnimatePresence>
       </div>
 
-      {/* Bottom actions */}
+      {/* ── Bottom command strip ── */}
       <div
-        className="p-4 sm:p-6 flex-shrink-0"
-        style={{ borderTop: '1px solid #1a2d45', background: '#0a1628' }}
+        className="flex-shrink-0 relative"
+        style={{
+          borderTop: `1px solid ${accentColor}25`,
+          background: '#060d1a',
+          transition: 'border-color 0.4s ease',
+        }}
       >
-        {!showAnswer ? (
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.97 }}
-            onClick={() => { setShowAnswer(true); setEliminatedOptions(new Set()) }}
-            className="w-full max-w-sm mx-auto flex items-center justify-center gap-2 py-4 px-6 font-bebas tracking-[0.15em] text-base text-white"
-            style={{
-              background: '#0891b2',
-              clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px))',
-              boxShadow: '0 4px 24px rgba(8,145,178,0.3)',
-            }}
-          >
-            CEVABI GÖSTER
-            <ChevronRight size={18} />
-          </motion.button>
-        ) : (
-          <div className="grid grid-cols-4 gap-2 max-w-2xl mx-auto">
-            {RATING_CONFIG.map((cfg) => (
+        {/* Top accent line */}
+        <motion.div
+          className="absolute top-0 left-0 h-[2px]"
+          animate={{ width: showAnswer ? '100%' : '0%', background: accentColor }}
+          transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+        />
+
+        <div className="p-4 sm:p-5">
+          <AnimatePresence mode="wait">
+            {!showAnswer ? (
+              /* ── REVEAL BUTTON ── */
               <motion.button
-                key={cfg.rating}
-                whileHover={{ scale: 1.04, y: -2 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => handleRating(cfg.rating)}
-                disabled={answering}
-                className="flex flex-col items-center gap-1 py-3 px-2 transition-all duration-150 cursor-pointer disabled:opacity-50"
+                key="reveal"
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 16 }}
+                transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                whileHover={{ scale: 1.015, y: -2 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => { setShowAnswer(true); setEliminatedOptions(new Set()) }}
+                className="w-full max-w-lg mx-auto flex items-center justify-center gap-3 py-4 px-8 font-bebas tracking-[0.2em] text-lg text-white block relative overflow-hidden"
                 style={{
-                  background: cfg.color,
-                  border: `2px solid ${cfg.borderColor}`,
-                  clipPath: 'polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px))',
+                  background: `linear-gradient(105deg, #0779a0, #0891b2)`,
+                  clipPath: 'polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px))',
+                  boxShadow: '0 4px 32px rgba(8,145,178,0.35)',
                 }}
               >
-                <span
-                  className="font-bebas text-sm tracking-[0.12em] leading-none"
-                  style={{ color: cfg.textColor }}
-                >
-                  {cfg.label}
-                </span>
-                <span className="text-[9px] uppercase tracking-wider" style={{ color: cfg.textColor, opacity: 0.6 }}>
-                  {currentCard ? getEstimatedTime(currentCard, cfg.rating) : '—'}
-                </span>
+                {/* Diagonal sweep on hover */}
+                <motion.div
+                  className="absolute inset-0 pointer-events-none"
+                  initial={{ x: '-100%', skewX: '-20deg' }}
+                  whileHover={{ x: '200%' }}
+                  transition={{ duration: 0.5, ease: 'easeOut' }}
+                  style={{ background: 'rgba(255,255,255,0.1)', width: '60%' }}
+                />
+                CEVABI GÖSTER
+                <ChevronRight size={20} strokeWidth={2.5} />
               </motion.button>
-            ))}
-          </div>
-        )}
+            ) : (
+              /* ── RATING COMMANDS ── */
+              <motion.div
+                key="ratings"
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 16 }}
+                transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                className="grid grid-cols-4 gap-[3px] max-w-2xl mx-auto"
+              >
+                {RATING_CONFIG.map((cfg, idx) => (
+                  <motion.button
+                    key={cfg.rating}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.05, duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+                    whileHover={{ y: -3, scale: 1.04 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => handleRating(cfg.rating)}
+                    disabled={answering}
+                    className="flex flex-col items-center gap-1.5 py-3 px-2 transition-all duration-150 cursor-pointer disabled:opacity-50 relative overflow-hidden"
+                    style={{
+                      background: cfg.bg,
+                      border: `1px solid ${cfg.border}40`,
+                      borderTop: `2px solid ${cfg.border}`,
+                      clipPath: 'polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px))',
+                    }}
+                  >
+                    <span
+                      className="font-bebas text-sm tracking-[0.12em] leading-none"
+                      style={{ color: cfg.textColor }}
+                    >
+                      {cfg.label}
+                    </span>
+                    <span
+                      className="font-barlow font-bold text-[9px] uppercase tracking-wider leading-none"
+                      style={{ color: cfg.textColor, opacity: 0.55 }}
+                    >
+                      {currentCard ? getEstimatedTime(currentCard, cfg.rating) : '—'}
+                    </span>
+                  </motion.button>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
-    </PanelWrapper>
+    </BattleScreen>
   )
 }
 
-function PanelWrapper({ children, onClose, stats, currentIndex, queueLength }) {
+/* ── Battle Screen wrapper ── */
+function BattleScreen({ children, accentColor = '#0891b2' }) {
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
       className="fixed inset-0 z-50 flex flex-col"
-      style={{ background: '#0a1628' }}
+      style={{ background: '#06101e' }}
     >
-      {/* Top bar */}
+      {/* Diagonal background slash — top right */}
       <div
-        className="flex items-center justify-between px-5 py-3.5 flex-shrink-0 relative"
-        style={{ borderBottom: '1px solid #1a2d45', background: '#0a1628' }}
-      >
-        {/* Left teal accent */}
-        <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#0891b2]" />
+        className="absolute top-0 right-0 pointer-events-none"
+        style={{
+          width: '40%',
+          height: '100%',
+          background: `linear-gradient(to left, ${accentColor}03, transparent)`,
+          clipPath: 'polygon(20% 0, 100% 0, 100% 100%, 60% 100%)',
+          transition: 'background 0.5s ease',
+        }}
+      />
+      {/* Bottom left corner */}
+      <div
+        className="absolute bottom-0 left-0 pointer-events-none"
+        style={{
+          width: '30%',
+          height: '30%',
+          background: `${accentColor}04`,
+          clipPath: 'polygon(0 0, 100% 100%, 0 100%)',
+          transition: 'background 0.5s ease',
+        }}
+      />
+      {/* Scan-line texture */}
+      <div
+        className="absolute inset-0 pointer-events-none p5-scanlines"
+        style={{ opacity: 0.3, zIndex: 0 }}
+      />
 
-        <div className="flex items-center gap-4 pl-3">
-          <span
-            className="font-bebas text-white tracking-[0.15em] text-lg"
-            style={{ transform: 'skewX(-4deg)', display: 'inline-block' }}
-          >
-            DAVY'S <span className="text-[#0891b2]">DENTAL</span>
-          </span>
-          <span
-            className="font-bebas text-[#0891b2] text-xs tracking-[0.2em] px-2 py-0.5"
-            style={{ background: 'rgba(8,145,178,0.1)', border: '1px solid rgba(8,145,178,0.2)' }}
-          >
-            SORU MODU
-          </span>
-        </div>
-
-        <div className="flex items-center gap-4">
-          {stats && queueLength > 0 && (
-            <div className="hidden sm:flex items-center gap-3">
-              <StatPill color="#4466ff" label="Yeni" count={stats.newCount} />
-              <StatPill color="#0891b2" label="Öğrenme" count={stats.learningCount} />
-              <StatPill color="#22c55e" label="İnceleme" count={stats.reviewCount} />
-              <span className="text-[10px] text-gray-700 uppercase tracking-wider font-semibold">
-                {currentIndex}/{queueLength}
-              </span>
-            </div>
-          )}
-          <button
-            onClick={onClose}
-            className="p-2 text-gray-600 hover:text-white transition-colors"
-            style={{ background: '#0d1e35', border: '1px solid #1a2d45' }}
-          >
-            <X size={16} />
-          </button>
-        </div>
+      <div className="relative z-10 flex flex-col h-full">
+        {children}
       </div>
-
-      {children}
     </motion.div>
   )
 }
 
-function StatPill({ color, label, count }) {
+/* ── HUD Bar ── */
+function HUDBar({ stats, currentIndex, queueLength, onClose, accentColor = '#0891b2' }) {
   return (
     <div
-      className="flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 uppercase tracking-wider"
-      style={{ color, background: `${color}18`, border: `1px solid ${color}30` }}
+      className="flex items-center justify-between px-4 sm:px-6 py-3 flex-shrink-0 relative"
+      style={{
+        borderBottom: `1px solid ${accentColor}20`,
+        background: 'rgba(4,8,18,0.9)',
+        transition: 'border-color 0.4s ease',
+      }}
     >
-      <span className="font-bold">{count}</span>
-      <span style={{ opacity: 0.7 }}>{label}</span>
+      {/* Left accent */}
+      <motion.div
+        className="absolute left-0 top-0 bottom-0 w-[3px]"
+        animate={{ background: accentColor }}
+        transition={{ duration: 0.4 }}
+      />
+
+      {/* Logo + mode */}
+      <div className="flex items-center gap-3 pl-2">
+        <span
+          className="font-bebas text-white tracking-[0.15em] text-lg leading-none"
+          style={{ transform: 'skewX(-4deg)', display: 'inline-block' }}
+        >
+          DAVY'S <span style={{ color: accentColor, transition: 'color 0.4s' }}>DENTAL</span>
+        </span>
+        <div
+          className="hidden sm:flex items-center gap-1.5 px-2.5 py-1"
+          style={{
+            background: `${accentColor}12`,
+            border: `1px solid ${accentColor}25`,
+            transition: 'all 0.4s ease',
+          }}
+        >
+          <Zap size={9} color={accentColor} strokeWidth={2.5} />
+          <span
+            className="font-barlow font-bold text-[10px] tracking-[0.18em] uppercase"
+            style={{ color: accentColor, transition: 'color 0.4s' }}
+          >
+            SORU MODU
+          </span>
+        </div>
+      </div>
+
+      {/* Right: stats + progress counter + close */}
+      <div className="flex items-center gap-3">
+        {stats && queueLength > 0 && (
+          <div className="hidden sm:flex items-center gap-2">
+            <HUDPill color="#4466ff" count={stats.newCount} label="YENİ" />
+            <HUDPill color="#ff9800" count={stats.learningCount} label="ÖĞR" />
+            <HUDPill color="#10b981" count={stats.reviewCount} label="İNC" />
+            <div
+              className="font-bebas text-white tracking-[0.12em] text-base leading-none px-2 py-0.5"
+              style={{
+                background: '#0d1a2e',
+                border: '1px solid #1e3555',
+              }}
+            >
+              <span style={{ color: accentColor, transition: 'color 0.4s' }}>{currentIndex}</span>
+              <span className="text-gray-700 text-sm">/{queueLength}</span>
+            </div>
+          </div>
+        )}
+
+        {/* Mobile progress counter */}
+        {queueLength > 0 && (
+          <div className="sm:hidden font-bebas text-sm tracking-wider" style={{ color: accentColor }}>
+            {currentIndex}/{queueLength}
+          </div>
+        )}
+
+        <button
+          onClick={onClose}
+          className="p-1.5 text-gray-600 hover:text-white transition-colors"
+          style={{ border: '1px solid #1e3555', background: '#0d1a2e' }}
+        >
+          <X size={14} />
+        </button>
+      </div>
     </div>
   )
 }
 
+/* ── HUD Pill ── */
+function HUDPill({ color, count, label }) {
+  return (
+    <div
+      className="flex items-center gap-1 px-1.5 py-0.5"
+      style={{
+        color,
+        background: `${color}10`,
+        border: `1px solid ${color}25`,
+      }}
+    >
+      <span className="font-bebas text-sm leading-none">{count}</span>
+      <span
+        className="font-barlow font-bold text-[9px] uppercase tracking-wider"
+        style={{ opacity: 0.7 }}
+      >
+        {label}
+      </span>
+    </div>
+  )
+}
+
+/* ── Card status badge ── */
+function CardStatusBadge({ card }) {
+  if (!card) return null
+  const statusMap = {
+    new: { label: 'YENİ', color: '#4466ff' },
+    learning: { label: 'ÖĞRENİYOR', color: '#ff9800' },
+    review: { label: 'İNCELEME', color: '#10b981' },
+    relearning: { label: 'TEKRAR', color: '#ff1744' },
+  }
+  const s = statusMap[card.status]
+  if (!s) return null
+  return (
+    <div
+      className="font-barlow font-bold text-[9px] tracking-[0.18em] uppercase px-1.5 py-0.5"
+      style={{ color: s.color, background: `${s.color}12`, border: `1px solid ${s.color}25` }}
+    >
+      {s.label}
+    </div>
+  )
+}
+
+/* ── Finished Screen ── */
 function FinishedScreen({ stats, total, onClose }) {
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
       className="flex-1 flex items-center justify-center p-6 relative overflow-hidden"
     >
-      {/* Background slash elements */}
+      {/* Background diagonals */}
       <div
-        className="absolute top-0 right-0 w-48 h-48 pointer-events-none"
-        style={{ background: '#0891b2', opacity: 0.05, clipPath: 'polygon(100% 0, 100% 100%, 0 100%)' }}
+        className="absolute top-0 right-0 w-64 h-64 pointer-events-none"
+        style={{ background: '#10b981', opacity: 0.04, clipPath: 'polygon(100% 0, 100% 100%, 0 100%)' }}
       />
       <div
-        className="absolute bottom-0 left-0 w-48 h-48 pointer-events-none"
-        style={{ background: '#0891b2', opacity: 0.05, clipPath: 'polygon(0 0, 100% 0, 0 100%)' }}
+        className="absolute bottom-0 left-0 w-64 h-64 pointer-events-none"
+        style={{ background: '#0891b2', opacity: 0.04, clipPath: 'polygon(0 0, 100% 0, 0 100%)' }}
       />
 
-      <div className="text-center max-w-sm relative z-10">
-        {/* Big TEBRİKLER text */}
+      {/* Watermark */}
+      <div
+        className="absolute inset-0 flex items-center justify-center pointer-events-none select-none"
+        style={{
+          fontFamily: '"Bebas Neue", sans-serif',
+          fontSize: 'clamp(100px, 20vw, 200px)',
+          color: 'rgba(16,185,129,0.03)',
+          letterSpacing: '0.05em',
+          lineHeight: 1,
+        }}
+      >
+        TAMAMLANDI
+      </div>
+
+      <div className="text-center max-w-sm relative z-10 w-full">
+        {/* Tebrikler */}
         <motion.div
-          initial={{ y: -40, opacity: 0 }}
+          initial={{ y: -60, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          transition={{ type: 'spring', stiffness: 250, damping: 18, delay: 0.1 }}
+          transition={{ type: 'spring', stiffness: 200, damping: 16, delay: 0.05 }}
         >
           <h2
-            className="font-bebas text-[#0891b2] tracking-widest leading-none mb-1"
-            style={{ fontSize: 'clamp(48px, 10vw, 80px)', transform: 'skewX(-4deg)', display: 'inline-block' }}
+            className="font-bebas text-[#10b981] tracking-widest leading-none mb-1"
+            style={{ fontSize: 'clamp(52px, 11vw, 88px)', transform: 'skewX(-4deg)', display: 'inline-block' }}
           >
             TEBRİKLER!
           </h2>
@@ -531,48 +863,63 @@ function FinishedScreen({ stats, total, onClose }) {
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.3 }}
-          className="text-gray-600 text-xs uppercase tracking-[0.25em] mb-8"
+          transition={{ delay: 0.25 }}
+          className="font-barlow font-bold text-gray-600 text-[11px] uppercase tracking-[0.25em] mb-8"
         >
-          Bugünlük bu kadar. Harika iş çıkardın!
+          Bugünlük seans tamamlandı
         </motion.p>
 
-        {/* Stats */}
+        {/* Stats grid */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.25 }}
+          transition={{ delay: 0.18, ease: [0.22, 1, 0.36, 1] }}
           className="grid grid-cols-3 mb-8"
-          style={{ gap: '2px', background: '#0d1e35' }}
+          style={{ gap: '2px' }}
         >
-          <div className="bg-[#0a1628] px-4 py-4 relative">
-            <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-blue-500" />
-            <div className="font-bebas text-3xl text-blue-400">{stats.newCount}</div>
-            <div className="text-[9px] text-gray-600 uppercase tracking-wider mt-0.5">Yeni</div>
-          </div>
-          <div className="bg-[#0a1628] px-4 py-4 relative">
-            <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-[#ff6600]" />
-            <div className="font-bebas text-3xl text-orange-400">{stats.learningCount}</div>
-            <div className="text-[9px] text-gray-600 uppercase tracking-wider mt-0.5">Öğrenme</div>
-          </div>
-          <div className="bg-[#0a1628] px-4 py-4 relative">
-            <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-emerald-500" />
-            <div className="font-bebas text-3xl text-emerald-400">{stats.reviewCount}</div>
-            <div className="text-[9px] text-gray-600 uppercase tracking-wider mt-0.5">İnceleme</div>
-          </div>
+          {[
+            { label: 'YENİ', value: stats.newCount, color: '#4466ff' },
+            { label: 'ÖĞRENİYOR', value: stats.learningCount, color: '#ff9800' },
+            { label: 'İNCELEME', value: stats.reviewCount, color: '#10b981' },
+          ].map((s, i) => (
+            <motion.div
+              key={s.label}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.22 + i * 0.06, ease: [0.22, 1, 0.36, 1] }}
+              className="relative px-4 py-5"
+              style={{ background: '#080f1e' }}
+            >
+              <div className="absolute left-0 top-0 bottom-0 w-[2px]" style={{ background: s.color }} />
+              <div
+                className="font-bebas leading-none mb-1"
+                style={{ fontSize: '2.2rem', color: s.color }}
+              >
+                {s.value}
+              </div>
+              <div
+                className="font-barlow font-bold uppercase tracking-wider"
+                style={{ fontSize: '9px', color: '#2a3a50' }}
+              >
+                {s.label}
+              </div>
+            </motion.div>
+          ))}
         </motion.div>
 
+        {/* Close button */}
         <motion.button
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.4 }}
-          whileHover={{ scale: 1.02 }}
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
+          whileHover={{ scale: 1.02, y: -2 }}
           whileTap={{ scale: 0.97 }}
           onClick={onClose}
-          className="w-full flex items-center justify-center gap-2 py-3.5 font-bebas tracking-[0.15em] text-base text-white"
+          className="w-full flex items-center justify-center gap-2 py-4 font-bebas tracking-[0.18em] text-base text-white"
           style={{
-            background: '#0891b2',
-            clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px))',
+            background: 'linear-gradient(105deg, #0d9170, #10b981)',
+            clipPath: 'polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px))',
+            boxShadow: '0 4px 32px rgba(16,185,129,0.3)',
           }}
         >
           <Trophy size={16} />

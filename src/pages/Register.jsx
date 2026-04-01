@@ -17,14 +17,8 @@ export default function Register() {
   async function handleSubmit(e) {
     e.preventDefault()
     if (!nickname.trim() || !password) return
-    if (password !== confirm) {
-      setError('Şifreler eşleşmiyor')
-      return
-    }
-    if (password.length < 6) {
-      setError('Şifre en az 6 karakter olmalı')
-      return
-    }
+    if (password !== confirm) { setError('Şifreler eşleşmiyor'); return }
+    if (password.length < 6) { setError('Şifre en az 6 karakter olmalı'); return }
     setLoading(true)
     setError('')
     try {
@@ -38,61 +32,121 @@ export default function Register() {
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden"
-      style={{ background: '#0a1628' }}
+      className="min-h-screen flex items-center justify-center px-6 py-12 relative overflow-hidden"
+      style={{ background: '#070c18' }}
     >
       {/* Background diagonals */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div
-          className="absolute top-0 right-0 w-1/2 h-full opacity-[0.025]"
-          style={{
-            background: '#0891b2',
-            clipPath: 'polygon(40% 0, 100% 0, 100% 100%, 60% 100%)',
-          }}
-        />
-        <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#0891b2] opacity-60" />
+      <div
+        className="absolute top-0 left-0 pointer-events-none"
+        style={{
+          width: '45%',
+          height: '100%',
+          background: 'rgba(8,145,178,0.02)',
+          clipPath: 'polygon(0 0, 60% 0, 30% 100%, 0 100%)',
+        }}
+      />
+      <div
+        className="absolute top-0 right-0 pointer-events-none"
+        style={{
+          width: '40%',
+          height: '100%',
+          background: 'rgba(8,145,178,0.025)',
+          clipPath: 'polygon(40% 0, 100% 0, 100% 100%, 70% 100%)',
+        }}
+      />
+      {/* Left stripe */}
+      <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#0891b2] opacity-50" />
+      {/* Top stripe */}
+      <div className="absolute top-0 left-0 right-0 h-[3px] bg-[#0891b2] opacity-30" />
+      {/* Scanlines */}
+      <div className="absolute inset-0 pointer-events-none p5-scanlines" style={{ opacity: 0.2 }} />
+
+      {/* Watermark */}
+      <div
+        className="absolute inset-0 flex items-center justify-center pointer-events-none select-none"
+        style={{
+          fontFamily: '"Bebas Neue", sans-serif',
+          fontSize: 'clamp(80px, 16vw, 180px)',
+          color: 'rgba(8,145,178,0.03)',
+          letterSpacing: '0.06em',
+          lineHeight: 1,
+        }}
+      >
+        KAYIT
       </div>
 
       <motion.div
-        initial={{ opacity: 0, y: 24 }}
+        initial={{ opacity: 0, y: 36 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, ease: [0.7, 0, 0.3, 1] }}
+        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
         className="w-full max-w-md relative z-10"
       >
         {/* Logo */}
-        <div className="text-center mb-10">
+        <div className="mb-10">
           <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1, duration: 0.3 }}
+            initial={{ opacity: 0, x: -30 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.1, duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
           >
             <h1
-              className="font-bebas text-white tracking-[0.12em] leading-none"
-              style={{ fontSize: '3.5rem', transform: 'skewX(-6deg)', display: 'inline-block' }}
+              className="font-bebas text-white leading-none"
+              style={{ fontSize: 'clamp(40px, 8vw, 56px)', transform: 'skewX(-5deg)', display: 'inline-block' }}
             >
-              DAVY'S{' '}
-              <span style={{ color: '#0891b2' }}>DENTAL</span>
+              DAVY'S <span style={{ color: '#0891b2' }}>DENTAL</span>
             </h1>
-            <p className="text-gray-600 text-[10px] uppercase tracking-[0.3em] mt-2">
-              HESAP OLUŞTUR
+            <p
+              className="font-barlow font-bold text-[10px] uppercase tracking-[0.25em] mt-1"
+              style={{ color: '#2a3a50' }}
+            >
+              DUS Hazırlık Platformu
             </p>
           </motion.div>
         </div>
 
-        {/* Card */}
+        {/* Form container */}
         <div
+          className="relative"
           style={{
-            background: '#111',
-            border: '1px solid #222',
-            borderLeft: '3px solid #0891b2',
+            background: '#080f1e',
+            borderLeft: '4px solid #0891b2',
+            border: '1px solid #1a2d45',
+            borderLeftWidth: 4,
+            borderLeftColor: '#0891b2',
+            clipPath: 'polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 0 100%)',
             padding: '2rem',
           }}
         >
-          <h2 className="font-bebas text-2xl text-white tracking-[0.15em] mb-6">KAYIT OL</h2>
+          {/* Corner slash accent */}
+          <div
+            className="absolute top-0 right-0 w-16 h-8 pointer-events-none"
+            style={{
+              background: '#0891b2',
+              clipPath: 'polygon(calc(100% - 16px) 0, 100% 0, 100% 16px)',
+              opacity: 0.4,
+            }}
+          />
+
+          <div className="mb-6">
+            <span
+              className="font-barlow font-bold text-[10px] tracking-[0.22em] uppercase block mb-1"
+              style={{ color: '#0891b2' }}
+            >
+              Yeni Hesap
+            </span>
+            <h2
+              className="font-bebas text-white tracking-[0.12em] leading-none"
+              style={{ fontSize: '2rem', transform: 'skewX(-3deg)', display: 'inline-block' }}
+            >
+              KAYIT OL
+            </h2>
+          </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-[10px] font-semibold text-gray-600 mb-1.5 uppercase tracking-[0.2em]">
+              <label
+                className="block font-barlow font-bold text-[10px] uppercase tracking-[0.22em] mb-2"
+                style={{ color: '#3a5070' }}
+              >
                 Kullanıcı Adı
               </label>
               <input
@@ -103,13 +157,19 @@ export default function Register() {
                 onChange={e => setNickname(e.target.value)}
                 autoFocus
               />
-              <p className="text-[10px] text-gray-700 mt-1.5 uppercase tracking-wider">
-                Boşluk kullanmadan, benzersiz bir isim seç
+              <p
+                className="font-barlow font-bold text-[10px] uppercase tracking-wider mt-1.5"
+                style={{ color: '#1e3040' }}
+              >
+                Boşluksuz, benzersiz bir isim seç
               </p>
             </div>
 
             <div>
-              <label className="block text-[10px] font-semibold text-gray-600 mb-1.5 uppercase tracking-[0.2em]">
+              <label
+                className="block font-barlow font-bold text-[10px] uppercase tracking-[0.22em] mb-2"
+                style={{ color: '#3a5070' }}
+              >
                 Şifre
               </label>
               <div className="relative">
@@ -125,13 +185,16 @@ export default function Register() {
                   onClick={() => setShowPw(p => !p)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-400"
                 >
-                  {showPw ? <EyeOff size={15} /> : <Eye size={15} />}
+                  {showPw ? <EyeOff size={14} /> : <Eye size={14} />}
                 </button>
               </div>
             </div>
 
             <div>
-              <label className="block text-[10px] font-semibold text-gray-600 mb-1.5 uppercase tracking-[0.2em]">
+              <label
+                className="block font-barlow font-bold text-[10px] uppercase tracking-[0.22em] mb-2"
+                style={{ color: '#3a5070' }}
+              >
                 Şifre Tekrar
               </label>
               <input
@@ -147,35 +210,42 @@ export default function Register() {
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
-                className="text-xs text-[#ff6b6b] px-3 py-2 uppercase tracking-wider"
-                style={{ background: 'rgba(8,145,178,0.08)', borderLeft: '2px solid #0891b2' }}
+                className="font-barlow font-bold text-[11px] text-[#ff6b6b] px-3 py-2 uppercase tracking-wider"
+                style={{ background: 'rgba(255,23,68,0.07)', borderLeft: '2px solid #ff1744' }}
               >
                 {error}
               </motion.div>
             )}
 
-            <button
+            <motion.button
               type="submit"
               disabled={loading || !nickname.trim() || !password || !confirm}
-              className="w-full flex items-center justify-center gap-2 py-3 mt-2 font-bebas tracking-[0.15em] text-base text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              whileHover={!loading ? { y: -2, boxShadow: '0 8px 32px rgba(8,145,178,0.4)' } : {}}
+              whileTap={!loading ? { scale: 0.97 } : {}}
+              className="w-full flex items-center justify-center gap-2 py-4 mt-2 font-bebas tracking-[0.2em] text-base text-white disabled:opacity-40 disabled:cursor-not-allowed"
               style={{
-                background: '#0891b2',
-                clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px))',
+                background: 'linear-gradient(105deg, #0779a0, #0891b2)',
+                clipPath: 'polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px))',
+                transition: 'box-shadow 0.2s ease, transform 0.15s ease',
               }}
-              onMouseEnter={e => !loading && (e.currentTarget.style.background = '#0779a0')}
-              onMouseLeave={e => (e.currentTarget.style.background = '#0891b2')}
             >
               {loading ? <Loader2 size={16} className="animate-spin" /> : null}
               {loading ? 'KAYIT YAPILIYOR...' : 'HESAP OLUŞTUR'}
-            </button>
+            </motion.button>
           </form>
         </div>
 
-        <p className="text-center text-xs text-gray-600 mt-5 uppercase tracking-widest">
+        <p
+          className="text-center font-barlow font-bold text-[11px] uppercase tracking-[0.2em] mt-5"
+          style={{ color: '#2a3a50' }}
+        >
           Hesabın var mı?{' '}
           <Link
             to="/login"
-            className="text-[#0891b2] hover:text-[#0779a0] transition-colors font-semibold"
+            className="transition-colors"
+            style={{ color: '#0891b2' }}
+            onMouseEnter={e => e.currentTarget.style.color = '#67d9f0'}
+            onMouseLeave={e => e.currentTarget.style.color = '#0891b2'}
           >
             Giriş Yap
           </Link>
