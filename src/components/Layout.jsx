@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../contexts/AuthContext'
-import { Menu, X, LogOut, Settings } from 'lucide-react'
+import { Menu, X, LogOut } from 'lucide-react'
 
 export default function Layout({ children }) {
   const [menuOpen, setMenuOpen] = useState(false)
@@ -19,12 +19,12 @@ export default function Layout({ children }) {
   const isActive = (path) => location.pathname === path
 
   return (
-    <div className="min-h-screen bg-[#0a1628]">
+    <div className="min-h-screen" style={{ background: '#0a1628' }}>
       {/* ── TOP NAV ── */}
       <nav
-        className="fixed top-0 left-0 right-0 z-40 h-16 flex items-center px-5 sm:px-8"
+        className="fixed top-0 left-0 right-0 z-40 h-16 flex items-center"
         style={{
-          background: 'rgba(10,22,40,0.97)',
+          background: 'rgba(8, 18, 36, 0.96)',
           borderBottom: '1px solid #1a2d45',
           backdropFilter: 'blur(20px)',
         }}
@@ -32,28 +32,42 @@ export default function Layout({ children }) {
         {/* Left teal accent bar */}
         <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#0891b2]" />
 
+        {/* Diagonal slash watermark in nav */}
+        <div
+          className="absolute right-0 top-0 bottom-0 pointer-events-none"
+          style={{
+            width: '30%',
+            background: 'linear-gradient(to left, rgba(8,145,178,0.025), transparent)',
+            clipPath: 'polygon(20% 0, 100% 0, 100% 100%, 0% 100%)',
+          }}
+        />
+
         {/* Logo */}
         <Link
           to="/"
-          className="flex items-baseline gap-0 ml-1"
+          className="flex items-baseline gap-0 pl-5 sm:pl-8 relative z-10"
           onClick={() => setMenuOpen(false)}
         >
-          <span
-            className="font-bebas text-[20px] sm:text-[22px] text-white tracking-[0.15em] leading-none"
-            style={{ transform: 'skewX(-8deg)', display: 'inline-block' }}
+          <motion.span
+            whileHover={{ skewX: -6 }}
+            transition={{ duration: 0.15 }}
+            className="font-bebas text-[20px] sm:text-[23px] text-white tracking-[0.18em] leading-none"
+            style={{ display: 'inline-block', transform: 'skewX(-5deg)' }}
           >
             DAVY'S
-          </span>
-          <span
-            className="font-bebas text-[20px] sm:text-[22px] text-[#0891b2] tracking-[0.15em] leading-none ml-2"
-            style={{ transform: 'skewX(-8deg)', display: 'inline-block' }}
+          </motion.span>
+          <motion.span
+            whileHover={{ skewX: -6 }}
+            transition={{ duration: 0.15 }}
+            className="font-bebas text-[20px] sm:text-[23px] text-[#0891b2] tracking-[0.18em] leading-none ml-2"
+            style={{ display: 'inline-block', transform: 'skewX(-5deg)' }}
           >
             DENTAL
-          </span>
+          </motion.span>
         </Link>
 
         {/* ── Desktop Nav ── */}
-        <div className="hidden md:flex items-center gap-1 ml-auto">
+        <div className="hidden md:flex items-center gap-1 ml-auto pr-6 relative z-10">
           <NavLink to="/" label="ANA SAYFA" active={isActive('/')} />
 
           {user ? (
@@ -63,30 +77,44 @@ export default function Layout({ children }) {
               )}
               <div
                 className="flex items-center gap-3 ml-4 pl-4"
-                style={{ borderLeft: '1px solid #2a2a2a' }}
+                style={{ borderLeft: '1px solid #1e3555' }}
               >
-                <span className="text-gray-500 text-[11px] font-medium uppercase tracking-[0.15em]">
-                  {user.nickname}
-                </span>
+                <div className="flex flex-col items-end">
+                  <span
+                    className="font-barlow font-bold text-[#0891b2] text-[11px] tracking-[0.18em] uppercase leading-none"
+                  >
+                    {user.nickname}
+                  </span>
+                  <span className="text-gray-700 text-[9px] tracking-[0.15em] uppercase mt-0.5">
+                    Öğrenci
+                  </span>
+                </div>
                 <button
                   onClick={handleLogout}
                   className="text-gray-600 hover:text-[#0891b2] transition-colors p-1.5"
                   title="Çıkış Yap"
+                  style={{ border: '1px solid #1e3555' }}
                 >
-                  <LogOut size={15} />
+                  <LogOut size={13} />
                 </button>
               </div>
             </>
           ) : (
             <Link
               to="/login"
-              className="ml-4 font-bebas text-sm tracking-[0.12em] px-5 py-2 text-white transition-all"
+              className="ml-4 font-barlow font-bold text-sm tracking-[0.15em] uppercase px-5 py-2 text-white transition-all"
               style={{
                 background: '#0891b2',
                 clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))',
               }}
-              onMouseEnter={e => { e.currentTarget.style.background = '#0779a0'; e.currentTarget.style.boxShadow = '0 0 20px rgba(8,145,178,0.4)' }}
-              onMouseLeave={e => { e.currentTarget.style.background = '#0891b2'; e.currentTarget.style.boxShadow = 'none' }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = '#0779a0'
+                e.currentTarget.style.boxShadow = '0 0 20px rgba(8,145,178,0.4)'
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = '#0891b2'
+                e.currentTarget.style.boxShadow = 'none'
+              }}
             >
               GİRİŞ YAP
             </Link>
@@ -96,12 +124,33 @@ export default function Layout({ children }) {
         {/* ── Mobile Hamburger ── */}
         <button
           onClick={() => setMenuOpen(!menuOpen)}
-          className="md:hidden ml-auto p-2 text-gray-400 hover:text-white transition-colors"
+          className="md:hidden ml-auto mr-5 p-2 text-gray-500 hover:text-white transition-colors relative z-10"
           aria-label="Menu"
+          style={{ border: '1px solid #1e3555' }}
         >
-          <motion.div animate={{ rotate: menuOpen ? 90 : 0 }} transition={{ duration: 0.2 }}>
-            {menuOpen ? <X size={22} /> : <Menu size={22} />}
-          </motion.div>
+          <AnimatePresence mode="wait" initial={false}>
+            {menuOpen ? (
+              <motion.div
+                key="close"
+                initial={{ rotate: -90, opacity: 0 }}
+                animate={{ rotate: 0, opacity: 1 }}
+                exit={{ rotate: 90, opacity: 0 }}
+                transition={{ duration: 0.15 }}
+              >
+                <X size={18} />
+              </motion.div>
+            ) : (
+              <motion.div
+                key="open"
+                initial={{ rotate: 90, opacity: 0 }}
+                animate={{ rotate: 0, opacity: 1 }}
+                exit={{ rotate: -90, opacity: 0 }}
+                transition={{ duration: 0.15 }}
+              >
+                <Menu size={18} />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </button>
       </nav>
 
@@ -112,28 +161,48 @@ export default function Layout({ children }) {
             initial={{ x: '100%' }}
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
-            transition={{ duration: 0.28, ease: [0.7, 0, 0.3, 1] }}
-            className="fixed inset-0 z-30 flex flex-col"
-            style={{ background: '#0a1628', paddingTop: 64 }}
+            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+            className="fixed inset-0 z-30 flex flex-col overflow-hidden"
+            style={{ background: '#070f1e', paddingTop: 64 }}
           >
-            {/* Corner diagonal accent */}
+            {/* Diagonal accent — top-left */}
             <div
-              className="absolute bottom-0 right-0 w-64 h-64 pointer-events-none"
+              className="absolute top-16 left-0 w-1 bottom-0"
+              style={{ background: '#0891b2' }}
+            />
+            {/* Diagonal corner — bottom-right */}
+            <div
+              className="absolute bottom-0 right-0 pointer-events-none"
               style={{
+                width: '55%',
+                height: '55%',
                 background: '#0891b2',
-                opacity: 0.06,
+                opacity: 0.04,
                 clipPath: 'polygon(100% 0, 100% 100%, 0 100%)',
               }}
             />
-            {/* Left teal stripe */}
-            <div className="absolute left-0 top-16 bottom-0 w-[3px] bg-[#0891b2]" />
+            {/* Watermark */}
+            <div
+              className="absolute bottom-8 right-4 pointer-events-none select-none"
+              style={{
+                fontFamily: '"Bebas Neue", sans-serif',
+                fontSize: 'clamp(60px, 18vw, 120px)',
+                color: 'rgba(8,145,178,0.04)',
+                letterSpacing: '0.1em',
+                lineHeight: 1,
+              }}
+            >
+              DENTAL
+            </div>
 
-            <div className="flex-1 flex flex-col justify-center px-8 relative z-10">
-              <div className="space-y-0">
+            {/* Menu items */}
+            <div className="flex-1 flex flex-col justify-center pl-10 pr-6 relative z-10">
+              <div className="space-y-0 mb-12">
                 <MobileMenuItem
                   to="/"
                   label="ANA SAYFA"
                   active={isActive('/')}
+                  delay={0}
                   onClick={() => setMenuOpen(false)}
                 />
                 {user ? (
@@ -141,8 +210,9 @@ export default function Layout({ children }) {
                     {user.is_admin && (
                       <MobileMenuItem
                         to="/admin"
-                        label="ADMİN"
+                        label="ADMİN PANELİ"
                         active={isActive('/admin')}
+                        delay={0.05}
                         onClick={() => setMenuOpen(false)}
                       />
                     )}
@@ -153,12 +223,14 @@ export default function Layout({ children }) {
                       to="/login"
                       label="GİRİŞ YAP"
                       active={isActive('/login')}
+                      delay={0.05}
                       onClick={() => setMenuOpen(false)}
                     />
                     <MobileMenuItem
                       to="/register"
                       label="KAYIT OL"
                       active={isActive('/register')}
+                      delay={0.1}
                       onClick={() => setMenuOpen(false)}
                     />
                   </>
@@ -166,24 +238,35 @@ export default function Layout({ children }) {
               </div>
 
               {user && (
-                <div
-                  className="mt-10 pt-8"
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.18, duration: 0.3 }}
+                  className="pt-8 relative"
                   style={{ borderTop: '1px solid #1a2d45' }}
                 >
-                  <p className="text-gray-700 text-[10px] uppercase tracking-[0.25em] mb-4">Hesap</p>
+                  <span
+                    className="font-barlow font-bold text-[10px] tracking-[0.22em] uppercase text-gray-700 block mb-3"
+                  >
+                    Giriş yapıldı
+                  </span>
                   <div className="flex items-center justify-between">
-                    <span className="font-bebas text-3xl text-white tracking-wider">
+                    <span
+                      className="font-bebas text-white tracking-wider"
+                      style={{ fontSize: '2.6rem', transform: 'skewX(-4deg)', display: 'inline-block' }}
+                    >
                       {user.nickname.toUpperCase()}
                     </span>
                     <button
                       onClick={handleLogout}
-                      className="flex items-center gap-2 text-gray-600 hover:text-[#0891b2] transition-colors"
+                      className="flex items-center gap-2 font-barlow font-bold text-[11px] tracking-[0.15em] uppercase text-gray-600 hover:text-[#0891b2] transition-colors px-3 py-2"
+                      style={{ border: '1px solid #1e3555' }}
                     >
-                      <LogOut size={18} />
-                      <span className="text-sm uppercase tracking-wider">Çıkış</span>
+                      <LogOut size={14} />
+                      ÇIKIŞ
                     </button>
                   </div>
-                </div>
+                </motion.div>
               )}
             </div>
           </motion.div>
@@ -194,9 +277,9 @@ export default function Layout({ children }) {
       <main className="pt-16">
         <motion.div
           key={location.pathname}
-          initial={{ opacity: 0, x: -10 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+          initial={{ opacity: 0, x: -16, skewX: -1 }}
+          animate={{ opacity: 1, x: 0, skewX: 0 }}
+          transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
         >
           {children}
         </motion.div>
@@ -209,33 +292,54 @@ function NavLink({ to, label, active }) {
   return (
     <Link
       to={to}
-      className="font-bebas text-sm tracking-[0.12em] px-4 py-2 transition-all duration-150"
+      className="font-barlow font-bold text-[11px] tracking-[0.18em] uppercase px-4 py-2.5 transition-all duration-150 relative"
       style={{
-        color: active ? '#0891b2' : '#666',
-        borderBottom: active ? '2px solid #0891b2' : '2px solid transparent',
+        color: active ? '#0891b2' : '#4a6080',
+      }}
+      onMouseEnter={e => {
+        if (!active) e.currentTarget.style.color = '#c0cfe0'
+      }}
+      onMouseLeave={e => {
+        if (!active) e.currentTarget.style.color = '#4a6080'
       }}
     >
       {label}
+      {active && (
+        <motion.div
+          layoutId="nav-active"
+          className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#0891b2]"
+          transition={{ duration: 0.2 }}
+        />
+      )}
     </Link>
   )
 }
 
-function MobileMenuItem({ to, label, active, onClick }) {
+function MobileMenuItem({ to, label, active, delay, onClick }) {
   return (
-    <Link to={to} onClick={onClick}>
+    <Link to={to} onClick={onClick} className="block">
       <motion.div
-        initial={{ x: -30, opacity: 0 }}
+        initial={{ x: -40, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
-        whileTap={{ scale: 0.97 }}
-        className="py-5 pl-6"
-        style={{ borderBottom: '1px solid #0d1e35' }}
+        transition={{ delay, duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+        whileTap={{ scale: 0.97, x: 4 }}
+        className="py-4 relative group"
+        style={{ borderBottom: '1px solid rgba(30,53,85,0.5)' }}
       >
+        {active && (
+          <motion.div
+            layoutId="mobile-active"
+            className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#0891b2]"
+          />
+        )}
         <span
-          className="font-bebas tracking-widest"
+          className="font-bebas tracking-[0.12em] leading-none"
           style={{
-            fontSize: '2.8rem',
+            fontSize: 'clamp(2rem, 8vw, 3.2rem)',
             color: active ? '#0891b2' : '#ffffff',
             display: 'inline-block',
+            transform: active ? 'skewX(-4deg)' : 'skewX(0deg)',
+            transition: 'transform 0.2s ease, color 0.2s ease',
           }}
         >
           {label}

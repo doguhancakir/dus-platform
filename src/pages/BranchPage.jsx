@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ChevronLeft, CheckCircle2, Circle } from 'lucide-react'
+import { ChevronLeft, CheckCircle2, Circle, ChevronRight } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { getBranchById } from '../lib/data'
@@ -10,12 +10,17 @@ import Layout from '../components/Layout'
 
 const containerVariants = {
   hidden: {},
-  show: { transition: { staggerChildren: 0.06, delayChildren: 0.1 } },
+  show: { transition: { staggerChildren: 0.055, delayChildren: 0.08 } },
 }
 
 const itemVariants = {
-  hidden: { opacity: 0, x: -30 },
-  show: { opacity: 1, x: 0, transition: { duration: 0.25, ease: [0.7, 0, 0.3, 1] } },
+  hidden: { opacity: 0, x: -40, skewX: -3 },
+  show: {
+    opacity: 1,
+    x: 0,
+    skewX: 0,
+    transition: { duration: 0.32, ease: [0.22, 1, 0.36, 1] },
+  },
 }
 
 export default function BranchPage() {
@@ -42,14 +47,9 @@ export default function BranchPage() {
         .order('sort_order')
 
       setTopics(topicsData || [])
-
-      if (!topicsData?.length) {
-        setLoading(false)
-        return
-      }
+      if (!topicsData?.length) { setLoading(false); return }
 
       const topicIds = topicsData.map(t => t.id)
-
       const { data: questions } = await supabase
         .from('questions')
         .select('id, topic_id')
@@ -73,7 +73,6 @@ export default function BranchPage() {
             .select('question_id, status, due_date')
             .eq('user_id', user.id)
             .in('question_id', qIds)
-
           cards?.forEach(c => { cardsMap[c.question_id] = c })
         }
 
@@ -86,10 +85,8 @@ export default function BranchPage() {
             return c && c.status !== 'new' && isDue(c)
           }).length
           const learnedCount = topicQs.filter(q => cardsMap[q.id]?.status === 'review').length
-
           stats[topic.id] = { totalCount: topicQs.length, newCount, dueCount, learnedCount }
         })
-
         setTopicStats(stats)
       } else {
         const stats = {}
@@ -109,7 +106,12 @@ export default function BranchPage() {
     return (
       <Layout>
         <div className="flex items-center justify-center h-64">
-          <p className="text-gray-600 text-sm uppercase tracking-widest">Branş bulunamadı.</p>
+          <p
+            className="font-barlow font-bold text-[11px] uppercase tracking-[0.2em]"
+            style={{ color: '#2a3a50' }}
+          >
+            Branş bulunamadı.
+          </p>
         </div>
       </Layout>
     )
@@ -121,68 +123,158 @@ export default function BranchPage() {
 
   return (
     <Layout>
-      <div className="max-w-3xl mx-auto px-6 sm:px-10 py-10 pb-20">
+      <div className="max-w-3xl mx-auto px-6 sm:px-10 pt-8 pb-24">
+
         {/* Back link */}
-        <Link
-          to="/"
-          className="inline-flex items-center gap-1.5 text-gray-600 hover:text-[#0891b2] text-xs uppercase tracking-widest mb-8 transition-colors"
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.3 }}
+          className="mb-8"
         >
-          <ChevronLeft size={14} />
-          <span>Genel Bakış</span>
-        </Link>
+          <Link
+            to="/"
+            className="inline-flex items-center gap-2 transition-colors group"
+            style={{ color: '#2a3a50' }}
+            onMouseEnter={e => e.currentTarget.style.color = '#0891b2'}
+            onMouseLeave={e => e.currentTarget.style.color = '#2a3a50'}
+          >
+            <ChevronLeft size={13} />
+            <span
+              className="font-barlow font-bold text-[11px] uppercase tracking-[0.2em]"
+            >
+              Genel Bakış
+            </span>
+          </Link>
+        </motion.div>
 
         {/* Branch header */}
         <motion.div
-          initial={{ opacity: 0, y: 10 }}
+          initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-10 relative"
+          transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+          className="mb-8 relative overflow-hidden"
         >
-          {/* Red left stripe */}
-          <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#0891b2]" />
+          {/* Branch color accent */}
+          <div
+            className="absolute left-0 top-0 bottom-0 w-[4px]"
+            style={{ background: branch.color }}
+          />
+          {/* Background diagonal */}
+          <div
+            className="absolute right-0 top-0 bottom-0 pointer-events-none"
+            style={{
+              width: '40%',
+              background: `linear-gradient(to left, ${branch.color}08, transparent)`,
+              clipPath: 'polygon(20% 0, 100% 0, 100% 100%, 0 100%)',
+            }}
+          />
 
-          <div className="pl-5">
+          <div className="pl-6 pr-4 py-5 relative z-10">
+            {/* Branch eyebrow */}
+            <div className="mb-2">
+              <span
+                className="font-barlow font-bold text-[10px] tracking-[0.22em] uppercase px-2 py-0.5"
+                style={{
+                  color: branch.color,
+                  background: `${branch.color}12`,
+                  border: `1px solid ${branch.color}25`,
+                }}
+              >
+                Klinik Bilim
+              </span>
+            </div>
+
             <h1
               className="font-bebas text-white tracking-wider leading-none"
-              style={{ fontSize: 'clamp(36px, 6vw, 72px)', transform: 'skewX(-3deg)', display: 'inline-block' }}
+              style={{
+                fontSize: 'clamp(32px, 6vw, 68px)',
+                transform: 'skewX(-3deg)',
+                display: 'inline-block',
+              }}
             >
               {branch.name.toUpperCase()}
             </h1>
 
-            {user ? (
-              <div className="mt-3">
-                <div className="flex items-center gap-4 text-xs text-gray-600 mb-2 uppercase tracking-wider">
-                  <span>{completedCount}/{topics.length} konu tamamlandı</span>
+            {user && !loading ? (
+              <div className="mt-4">
+                {/* Stats row */}
+                <div
+                  className="flex items-center gap-4 font-barlow font-bold text-[10px] uppercase tracking-wider mb-3"
+                  style={{ color: '#3a5070' }}
+                >
+                  <span>{completedCount}/{topics.length} konu</span>
                   {totalDue > 0 && (
-                    <span className="text-[#0891b2]">{totalDue} kart bekliyor</span>
+                    <span style={{ color: branch.color }}>{totalDue} kart bekliyor</span>
                   )}
-                  <span className="text-[#0891b2] font-bebas text-lg">{progress}%</span>
+                  <span
+                    className="font-bebas text-lg leading-none"
+                    style={{ color: branch.color }}
+                  >
+                    {progress}%
+                  </span>
                 </div>
+                {/* Progress bar */}
                 <div className="h-[2px] w-64 max-w-full" style={{ background: '#1a2d45' }}>
                   <motion.div
-                    className="h-full bg-[#0891b2]"
+                    className="h-full"
+                    style={{ background: branch.color }}
                     initial={{ width: 0 }}
                     animate={{ width: `${progress}%` }}
-                    transition={{ duration: 0.8, delay: 0.2 }}
+                    transition={{ duration: 0.9, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
                   />
                 </div>
               </div>
-            ) : (
-              <p className="text-gray-600 text-xs uppercase tracking-widest mt-2">{topics.length} konu</p>
-            )}
+            ) : !loading ? (
+              <p
+                className="font-barlow font-bold text-[10px] uppercase tracking-[0.2em] mt-2"
+                style={{ color: '#2a3a50' }}
+              >
+                {topics.length} konu
+              </p>
+            ) : null}
           </div>
         </motion.div>
+
+        {/* Topics divider */}
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-[3px] h-4" style={{ background: branch.color }} />
+          <span
+            className="font-barlow font-bold text-[11px] uppercase tracking-[0.2em]"
+            style={{ color: '#2a3a50' }}
+          >
+            Konular
+          </span>
+          <div className="flex-1 h-px" style={{ background: '#1a2d45' }} />
+          {!loading && (
+            <span
+              className="font-barlow font-bold text-[10px] uppercase tracking-wider"
+              style={{ color: '#1a2d45' }}
+            >
+              {topics.length}
+            </span>
+          )}
+        </div>
 
         {/* Topics list */}
         {loading ? (
           <div className="space-y-[2px]">
             {[1, 2, 3, 4, 5].map(i => (
-              <div key={i} className="relative overflow-hidden" style={{ height: 72 }}>
-                <div className="shimmer absolute inset-0" />
+              <div
+                key={i}
+                className="relative overflow-hidden"
+                style={{ height: 72, background: '#0a1525' }}
+              >
+                <div className="shimmer absolute inset-0" style={{ animationDelay: `${i * 0.08}s` }} />
+                <div
+                  className="absolute left-0 top-0 bottom-0 w-[3px]"
+                  style={{ background: '#1a2d45' }}
+                />
               </div>
             ))}
           </div>
         ) : topics.length === 0 ? (
-          <EmptyState branchName={branch.name} />
+          <EmptyState branchName={branch.name} color={branch.color} />
         ) : (
           <motion.div
             variants={containerVariants}
@@ -191,7 +283,7 @@ export default function BranchPage() {
             className="flex flex-col"
             style={{ gap: '2px' }}
           >
-            {topics.map((topic) => {
+            {topics.map((topic, idx) => {
               const stats = topicStats[topic.id] || {}
               const isCompleted = completedIds.has(topic.id)
               return (
@@ -201,6 +293,8 @@ export default function BranchPage() {
                     stats={stats}
                     isCompleted={isCompleted}
                     showProgress={!!user}
+                    branchColor={branch.color}
+                    index={idx}
                   />
                 </motion.div>
               )
@@ -212,85 +306,110 @@ export default function BranchPage() {
   )
 }
 
-function TopicCard({ topic, stats, isCompleted, showProgress }) {
+function TopicCard({ topic, stats, isCompleted, showProgress, branchColor, index }) {
   return (
     <Link to={`/topic/${topic.id}`}>
       <motion.div
-        whileHover={{ x: 4 }}
+        whileHover={{ x: 6 }}
         whileTap={{ scale: 0.99 }}
-        className="relative overflow-hidden cursor-pointer flex items-center gap-4 px-5 py-4"
+        className="relative overflow-hidden cursor-pointer flex items-center gap-4 group"
         style={{
-          background: '#0d1e35',
+          background: '#0a1525',
           borderLeft: '3px solid transparent',
-          transition: 'border-left-color 0.15s ease, background 0.15s ease',
+          padding: '1rem 1.25rem',
+          transition: 'background 0.15s ease, border-left-color 0.15s ease',
         }}
         onMouseEnter={e => {
-          e.currentTarget.style.borderLeftColor = '#0891b2'
-          e.currentTarget.style.background = '#111e33'
+          e.currentTarget.style.borderLeftColor = branchColor
+          e.currentTarget.style.background = '#0d1a2e'
         }}
         onMouseLeave={e => {
           e.currentTarget.style.borderLeftColor = 'transparent'
-          e.currentTarget.style.background = '#0d1e35'
+          e.currentTarget.style.background = '#0a1525'
         }}
       >
-        {/* Completion icon */}
+        {/* Completion state */}
         {showProgress && (
           <div className="flex-shrink-0">
             {isCompleted ? (
-              <CheckCircle2 size={18} color="#f0c040" />
+              <CheckCircle2 size={16} color={branchColor} />
             ) : (
-              <Circle size={18} color="#333" />
+              <Circle size={16} color="#1e3040" />
             )}
           </div>
         )}
+
+        {/* Index number */}
+        <div
+          className="flex-shrink-0 font-barlow font-bold text-[11px] tracking-wider w-6 text-center"
+          style={{ color: '#1e3040' }}
+        >
+          {String(index + 1).padStart(2, '0')}
+        </div>
 
         {/* Content */}
         <div className="flex-1 min-w-0">
           <h3
             className="text-sm font-semibold leading-snug"
-            style={{ color: isCompleted && showProgress ? '#555' : '#ddd' }}
+            style={{ color: isCompleted && showProgress ? '#3a4a5a' : '#d8dce8' }}
           >
             {topic.title}
           </h3>
-          <div className="flex items-center gap-3 mt-1 text-[11px]">
-            {stats.totalCount > 0 && (
-              <>
-                {showProgress && stats.newCount > 0 && (
-                  <span className="text-blue-500">{stats.newCount} yeni</span>
-                )}
-                {showProgress && stats.dueCount > 0 && (
-                  <span className="text-[#0891b2]">{stats.dueCount} bekliyor</span>
-                )}
-                {showProgress && stats.learnedCount > 0 && (
-                  <span className="text-emerald-500">{stats.learnedCount} öğrenildi</span>
-                )}
-                {(!showProgress || (stats.newCount === 0 && stats.dueCount === 0 && stats.learnedCount === 0)) && (
-                  <span className="text-gray-600">{stats.totalCount} soru</span>
-                )}
-              </>
-            )}
-          </div>
+          {stats.totalCount > 0 && (
+            <div
+              className="flex items-center gap-3 mt-1 font-barlow font-bold text-[10px] uppercase tracking-wider"
+            >
+              {showProgress && stats.newCount > 0 && (
+                <span style={{ color: '#4466ff' }}>{stats.newCount} yeni</span>
+              )}
+              {showProgress && stats.dueCount > 0 && (
+                <span style={{ color: branchColor }}>{stats.dueCount} bekliyor</span>
+              )}
+              {showProgress && stats.learnedCount > 0 && (
+                <span style={{ color: '#10b981' }}>{stats.learnedCount} öğrenildi</span>
+              )}
+              {(!showProgress || (stats.newCount === 0 && stats.dueCount === 0 && stats.learnedCount === 0)) && (
+                <span style={{ color: '#1e3040' }}>{stats.totalCount} soru</span>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Arrow */}
-        <ChevronLeft
-          size={14}
-          className="flex-shrink-0 rotate-180"
-          style={{ color: '#333' }}
+        <ChevronRight
+          size={13}
+          className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-150"
+          style={{ color: branchColor }}
         />
       </motion.div>
     </Link>
   )
 }
 
-function EmptyState({ branchName }) {
+function EmptyState({ branchName, color }) {
   return (
     <div
-      className="p-12 text-center"
-      style={{ background: '#0d1e35', borderLeft: '3px solid #1a2d45' }}
+      className="p-12 text-center relative overflow-hidden"
+      style={{ background: '#0a1525', borderLeft: `3px solid ${color}30` }}
     >
-      <p className="font-bebas text-xl text-gray-700 tracking-widest mb-2">HENÜZ KONU YOK</p>
-      <p className="text-gray-600 text-xs uppercase tracking-wider">{branchName} için konular yakında eklenecek.</p>
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: `linear-gradient(135deg, ${color}04, transparent)`,
+        }}
+      />
+      <p
+        className="font-bebas text-xl tracking-widest mb-2 relative z-10"
+        style={{ color: '#1e3040' }}
+      >
+        HENÜZ KONU YOK
+      </p>
+      <p
+        className="font-barlow font-bold text-[11px] uppercase tracking-wider relative z-10"
+        style={{ color: '#1a2a38' }}
+      >
+        {branchName} için konular yakında eklenecek.
+      </p>
     </div>
   )
 }
