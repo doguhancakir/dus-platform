@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase'
 import { BRANCHES } from '../lib/data'
 import Layout from '../components/Layout'
 import { SkeletonBranchCard } from '../components/SkeletonCard'
+import ToothViewer from '../components/ToothViewer'
 
 const containerVariants = {
   hidden: {},
@@ -131,109 +132,156 @@ export default function Dashboard() {
   return (
     <Layout>
       {/* ── HERO ── */}
-      <section className="relative overflow-hidden" style={{ minHeight: '52vh', display: 'flex', alignItems: 'flex-end', paddingBottom: 0 }}>
-        {/* Background diagonal — right sweep */}
-        <div
-          className="absolute top-0 right-0 bottom-0 pointer-events-none"
-          style={{
-            width: '45%',
-            background: 'linear-gradient(to left, rgba(8,145,178,0.05), transparent)',
-            clipPath: 'polygon(25% 0, 100% 0, 100% 100%, 55% 100%)',
-          }}
-        />
+      <section
+        className="relative overflow-hidden"
+        style={{ borderBottom: '1px solid #1a2d45' }}
+      >
+        {/* Left teal stripe */}
+        <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#0891b2] z-10" />
         {/* Faint grid texture */}
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
-            backgroundImage: 'linear-gradient(rgba(8,145,178,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(8,145,178,0.025) 1px, transparent 1px)',
+            backgroundImage: 'linear-gradient(rgba(8,145,178,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(8,145,178,0.02) 1px, transparent 1px)',
             backgroundSize: '40px 40px',
           }}
         />
-        {/* Left teal stripe */}
-        <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#0891b2]" />
-        {/* Bottom divider */}
-        <div className="absolute bottom-0 left-0 right-0 h-[1px]" style={{ background: '#1a2d45' }} />
 
-        {/* Watermark */}
-        <div
-          className="absolute bottom-0 right-4 pointer-events-none select-none leading-none"
-          style={{
-            fontFamily: '"Bebas Neue", sans-serif',
-            fontSize: 'clamp(90px, 20vw, 220px)',
-            color: 'rgba(8,145,178,0.04)',
-            letterSpacing: '0.05em',
-            lineHeight: 0.85,
-          }}
-        >
-          DUS
-        </div>
+        {/* ── Two-column layout ── */}
+        <div className="flex flex-col lg:flex-row">
 
-        <div className="relative z-10 px-6 sm:px-10 pb-10 pt-16 w-full">
-          <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+          {/* LEFT — title block (55%) */}
+          <div
+            className="relative flex flex-col justify-end px-6 sm:px-10 pt-16 pb-10 lg:pb-12"
+            style={{ flexBasis: '55%', minHeight: '52vh' }}
           >
-            {/* Eyebrow label */}
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.15, duration: 0.3 }}
-              className="mb-3"
-            >
-              <span
-                className="font-barlow font-bold text-[10px] tracking-[0.3em] uppercase px-2.5 py-1"
-                style={{
-                  color: '#0891b2',
-                  background: 'rgba(8,145,178,0.1)',
-                  border: '1px solid rgba(8,145,178,0.2)',
-                }}
-              >
-                DUS Hazırlık Platformu
-              </span>
-            </motion.div>
-
-            <h1
-              className="font-bebas text-white leading-[0.86] tracking-wider"
+            {/* Watermark */}
+            <div
+              className="absolute bottom-0 right-0 pointer-events-none select-none leading-none"
               style={{
-                fontSize: 'clamp(64px, 12vw, 148px)',
-                transform: 'skewX(-4deg)',
-                display: 'inline-block',
+                fontFamily: '"Bebas Neue", sans-serif',
+                fontSize: 'clamp(80px, 14vw, 180px)',
+                color: 'rgba(8,145,178,0.04)',
+                letterSpacing: '0.05em',
+                lineHeight: 0.85,
               }}
             >
-              DAVY'S{' '}
-              <span style={{ color: '#0891b2' }}>DENTAL</span>
-            </h1>
+              DUS
+            </div>
 
-            {user ? (
+            <motion.div
+              initial={{ opacity: 0, y: 50 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+              className="relative z-10"
+            >
+              {/* Eyebrow */}
               <motion.div
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.28 }}
-                className="mt-4 flex items-baseline gap-2"
+                transition={{ delay: 0.15, duration: 0.3 }}
+                className="mb-3"
               >
                 <span
-                  className="font-barlow font-bold text-[11px] tracking-[0.2em] uppercase text-gray-600"
+                  className="font-barlow font-bold text-[10px] tracking-[0.3em] uppercase px-2.5 py-1"
+                  style={{
+                    color: '#0891b2',
+                    background: 'rgba(8,145,178,0.1)',
+                    border: '1px solid rgba(8,145,178,0.2)',
+                  }}
                 >
-                  HOŞ GELDİN,
-                </span>
-                <span
-                  className="font-bebas text-[#0891b2] tracking-widest"
-                  style={{ fontSize: '1.6rem', transform: 'skewX(-3deg)', display: 'inline-block' }}
-                >
-                  {user.nickname.toUpperCase()}
+                  DUS Hazırlık Platformu
                 </span>
               </motion.div>
-            ) : (
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.28 }}
-                className="font-barlow font-bold text-gray-600 text-[11px] uppercase tracking-[0.3em] mt-4"
+
+              <h1
+                className="font-bebas text-white leading-[0.86] tracking-wider"
+                style={{
+                  fontSize: 'clamp(52px, 9vw, 128px)',
+                  transform: 'skewX(-4deg)',
+                  display: 'inline-block',
+                }}
               >
-                Diş Hekimliği Uzmanlık Sınavı Hazırlık Platformu
-              </motion.p>
-            )}
+                DAVY'S{' '}
+                <span style={{ color: '#0891b2' }}>DENTAL</span>
+              </h1>
+
+              {user ? (
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.28 }}
+                  className="mt-4 flex items-baseline gap-2"
+                >
+                  <span className="font-barlow font-bold text-[11px] tracking-[0.2em] uppercase text-gray-600">
+                    HOŞ GELDİN,
+                  </span>
+                  <span
+                    className="font-bebas text-[#0891b2] tracking-widest"
+                    style={{ fontSize: '1.5rem', transform: 'skewX(-3deg)', display: 'inline-block' }}
+                  >
+                    {user.nickname.toUpperCase()}
+                  </span>
+                </motion.div>
+              ) : (
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.28 }}
+                  className="font-barlow font-bold text-gray-600 text-[11px] uppercase tracking-[0.3em] mt-4"
+                >
+                  Diş Hekimliği Uzmanlık Sınavı Hazırlık Platformu
+                </motion.p>
+              )}
+            </motion.div>
+          </div>
+
+          {/* RIGHT — 3D Tooth viewer (45%) */}
+          <motion.div
+            initial={{ opacity: 0, x: 40 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.2, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+            className="relative"
+            style={{
+              flexBasis: '45%',
+              minHeight: 420,
+              borderLeft: '1px solid #1a2d45',
+            }}
+          >
+            {/* Diagonal slash separator (decorative) */}
+            <div
+              className="absolute left-0 top-0 bottom-0 w-8 pointer-events-none z-10"
+              style={{
+                background: 'linear-gradient(to right, #0a1628, transparent)',
+              }}
+            />
+            {/* Top-right corner accent */}
+            <div
+              className="absolute top-0 right-0 pointer-events-none z-10"
+              style={{
+                width: 60, height: 60,
+                background: '#0891b2',
+                opacity: 0.08,
+                clipPath: 'polygon(100% 0, 100% 100%, 0 0)',
+              }}
+            />
+            {/* Viewer label */}
+            <div
+              className="absolute top-3 right-3 z-20 pointer-events-none"
+            >
+              <span
+                className="font-barlow font-bold text-[9px] tracking-[0.22em] uppercase px-2 py-1"
+                style={{
+                  color: '#0891b2',
+                  background: 'rgba(6,16,30,0.85)',
+                  border: '1px solid rgba(8,145,178,0.2)',
+                }}
+              >
+                Daimi Dişlenme · 3D
+              </span>
+            </div>
+
+            <ToothViewer />
           </motion.div>
         </div>
       </section>
