@@ -7,6 +7,7 @@ import { BRANCHES } from '../lib/data'
 import Layout from '../components/Layout'
 import { SkeletonBranchCard } from '../components/SkeletonCard'
 import ToothViewer from '../components/ToothViewer'
+import DailyCalendar from '../components/DailyCalendar'
 
 const containerVariants = {
   hidden: {},
@@ -32,6 +33,7 @@ export default function Dashboard() {
   const [hoveredId, setHoveredId] = useState(null)
   const [branchImages, setBranchImages] = useState({})
   const [showModel, setShowModel] = useState(false)
+  const [streak, setStreak] = useState(0)
 
   useEffect(() => {
     loadBranchImages()
@@ -120,6 +122,43 @@ export default function Dashboard() {
       setBranchStats(stats)
       setTodayAnswered(todayCards?.length || 0)
       setTotalGraduated(graduatedCards?.length || 0)
+
+      // ── Streak: consecutive days with ≥50 reviewed cards ──────────────
+      const { data: reviewHistory } = await supabase
+        .from('user_cards')
+        .select('last_review')
+        .eq('user_id', user.id)
+        .not('last_review', 'is', null)
+        .gte('last_review', new Date(Date.now() - 90 * 86400000).toISOString())
+
+      const dayCounts = {}
+      reviewHistory?.forEach(c => {
+        if (!c.last_review) return
+        const day = c.last_review.split('T')[0]
+        dayCounts[day] = (dayCounts[day] || 0) + 1
+      })
+
+      const todayStr = new Date().toISOString().split('T')[0]
+      const yestStr  = new Date(Date.now() - 86400000).toISOString().split('T')[0]
+
+      // Find the most recent qualifying day to start counting from
+      let startDateStr = null
+      if ((dayCounts[todayStr] || 0) >= 50) startDateStr = todayStr
+      else if ((dayCounts[yestStr] || 0) >= 50) startDateStr = yestStr
+
+      let computedStreak = 0
+      if (startDateStr) {
+        let d = new Date(startDateStr)
+        while (true) {
+          const k = d.toISOString().split('T')[0]
+          if ((dayCounts[k] || 0) >= 50) {
+            computedStreak++
+            d = new Date(d.getTime() - 86400000)
+          } else break
+        }
+      }
+      // Need ≥2 consecutive days to "restart" after a break
+      setStreak(computedStreak >= 2 ? computedStreak : 0)
     } catch (err) {
       console.error(err)
     }
@@ -212,7 +251,7 @@ export default function Dashboard() {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.28 }}
-                  className="mt-4 flex items-baseline gap-2"
+                  className="mt-4 flex items-baseline gap-2 flex-wrap"
                 >
                   <span className="font-barlow font-bold text-[11px] tracking-[0.2em] uppercase text-gray-600">
                     HOŞ GELDİN,
@@ -223,6 +262,23 @@ export default function Dashboard() {
                   >
                     {user.nickname.toUpperCase()}
                   </span>
+                  {streak > 0 && (
+                    <motion.span
+                      initial={{ opacity: 0, scale: 0.7 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: 0.45, type: 'spring', stiffness: 300 }}
+                      className="flex items-center gap-1 font-barlow font-bold text-[11px] tracking-[0.12em] uppercase px-2 py-0.5"
+                      style={{
+                        background: 'rgba(240,192,64,0.1)',
+                        border: '1px solid rgba(240,192,64,0.3)',
+                        color: '#f0c040',
+                        clipPath: 'polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 0 100%)',
+                      }}
+                    >
+                      <span style={{ fontSize: '0.85rem' }}>🦷</span>
+                      {streak} GÜN
+                    </motion.span>
+                  )}
                 </motion.div>
               ) : (
                 <motion.p
@@ -261,6 +317,44 @@ export default function Dashboard() {
               </button>
             </motion.div>
           </div>
+
+          {/* ── RIGHT — daily calendar (45%) ── */}
+          {user && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.4, duration: 0.4 }}
+              className="relative hidden lg:flex flex-col"
+              style={{
+                flexBasis: '45%',
+                borderLeft: '1px solid #1a2d45',
+                minHeight: '52vh',
+              }}
+            >
+              {/* Subtle grid overlay */}
+              <div
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  backgroundImage:
+                    'linear-gradient(rgba(8,145,178,0.012) 1px, transparent 1px), linear-gradient(90deg, rgba(8,145,178,0.012) 1px, transparent 1px)',
+                  backgroundSize: '28px 28px',
+                }}
+              />
+              {/* Corner label */}
+              <div className="absolute top-3 right-4 z-10">
+                <span
+                  className="font-barlow font-bold text-[7px] tracking-[0.35em] uppercase"
+                  style={{ color: '#1a2d45' }}
+                >
+                  PLANLAYICI
+                </span>
+              </div>
+              {/* Calendar widget */}
+              <div className="relative z-10 flex-1 flex flex-col">
+                <DailyCalendar userId={user.id} />
+              </div>
+            </motion.div>
+          )}
         </div>
       </section>
 
