@@ -10,6 +10,7 @@ import { getBranchById } from '../lib/data'
 import { isDue } from '../lib/sm2'
 import QuestionPanel from '../components/QuestionPanel'
 import TopicEditor from '../components/TopicEditor'
+import TopicFlashcard from '../components/TopicFlashcard'
 import Layout from '../components/Layout'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -59,6 +60,7 @@ export default function TopicPage() {
   const [cardStats, setCardStats] = useState({ newCount: 0, dueCount: 0, learnedCount: 0, totalCount: 0 })
   const [showQuestions, setShowQuestions] = useState(false)
   const [showEditor, setShowEditor] = useState(false)
+  const [showFlashcards, setShowFlashcards] = useState(false)
   const [loading, setLoading] = useState(true)
   const bottomRef = useRef(null)
 
@@ -302,6 +304,19 @@ export default function TopicPage() {
             </Link>
 
             <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowFlashcards(true)}
+                className="flex items-center gap-2 font-barlow font-bold text-[10px] tracking-[0.2em] uppercase px-4 py-2.5"
+                style={{
+                  color: '#10b981',
+                  background: 'rgba(16,185,129,0.08)',
+                  border: '1px solid rgba(16,185,129,0.3)',
+                  clipPath: 'polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,0 100%)',
+                }}
+              >
+                ◈ TEKRAR
+              </button>
+
               {user && cardStats.totalCount > 0 && (
                 <motion.button
                   whileHover={{ scale: 1.03 }}
@@ -608,6 +623,16 @@ export default function TopicPage() {
             topic={topic}
             onClose={() => setShowEditor(false)}
             onSaved={(newContent) => setTopic(t => ({ ...t, content: newContent }))}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showFlashcards && (
+          <TopicFlashcard
+            topicId={topic.id}
+            topicTitle={topic.title}
+            onClose={() => setShowFlashcards(false)}
           />
         )}
       </AnimatePresence>
