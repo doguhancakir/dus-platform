@@ -66,6 +66,7 @@ function meshNameToFDI(name = '') {
 function getFDI(obj) {
   let cur = obj
   while (cur) {
+    if (cur.userData?.fdi && TOOTH_DATA[cur.userData.fdi]) return cur.userData.fdi
     const fdi = meshNameToFDI(cur.name)
     if (fdi && TOOTH_DATA[fdi]) return fdi
     cur = cur.parent
@@ -216,27 +217,72 @@ export default function ToothViewer() {
         fbx.scale.setScalar(scale)
         fbx.position.set(-center.x * scale, -center.y * scale, -center.z * scale)
 
-        /* Fix untextured meshes → fully replace material with ivory */
-        const ivoryMat = new THREE.MeshPhongMaterial({
-          color: 0xd4c4a0,
-          shininess: 55,
-          specular: new THREE.Color(0x333322),
-        })
+        /* ── PASS 1: material override + tag named meshes ── */
+        const fdiCenters = {} // fdi → THREE.Vector3 centroid
+        const unnamed    = [] // meshes without FDI name
+
         fbx.traverse(child => {
           if (!child.isMesh) return
-          if (Array.isArray(child.material)) {
-            child.material = child.material.map(m => {
-              if (m.map) { m.map.colorSpace = THREE.SRGBColorSpace; return m }
-              return ivoryMat
+
+          /* Replace ALL materials with fresh PhongMaterial
+             keeping only the texture map (fixes FBX black-colour override) */
+          const processMat = (m) => {
+            if (m.map) m.map.colorSpace = THREE.SRGBColorSpace
+            return new THREE.MeshPhongMaterial({
+              color:     m.map ? 0xffffff : 0xd4c4a0, // ivory fallback when no tex
+              map:       m.map || null,
+              shininess: 55,
+              specular:  new THREE.Color(0x111100),
             })
-          } else {
-            if (child.material.map) {
-              child.material.map.colorSpace = THREE.SRGBColorSpace
-            } else {
-              child.material = ivoryMat
+          }
+          child.material = Array.isArray(child.material)
+            ? child.material.map(processMat)
+            : processMat(child.material)
+
+          /* Tag named meshes with FDI */
+          const fdi = meshNameToFDI(child.name) || meshNameToFDI(child.parent?.name || '')
+          if (fdi && TOOTH_DATA[fdi]) {
+            child.userData.fdi = fdi
+            if (!fdiCenters[fdi]) {
+              const b = new THREE.Box3().setFromObject(child)
+              fdiCenters[fdi] = b.getCenter(new THREE.Vector3())
             }
+          } else {
+            unnamed.push(child)
           }
         })
+
+        /* ── PASS 2: assign mirrored FDI to right-side teeth ── */
+        if (Object.keys(fdiCenters).length > 0) {
+          // Determine average X of named (left-side) meshes
+          const avgX = Object.values(fdiCenters).reduce((s, v) => s + v.x, 0) / Object.keys(fdiCenters).length
+
+          unnamed.forEach(child => {
+            const b      = new THREE.Box3().setFromObject(child)
+            const cen    = b.getCenter(new THREE.Vector3())
+            // Mirror X to compare with named mesh centroids
+            const search = cen.clone()
+            search.x     = avgX > 0 ? -Math.abs(cen.x) : Math.abs(cen.x)
+
+            let best = null, minD = Infinity
+            for (const [fdi, pos] of Object.entries(fdiCenters)) {
+              const d = search.distanceTo(pos)
+              if (d < minD) { minD = d; best = fdi }
+            }
+
+            if (best && minD < 4) {
+              const n    = parseInt(best)
+              const isOppositeSide = avgX > 0 ? cen.x < 0 : cen.x > 0
+              if (isOppositeSide) {
+                // Mirror quadrant: UL(2x)→UR(1x), LL(3x)→LR(4x)
+                if (n >= 21 && n <= 28)      child.userData.fdi = String(10 + n - 20)
+                else if (n >= 31 && n <= 38) child.userData.fdi = String(40 + n - 30)
+              } else {
+                child.userData.fdi = best
+              }
+            }
+          })
+        }
 
         scene.add(fbx)
         model = fbx

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { BRANCHES } from '../lib/data'
@@ -31,6 +31,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(!!user)
   const [hoveredId, setHoveredId] = useState(null)
   const [branchImages, setBranchImages] = useState({})
+  const [showModel, setShowModel] = useState(false)
 
   useEffect(() => {
     loadBranchImages()
@@ -234,55 +235,32 @@ export default function Dashboard() {
                 </motion.p>
               )}
             </motion.div>
-          </div>
 
-          {/* RIGHT — 3D Tooth viewer (45%) */}
-          <motion.div
-            initial={{ opacity: 0, x: 40 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.2, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-            className="relative"
-            style={{
-              flexBasis: '45%',
-              minHeight: 420,
-              borderLeft: '1px solid #1a2d45',
-            }}
-          >
-            {/* Diagonal slash separator (decorative) */}
-            <div
-              className="absolute left-0 top-0 bottom-0 w-8 pointer-events-none z-10"
-              style={{
-                background: 'linear-gradient(to right, #0a1628, transparent)',
-              }}
-            />
-            {/* Top-right corner accent */}
-            <div
-              className="absolute top-0 right-0 pointer-events-none z-10"
-              style={{
-                width: 60, height: 60,
-                background: '#0891b2',
-                opacity: 0.08,
-                clipPath: 'polygon(100% 0, 100% 100%, 0 0)',
-              }}
-            />
-            {/* Viewer label */}
-            <div
-              className="absolute top-3 right-3 z-20 pointer-events-none"
+            {/* 3D Model Button */}
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.35, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+              className="mt-6 relative z-10"
             >
-              <span
-                className="font-barlow font-bold text-[9px] tracking-[0.22em] uppercase px-2 py-1"
+              <button
+                onClick={() => setShowModel(true)}
+                className="group flex items-center gap-3 font-barlow font-bold text-[11px] tracking-[0.22em] uppercase px-5 py-3 transition-all duration-200"
                 style={{
                   color: '#0891b2',
-                  background: 'rgba(6,16,30,0.85)',
-                  border: '1px solid rgba(8,145,178,0.2)',
+                  background: 'rgba(8,145,178,0.08)',
+                  border: '1px solid rgba(8,145,178,0.3)',
+                  clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)',
                 }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(8,145,178,0.18)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'rgba(8,145,178,0.08)'}
               >
-                Daimi Dişlenme · 3D
-              </span>
-            </div>
-
-            <ToothViewer />
-          </motion.div>
+                <span style={{ fontSize: '1rem' }}>◈</span>
+                3D Dişlenme Modeli
+                <span style={{ opacity: 0.5 }}>→</span>
+              </button>
+            </motion.div>
+          </div>
         </div>
       </section>
 
@@ -517,6 +495,62 @@ export default function Dashboard() {
           }
         </motion.div>
       </div>
+      {/* ── 3D TOOTH MODEL MODAL ── */}
+      <AnimatePresence>
+        {showModel && (
+          <motion.div
+            key="tooth-modal"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 lg:p-8"
+            style={{ background: 'rgba(4,8,18,0.96)', backdropFilter: 'blur(4px)' }}
+            onClick={(e) => { if (e.target === e.currentTarget) setShowModel(false) }}
+          >
+            <motion.div
+              initial={{ scale: 0.92, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.92, y: 20 }}
+              transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+              className="relative w-full"
+              style={{
+                maxWidth: 1100,
+                height: 'min(82vh, 700px)',
+                background: '#0a1628',
+                border: '1px solid rgba(8,145,178,0.25)',
+                borderLeft: '3px solid #0891b2',
+                clipPath: 'polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 0 100%)',
+              }}
+            >
+              {/* Header bar */}
+              <div
+                className="absolute top-0 left-0 right-0 flex items-center justify-between px-5 py-3 z-20"
+                style={{ borderBottom: '1px solid rgba(8,145,178,0.15)', background: 'rgba(8,145,178,0.06)' }}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="font-barlow font-bold text-[10px] tracking-[0.28em] uppercase" style={{ color: '#0891b2' }}>
+                    ◈ Daimi Dişlenme · 3D İnteraktif Model
+                  </span>
+                </div>
+                <button
+                  onClick={() => setShowModel(false)}
+                  className="font-barlow font-bold text-[10px] tracking-[0.2em] uppercase flex items-center gap-2 px-3 py-1.5 transition-colors"
+                  style={{ color: '#0891b2', border: '1px solid rgba(8,145,178,0.2)' }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(8,145,178,0.1)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  Kapat ✕
+                </button>
+              </div>
+              {/* Viewer */}
+              <div className="absolute inset-0 top-11">
+                <ToothViewer />
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </Layout>
   )
 }
