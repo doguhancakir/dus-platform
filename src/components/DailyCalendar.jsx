@@ -28,7 +28,7 @@ export default function DailyCalendar({ userId }) {
     new Date(today.getFullYear(), today.getMonth(), 1)
   )
   const [todos, setTodos] = useState([])
-  const [dayStatus, setDayStatus] = useState({}) // dateKey -> 'complete' | 'partial'
+  const [dayStatus, setDayStatus] = useState({})
   const [inputVal, setInputVal] = useState('')
   const [hoveredId, setHoveredId] = useState(null)
   const inputRef = useRef(null)
@@ -36,7 +36,7 @@ export default function DailyCalendar({ userId }) {
   const selKey = toKey(sel)
   const todayKey = toKey(today)
 
-  // ── data loaders ──────────────────────────────────────────────────────────
+  // ── loaders ───────────────────────────────────────────────────────────────
 
   const loadStatus = useCallback(async () => {
     if (!userId) return
@@ -81,11 +81,12 @@ export default function DailyCalendar({ userId }) {
   async function addTodo() {
     const text = inputVal.trim()
     if (!text || !userId) return
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('daily_todos')
       .insert({ user_id: userId, date: selKey, text })
       .select()
       .single()
+    if (error) { console.error('addTodo error', error); return }
     if (data) {
       setTodos(p => [...p, data])
       setInputVal('')
@@ -142,11 +143,11 @@ export default function DailyCalendar({ userId }) {
     return days
   }
 
-  // ── helpers ───────────────────────────────────────────────────────────────
+  // ── derived ───────────────────────────────────────────────────────────────
 
-  const prev = new Date(sel); prev.setDate(prev.getDate() - 1)
-  const next = new Date(sel); next.setDate(next.getDate() + 1)
-  const nextFuture = next > today
+  const prevDay = new Date(sel); prevDay.setDate(prevDay.getDate() - 1)
+  const nextDay = new Date(sel); nextDay.setDate(nextDay.getDate() + 1)
+  const nextFuture = nextDay > today
 
   const fmtShort = d => `${d.getDate()} ${MONTHS_TR[d.getMonth()].slice(0, 3)}`
   const fmtFull  = d => `${d.getDate()} ${MONTHS_TR[d.getMonth()]}`
@@ -154,81 +155,139 @@ export default function DailyCalendar({ userId }) {
   // ── render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex flex-col h-full overflow-hidden select-none" style={{ padding: '18px 22px 14px' }}>
+    <div
+      className="flex flex-col h-full overflow-hidden"
+      style={{ padding: '20px 24px 16px' }}
+    >
 
-      {/* ── Day scroller row ── */}
-      <div className="flex items-center gap-2 mb-3 flex-shrink-0">
-        {/* Full-cal toggle */}
+      {/* ── Day navigator ── */}
+      <div className="flex items-center gap-3 mb-4 flex-shrink-0">
+
+        {/* Full-calendar toggle button */}
         <button
           onClick={() => setCalOpen(v => !v)}
           title={calOpen ? 'Takvimi kapat' : 'Tam takvimi aç'}
-          className="flex-shrink-0 flex items-center justify-center transition-all duration-200"
           style={{
-            width: 22, height: 22,
-            background: calOpen ? 'rgba(8,145,178,0.22)' : 'rgba(8,145,178,0.06)',
-            border: `1px solid ${calOpen ? 'rgba(8,145,178,0.5)' : 'rgba(8,145,178,0.2)'}`,
+            flexShrink: 0,
+            width: 28, height: 28,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: calOpen ? 'rgba(8,145,178,0.22)' : 'rgba(8,145,178,0.07)',
+            border: `1px solid ${calOpen ? 'rgba(8,145,178,0.55)' : 'rgba(8,145,178,0.25)'}`,
             color: '#0891b2',
-            fontSize: 10,
-            clipPath: 'polygon(0 0, calc(100% - 4px) 0, 100% 4px, 100% 100%, 0 100%)',
+            fontSize: 13,
             cursor: 'pointer',
+            clipPath: 'polygon(0 0, calc(100% - 5px) 0, 100% 5px, 100% 100%, 0 100%)',
+            transition: 'all 0.15s',
           }}
         >
           ▦
         </button>
 
         {/* Prev / current / next */}
-        <div className="flex-1 flex items-center justify-between">
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+
+          {/* Left arrow */}
           <button
             onClick={() => goDay(-1)}
-            className="font-bebas text-xl leading-none px-1 transition-colors"
-            style={{ color: '#0891b2', cursor: 'pointer' }}
+            style={{
+              fontFamily: '"Bebas Neue", sans-serif',
+              fontSize: 26,
+              lineHeight: 1,
+              color: '#0891b2',
+              cursor: 'pointer',
+              padding: '0 4px',
+              transition: 'opacity 0.15s',
+            }}
+            onMouseEnter={e => e.currentTarget.style.opacity = '0.65'}
+            onMouseLeave={e => e.currentTarget.style.opacity = '1'}
           >
             ‹
           </button>
 
-          <div className="flex items-center gap-3">
+          {/* Dates row */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            {/* Previous day */}
             <button
               onClick={() => goDay(-1)}
-              className="font-barlow text-[10px] tracking-wide transition-colors"
-              style={{ color: '#253545', cursor: 'pointer' }}
+              style={{
+                fontFamily: 'Barlow, sans-serif',
+                fontWeight: 700,
+                fontSize: 12,
+                letterSpacing: '0.08em',
+                color: '#2a3d50',
+                cursor: 'pointer',
+                transition: 'color 0.15s',
+              }}
+              onMouseEnter={e => e.currentTarget.style.color = '#4a6070'}
+              onMouseLeave={e => e.currentTarget.style.color = '#2a3d50'}
             >
-              {fmtShort(prev)}
+              {fmtShort(prevDay)}
             </button>
 
-            <div className="flex flex-col items-center">
+            {/* Selected day — prominent */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
               <span
-                className="font-bebas tracking-widest leading-none text-white"
-                style={{ fontSize: '1.05rem' }}
+                style={{
+                  fontFamily: '"Bebas Neue", sans-serif',
+                  fontSize: 22,
+                  letterSpacing: '0.1em',
+                  color: '#ffffff',
+                  lineHeight: 1,
+                }}
               >
                 {fmtFull(sel)}
               </span>
               {selKey === todayKey && (
                 <span
-                  className="font-barlow font-bold text-[7px] tracking-[0.25em] uppercase mt-0.5"
-                  style={{ color: '#0891b2' }}
+                  style={{
+                    fontFamily: 'Barlow, sans-serif',
+                    fontWeight: 700,
+                    fontSize: 9,
+                    letterSpacing: '0.28em',
+                    textTransform: 'uppercase',
+                    color: '#0891b2',
+                    marginTop: 2,
+                  }}
                 >
                   BUGÜN
                 </span>
               )}
             </div>
 
+            {/* Next day */}
             <button
               onClick={() => !nextFuture && goDay(1)}
-              className="font-barlow text-[10px] tracking-wide"
               style={{
-                color: nextFuture ? '#18273a' : '#253545',
+                fontFamily: 'Barlow, sans-serif',
+                fontWeight: 700,
+                fontSize: 12,
+                letterSpacing: '0.08em',
+                color: nextFuture ? '#18273a' : '#2a3d50',
                 cursor: nextFuture ? 'default' : 'pointer',
+                transition: 'color 0.15s',
               }}
+              onMouseEnter={e => { if (!nextFuture) e.currentTarget.style.color = '#4a6070' }}
+              onMouseLeave={e => { e.currentTarget.style.color = nextFuture ? '#18273a' : '#2a3d50' }}
             >
-              {fmtShort(next)}
+              {fmtShort(nextDay)}
             </button>
           </div>
 
+          {/* Right arrow */}
           <button
             onClick={() => !nextFuture && goDay(1)}
             disabled={nextFuture}
-            className="font-bebas text-xl leading-none px-1 transition-colors"
-            style={{ color: nextFuture ? '#18273a' : '#0891b2', cursor: nextFuture ? 'default' : 'pointer' }}
+            style={{
+              fontFamily: '"Bebas Neue", sans-serif',
+              fontSize: 26,
+              lineHeight: 1,
+              color: nextFuture ? '#18273a' : '#0891b2',
+              cursor: nextFuture ? 'default' : 'pointer',
+              padding: '0 4px',
+              transition: 'opacity 0.15s',
+            }}
+            onMouseEnter={e => { if (!nextFuture) e.currentTarget.style.opacity = '0.65' }}
+            onMouseLeave={e => e.currentTarget.style.opacity = '1'}
           >
             ›
           </button>
@@ -239,30 +298,33 @@ export default function DailyCalendar({ userId }) {
       <AnimatePresence>
         {calOpen && (
           <motion.div
-            initial={{ opacity: 0, y: -6, height: 0 }}
+            initial={{ opacity: 0, y: -8, height: 0 }}
             animate={{ opacity: 1, y: 0, height: 'auto' }}
-            exit={{ opacity: 0, y: -6, height: 0 }}
+            exit={{ opacity: 0, y: -8, height: 0 }}
             transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
-            className="overflow-hidden flex-shrink-0 mb-3"
+            style={{ overflow: 'hidden', flexShrink: 0, marginBottom: 12 }}
           >
             <div
               style={{
-                background: 'rgba(4,8,18,0.7)',
-                border: '1px solid rgba(8,145,178,0.15)',
-                borderLeft: '2px solid rgba(8,145,178,0.35)',
-                padding: '10px 12px',
+                background: 'rgba(4,8,18,0.75)',
+                border: '1px solid rgba(8,145,178,0.18)',
+                borderLeft: '2px solid rgba(8,145,178,0.4)',
+                padding: '12px 14px',
               }}
             >
-              {/* Month nav */}
-              <div className="flex items-center justify-between mb-2">
+              {/* Month navigation */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                 <button
                   onClick={() => setViewMonth(new Date(viewMonth.getFullYear(), viewMonth.getMonth() - 1, 1))}
-                  className="font-bebas text-xl leading-none w-6 h-6 flex items-center justify-center transition-colors"
-                  style={{ color: '#0891b2', cursor: 'pointer' }}
+                  style={{ fontFamily: '"Bebas Neue", sans-serif', fontSize: 22, color: '#0891b2', cursor: 'pointer', width: 28, textAlign: 'center', lineHeight: 1 }}
+                >‹</button>
+                <span
+                  style={{
+                    fontFamily: 'Barlow, sans-serif', fontWeight: 700,
+                    fontSize: 12, letterSpacing: '0.22em', textTransform: 'uppercase',
+                    color: '#0891b2',
+                  }}
                 >
-                  ‹
-                </button>
-                <span className="font-barlow font-bold text-[10px] tracking-[0.22em] uppercase" style={{ color: '#0891b2' }}>
                   {MONTHS_TR[viewMonth.getMonth()]} {viewMonth.getFullYear()}
                 </span>
                 <button
@@ -271,20 +333,21 @@ export default function DailyCalendar({ userId }) {
                     const thisMonth = new Date(today.getFullYear(), today.getMonth(), 1)
                     if (nm <= thisMonth) setViewMonth(nm)
                   }}
-                  className="font-bebas text-xl leading-none w-6 h-6 flex items-center justify-center transition-colors"
-                  style={{ color: '#0891b2', cursor: 'pointer' }}
-                >
-                  ›
-                </button>
+                  style={{ fontFamily: '"Bebas Neue", sans-serif', fontSize: 22, color: '#0891b2', cursor: 'pointer', width: 28, textAlign: 'center', lineHeight: 1 }}
+                >›</button>
               </div>
 
               {/* Weekday headers */}
-              <div className="grid grid-cols-7 mb-1">
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 4 }}>
                 {['Pt', 'Sa', 'Ça', 'Pe', 'Cu', 'Ct', 'Pz'].map(d => (
                   <div
                     key={d}
-                    className="text-center font-barlow font-bold text-[8px] uppercase tracking-wider py-0.5"
-                    style={{ color: '#1e3050' }}
+                    style={{
+                      textAlign: 'center',
+                      fontFamily: 'Barlow, sans-serif', fontWeight: 700,
+                      fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase',
+                      color: '#1e3050', padding: '2px 0',
+                    }}
                   >
                     {d}
                   </div>
@@ -292,62 +355,55 @@ export default function DailyCalendar({ userId }) {
               </div>
 
               {/* Day grid */}
-              <div className="grid grid-cols-7 gap-px">
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
                 {getMonthGrid().map((d, i) => {
                   if (!d) return <div key={`e-${i}`} />
-                  const key      = toKey(d)
-                  const isSel    = key === selKey
-                  const isToday  = key === todayKey
-                  const isFuture = d > today
-                  const isDone   = dayStatus[key] === 'complete'
+                  const key       = toKey(d)
+                  const isSel     = key === selKey
+                  const isToday   = key === todayKey
+                  const isFuture  = d > today
+                  const isDone    = dayStatus[key] === 'complete'
                   const isPartial = dayStatus[key] === 'partial'
 
                   return (
                     <button
                       key={key}
                       onClick={() => pickDay(d)}
-                      className="relative flex items-center justify-center transition-all duration-100"
                       style={{
-                        height: 24,
+                        height: 28,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        position: 'relative',
                         background: isSel
                           ? 'rgba(8,145,178,0.22)'
-                          : isToday
-                          ? 'rgba(8,145,178,0.07)'
-                          : 'transparent',
+                          : isToday ? 'rgba(8,145,178,0.08)' : 'transparent',
                         border: isSel
-                          ? '1px solid rgba(8,145,178,0.5)'
-                          : isToday
-                          ? '1px solid rgba(8,145,178,0.2)'
-                          : '1px solid transparent',
-                        color: isFuture
-                          ? '#18273a'
-                          : isDone
-                          ? '#10b981'
-                          : isSel
-                          ? '#ffffff'
-                          : isToday
-                          ? '#0891b2'
-                          : '#3a5060',
-                        fontSize: 10,
+                          ? '1px solid rgba(8,145,178,0.55)'
+                          : isToday ? '1px solid rgba(8,145,178,0.25)' : '1px solid transparent',
+                        color: isFuture ? '#18273a'
+                          : isDone ? '#10b981'
+                          : isSel ? '#ffffff'
+                          : isToday ? '#0891b2'
+                          : '#4a6070',
                         fontFamily: 'Barlow, sans-serif',
                         fontWeight: 700,
+                        fontSize: 12,
                         cursor: isFuture ? 'default' : 'pointer',
                         textDecoration: isDone ? 'line-through' : 'none',
                         textDecorationColor: '#10b981',
+                        transition: 'all 0.1s',
+                      }}
+                      onMouseEnter={e => { if (!isFuture && !isSel) e.currentTarget.style.background = 'rgba(8,145,178,0.12)' }}
+                      onMouseLeave={e => {
+                        if (!isSel) e.currentTarget.style.background = isToday ? 'rgba(8,145,178,0.08)' : 'transparent'
                       }}
                     >
                       {d.getDate()}
-                      {/* Yellow dot for partial completion */}
                       {isPartial && !isFuture && (
-                        <span
-                          style={{
-                            position: 'absolute',
-                            bottom: 2, right: 3,
-                            width: 3, height: 3,
-                            borderRadius: '50%',
-                            background: '#f0c040',
-                          }}
-                        />
+                        <span style={{
+                          position: 'absolute', bottom: 3, right: 3,
+                          width: 4, height: 4, borderRadius: '50%',
+                          background: '#f0c040',
+                        }} />
                       )}
                     </button>
                   )
@@ -358,46 +414,60 @@ export default function DailyCalendar({ userId }) {
         )}
       </AnimatePresence>
 
-      {/* ── Section divider ── */}
-      <div className="flex items-center gap-2 mb-2 flex-shrink-0">
+      {/* ── Section label ── */}
+      <div
+        style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          marginBottom: 10, flexShrink: 0,
+        }}
+      >
         <div style={{ flex: 1, height: 1, background: 'linear-gradient(to right, #1a2d45, transparent)' }} />
         <span
-          className="font-barlow font-bold text-[8px] tracking-[0.25em] uppercase flex-shrink-0"
-          style={{ color: '#1e3050' }}
+          style={{
+            fontFamily: 'Barlow, sans-serif', fontWeight: 700,
+            fontSize: 10, letterSpacing: '0.25em', textTransform: 'uppercase',
+            color: '#1e3050', flexShrink: 0,
+          }}
         >
-          {selKey === todayKey ? 'BUGÜNÜN GÖREVLERİ' : `${fmtShort(sel).toUpperCase()} · GÖREVLERİ`}
+          {selKey === todayKey ? 'BUGÜNÜN GÖREVLERİ' : `${fmtShort(sel).toUpperCase()} GÖREVLERİ`}
         </span>
         <div style={{ flex: 1, height: 1, background: 'linear-gradient(to left, #1a2d45, transparent)' }} />
       </div>
 
       {/* ── Todo list ── */}
-      <div className="flex-1 overflow-y-auto" style={{ minHeight: 0 }}>
+      <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
         <AnimatePresence initial={false}>
           {todos.map(todo => (
             <motion.div
               key={todo.id}
               layout
-              initial={{ opacity: 0, x: -8 }}
+              initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.14 }}
-              className="flex items-start gap-2 py-1.5"
-              style={{ borderBottom: '1px solid rgba(18,35,55,0.9)' }}
+              style={{
+                display: 'flex', alignItems: 'flex-start', gap: 10,
+                padding: '8px 0',
+                borderBottom: '1px solid rgba(18,35,55,0.9)',
+              }}
               onMouseEnter={() => setHoveredId(todo.id)}
               onMouseLeave={() => setHoveredId(null)}
             >
               {/* Checkbox */}
               <button
                 onClick={() => toggleTodo(todo)}
-                className="flex-shrink-0 flex items-center justify-center mt-0.5 transition-all duration-150"
                 style={{
-                  width: 14, height: 14,
-                  border: `1px solid ${todo.completed ? '#10b981' : 'rgba(8,145,178,0.3)'}`,
+                  flexShrink: 0,
+                  marginTop: 2,
+                  width: 16, height: 16,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  border: `1px solid ${todo.completed ? '#10b981' : 'rgba(8,145,178,0.35)'}`,
                   background: todo.completed ? 'rgba(16,185,129,0.12)' : 'transparent',
                   color: '#10b981',
-                  fontSize: 8,
+                  fontSize: 10,
                   cursor: 'pointer',
                   clipPath: 'polygon(0 0, calc(100% - 3px) 0, 100% 3px, 100% 100%, 0 100%)',
+                  transition: 'all 0.15s',
                 }}
               >
                 {todo.completed ? '✓' : ''}
@@ -405,9 +475,13 @@ export default function DailyCalendar({ userId }) {
 
               {/* Text */}
               <span
-                className="flex-1 font-barlow text-[11px] leading-snug min-w-0"
                 style={{
-                  color: todo.completed ? '#253545' : '#8a9ab0',
+                  flex: 1,
+                  fontFamily: 'Barlow, sans-serif',
+                  fontWeight: 500,
+                  fontSize: 13,
+                  lineHeight: 1.45,
+                  color: todo.completed ? '#2a3d50' : '#8fb0c8',
                   textDecoration: todo.completed ? 'line-through' : 'none',
                   textDecorationColor: '#10b981',
                   textDecorationThickness: '1.5px',
@@ -417,18 +491,23 @@ export default function DailyCalendar({ userId }) {
                 {todo.text}
               </span>
 
-              {/* Delete — appears on row hover */}
+              {/* Delete */}
               <button
                 onClick={() => deleteTodo(todo.id)}
-                className="flex-shrink-0 font-barlow text-[10px] transition-all duration-150 mt-0.5"
                 style={{
+                  flexShrink: 0,
+                  marginTop: 2,
+                  fontFamily: 'Barlow, sans-serif',
+                  fontSize: 11,
                   color: '#ef4444',
-                  opacity: hoveredId === todo.id ? 0.6 : 0,
                   cursor: 'pointer',
+                  opacity: hoveredId === todo.id ? 0.65 : 0,
                   pointerEvents: hoveredId === todo.id ? 'auto' : 'none',
+                  transition: 'opacity 0.15s',
+                  lineHeight: 1,
                 }}
-                onMouseEnter={e => { e.currentTarget.style.opacity = '1' }}
-                onMouseLeave={e => { e.currentTarget.style.opacity = hoveredId === todo.id ? '0.6' : '0' }}
+                onMouseEnter={e => e.currentTarget.style.opacity = '1'}
+                onMouseLeave={e => e.currentTarget.style.opacity = hoveredId === todo.id ? '0.65' : '0'}
               >
                 ✕
               </button>
@@ -437,31 +516,63 @@ export default function DailyCalendar({ userId }) {
         </AnimatePresence>
 
         {todos.length === 0 && (
-          <div
-            className="py-2 font-barlow text-[10px] tracking-wider"
-            style={{ color: '#152030' }}
+          <p
+            style={{
+              fontFamily: 'Barlow, sans-serif',
+              fontSize: 12,
+              letterSpacing: '0.06em',
+              color: '#152030',
+              padding: '8px 0',
+            }}
           >
             — henüz görev eklenmedi
-          </div>
+          </p>
         )}
       </div>
 
       {/* ── Input ── */}
       <div
-        className="flex items-center gap-2 mt-2 pt-2 flex-shrink-0"
-        style={{ borderTop: '1px solid rgba(8,145,178,0.09)' }}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          marginTop: 8,
+          paddingTop: 10,
+          borderTop: '1px solid rgba(8,145,178,0.1)',
+          flexShrink: 0,
+        }}
       >
-        <span className="font-bebas text-base leading-none flex-shrink-0" style={{ color: 'rgba(8,145,178,0.35)' }}>
+        <span
+          style={{
+            fontFamily: '"Bebas Neue", sans-serif',
+            fontSize: 18,
+            lineHeight: 1,
+            color: 'rgba(8,145,178,0.4)',
+            flexShrink: 0,
+          }}
+        >
           +
         </span>
         <input
           ref={inputRef}
           value={inputVal}
           onChange={e => setInputVal(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') addTodo() }}
+          onKeyDown={e => {
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              addTodo()
+            }
+          }}
           placeholder="Görev ekle… (Enter)"
-          className="flex-1 bg-transparent font-barlow text-[11px] outline-none"
-          style={{ color: '#8a9ab0', caretColor: '#0891b2' }}
+          style={{
+            flex: 1,
+            background: 'transparent',
+            border: 'none',
+            outline: 'none',
+            fontFamily: 'Barlow, sans-serif',
+            fontWeight: 500,
+            fontSize: 13,
+            color: '#8fb0c8',
+            caretColor: '#0891b2',
+          }}
         />
       </div>
     </div>
