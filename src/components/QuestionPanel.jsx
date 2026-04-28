@@ -60,6 +60,20 @@ export default function QuestionPanel({ topicId, onClose }) {
   const [stats, setStats] = useState({ newCount: 0, learningCount: 0, reviewCount: 0 })
   const [finished, setFinished] = useState(false)
   const [answering, setAnswering] = useState(false)
+  // Shuffled options — re-randomized on every card appearance
+  const [shuffledDisplay, setShuffledDisplay] = useState(null) // { forIndex, options, correctIndex }
+
+  function shuffleOptions(question, forIndex) {
+    if (!question?.options?.length) return
+    const opts = [...question.options]
+    const correctText = opts[question.correct_answer]
+    // Fisher-Yates shuffle
+    for (let i = opts.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[opts[i], opts[j]] = [opts[j], opts[i]]
+    }
+    setShuffledDisplay({ forIndex, options: opts, correctIndex: opts.indexOf(correctText) })
+  }
 
   function toggleElimination(i) {
     setEliminatedOptions(prev => {
@@ -75,6 +89,12 @@ export default function QuestionPanel({ topicId, onClose }) {
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   }, [topicId])
+
+  // Re-shuffle every time a new card position is shown (same question = new shuffle)
+  useEffect(() => {
+    const q = questions.find(q => q.id === queue[currentIndex])
+    if (q) shuffleOptions(q, currentIndex)
+  }, [currentIndex, queue.length, questions.length])
 
   async function loadData() {
     setLoading(true)
@@ -262,10 +282,11 @@ export default function QuestionPanel({ topicId, onClose }) {
     )
   }
 
-  if (!currentQuestion) return null
+  // Guard: wait until shuffle is ready for this exact card position
+  if (!currentQuestion || !shuffledDisplay || shuffledDisplay.forIndex !== currentIndex) return null
 
-  const options = currentQuestion.options || []
-  const correctIndex = currentQuestion.correct_answer
+  const options = shuffledDisplay.options
+  const correctIndex = shuffledDisplay.correctIndex
   const progress = queue.length > 0 ? currentIndex / queue.length : 0
 
   // Determine answer state for accent color
