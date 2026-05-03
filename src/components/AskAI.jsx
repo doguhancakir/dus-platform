@@ -102,12 +102,6 @@ export default function AskAI({ questionContext, sessionKey, onClose }) {
           >
             AI'A SOR
           </span>
-          <span
-            className="font-barlow font-bold text-[9px] tracking-[0.15em] uppercase px-1.5 py-0.5"
-            style={{ color: '#2a6a50', background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)' }}
-          >
-            ÜCRETSİZ
-          </span>
         </div>
         <button
           onClick={onClose}
