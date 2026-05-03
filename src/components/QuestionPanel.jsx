@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, ChevronRight, Trophy, Zap } from 'lucide-react'
+import { X, ChevronRight, Trophy, Zap, Sparkles } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { processCard, newCard, getEstimatedTime, RATINGS, CARD_STATUS, isDue } from '../lib/sm2'
+import AskAI from './AskAI'
 
 /* ── Rating command config ── */
 const RATING_CONFIG = [
@@ -60,6 +61,7 @@ export default function QuestionPanel({ topicId, onClose }) {
   const [stats, setStats] = useState({ newCount: 0, learningCount: 0, reviewCount: 0 })
   const [finished, setFinished] = useState(false)
   const [answering, setAnswering] = useState(false)
+  const [showAI,    setShowAI]    = useState(false)
   // Shuffled options — re-randomized on every card appearance
   const [shuffledDisplay, setShuffledDisplay] = useState(null) // { forIndex, options, correctIndex }
 
@@ -202,6 +204,7 @@ export default function QuestionPanel({ topicId, onClose }) {
         setShowAnswer(false)
         setSelectedOption(null)
         setEliminatedOptions(new Set())
+        setShowAI(false)
       }
     } catch (err) {
       console.error('Save error:', err)
@@ -299,6 +302,15 @@ export default function QuestionPanel({ topicId, onClose }) {
     : answerState === 'wrong'
     ? '#ff1744'
     : '#0891b2'
+
+  // questionContext — AI'a gönderilecek soru bilgileri
+  const aiContext = currentQuestion ? {
+    questionText:        currentQuestion.question_text,
+    options:             options,
+    correctOptionText:   options[correctIndex] ?? '',
+    selectedOptionText:  selectedOption !== null ? options[selectedOption] ?? '' : null,
+    explanation:         currentQuestion.explanation ?? '',
+  } : null
 
   return (
     <BattleScreen onClose={onClose} accentColor={accentColor}>
@@ -546,7 +558,7 @@ export default function QuestionPanel({ topicId, onClose }) {
                     background: 'rgba(8,145,178,0.05)',
                     borderLeft: '3px solid rgba(8,145,178,0.35)',
                     padding: '0.9rem 1.1rem',
-                    marginBottom: '0.5rem',
+                    marginBottom: '0.75rem',
                     clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
                   }}
                 >
@@ -560,9 +572,21 @@ export default function QuestionPanel({ topicId, onClose }) {
                 </motion.div>
               )}
             </AnimatePresence>
+
           </motion.div>
         </AnimatePresence>
       </div>
+
+      {/* ── AI Panel ── */}
+      <AnimatePresence>
+        {showAI && aiContext && (
+          <AskAI
+            questionContext={aiContext}
+            sessionKey={`${currentQuestion?.id ?? ''}-${currentIndex}`}
+            onClose={() => setShowAI(false)}
+          />
+        )}
+      </AnimatePresence>
 
       {/* ── Bottom command strip ── */}
       <div
@@ -581,6 +605,33 @@ export default function QuestionPanel({ topicId, onClose }) {
         />
 
         <div className="p-4 sm:p-5">
+
+          {/* ── AI'a Sor — rating butonlarının üstünde sabit ── */}
+          {showAnswer && (
+            <div className="mb-3 flex justify-end">
+              <button
+                onClick={() => setShowAI(true)}
+                className="flex items-center gap-2 px-3 py-1.5 font-barlow font-bold text-[11px] tracking-wider uppercase"
+                style={{
+                  background: 'rgba(8,145,178,0.08)',
+                  border: '1px solid rgba(8,145,178,0.3)',
+                  borderLeft: '3px solid #0891b2',
+                  color: '#0891b2',
+                  cursor: 'pointer',
+                  transition: 'background 0.15s, border-color 0.15s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(8,145,178,0.18)' }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(8,145,178,0.08)' }}
+              >
+                <Sparkles size={12} />
+                AI'a Sor
+                <span style={{ fontSize: 9, color: '#10b981', background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)', padding: '1px 5px' }}>
+                  ÜCRETSİZ
+                </span>
+              </button>
+            </div>
+          )}
+
           <AnimatePresence mode="wait">
             {!showAnswer ? (
               /* ── REVEAL BUTTON ── */
