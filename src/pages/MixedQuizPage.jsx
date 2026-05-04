@@ -5,6 +5,7 @@ import { X, ChevronRight, ChevronDown, Trophy, ArrowLeft, Check, Zap } from 'luc
 import { supabase } from '../lib/supabase'
 import { BRANCHES } from '../lib/data'
 import Layout from '../components/Layout'
+import { useStudyTimer } from '../contexts/StudyTimerContext'
 
 function fisherYates(arr) {
   const a = [...arr]
@@ -17,6 +18,7 @@ function fisherYates(arr) {
 
 export default function MixedQuizPage() {
   const navigate = useNavigate()
+  const { triggerQuestion } = useStudyTimer()
   const [phase, setPhase] = useState('filter')
 
   const [topics, setTopics] = useState([])
@@ -140,6 +142,7 @@ export default function MixedQuizPage() {
   }
 
   function handleSelfAssess(isCorrect) {
+    triggerQuestion()
     const q = questions[currentIndex]
     const topic = topics.find(t => t.id === q.topic_id)
     const branchId = topic?.branch_id
