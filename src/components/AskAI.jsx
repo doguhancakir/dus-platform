@@ -43,9 +43,13 @@ export default function AskAI({ questionContext, sessionKey, onClose }) {
     setLoading(true)
     setError(null)
 
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 28000) // 28sn max
+
     try {
       const res = await fetch(EDGE_URL, {
         method: 'POST',
+        signal: controller.signal,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: nextMessages.map(m => ({ role: m.role === 'user' ? 'user' : 'model', text: m.text })),
@@ -56,18 +60,23 @@ export default function AskAI({ questionContext, sessionKey, onClose }) {
       const data = await res.json()
       if (!res.ok || data.error) {
         const msg = data.error || 'Sunucu hatası'
-        // Rate limit için daha anlaşılır mesaj
         if (msg.includes('quota') || msg.includes('RESOURCE_EXHAUSTED') || msg.includes('rate')) {
-          throw new Error('Günlük ücretsiz limit doldu. Birkaç dakika bekleyip tekrar dene.')
+          throw new Error('Limit doldu — birkaç dakika bekleyip tekrar dene.')
         }
         throw new Error(msg)
       }
 
       setMessages(prev => [...prev, { role: 'ai', text: data.text }])
     } catch (err) {
-      setError(err.message)
+      if (err.name === 'AbortError') {
+        setError('Yanıt süresi doldu — tekrar dene.')
+      } else {
+        setError(err.message)
+      }
+    } finally {
+      clearTimeout(timeout)
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   function handleKey(e) {
