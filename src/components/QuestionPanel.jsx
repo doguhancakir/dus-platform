@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, ChevronRight, Trophy, Zap, Sparkles } from 'lucide-react'
+import { X, ChevronRight, Trophy, Zap, Sparkles, Trash2 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { processCard, newCard, getEstimatedTime, RATINGS, CARD_STATUS, isDue } from '../lib/sm2'
@@ -214,6 +214,40 @@ export default function QuestionPanel({ topicId, onClose }) {
     setAnswering(false)
   }
 
+  async function deleteQuestion() {
+    const q = currentQuestion
+    if (!q) return
+
+    try {
+      // Önce user_cards'ı sil (cascade olmayabilir)
+      await supabase.from('user_cards').delete().eq('question_id', q.id)
+      // Soruyu sil
+      const { error } = await supabase.from('questions').delete().eq('id', q.id)
+      if (error) throw error
+
+      // Local state güncelle
+      const newQuestions = questions.filter(x => x.id !== q.id)
+      setQuestions(newQuestions)
+
+      // Kuyruktaki tüm bu soruyu kaldır
+      const newQueue = queue.filter(id => id !== q.id)
+
+      if (newQuestions.length === 0 || newQueue.length === 0) {
+        setFinished(true)
+      } else {
+        const nextIdx = Math.min(currentIndex, newQueue.length - 1)
+        setQueue(newQueue)
+        setCurrentIndex(nextIdx)
+        setShowAnswer(false)
+        setSelectedOption(null)
+        setEliminatedOptions(new Set())
+        setShowAI(false)
+      }
+    } catch (err) {
+      console.error('Delete error:', err)
+    }
+  }
+
   function computeStats(qs, cardsMap) {
     const newCount = qs.filter(q => !cardsMap[q.id] || cardsMap[q.id]?.status === CARD_STATUS.NEW).length
     const learningCount = qs.filter(q => {
@@ -318,7 +352,15 @@ export default function QuestionPanel({ topicId, onClose }) {
 
   return (
     <BattleScreen onClose={onClose} accentColor={accentColor}>
-      <HUDBar stats={stats} currentIndex={currentIndex} queueLength={queue.length} onClose={onClose} accentColor={accentColor} />
+      <HUDBar
+        stats={stats}
+        currentIndex={currentIndex}
+        queueLength={queue.length}
+        onClose={onClose}
+        accentColor={accentColor}
+        isAdmin={!!user?.is_admin}
+        onDeleteQuestion={deleteQuestion}
+      />
 
       {/* ── Progress bar ── */}
       <div className="h-[3px] flex-shrink-0 relative" style={{ background: '#0d1a2e' }}>
@@ -776,7 +818,20 @@ function BattleScreen({ children, accentColor = '#0891b2' }) {
 }
 
 /* ── HUD Bar ── */
-function HUDBar({ stats, currentIndex, queueLength, onClose, accentColor = '#0891b2' }) {
+function HUDBar({ stats, currentIndex, queueLength, onClose, accentColor = '#0891b2', isAdmin = false, onDeleteQuestion }) {
+  const [confirmDelete, setConfirmDelete] = useState(false)
+
+  function handleDeleteClick() {
+    setConfirmDelete(true)
+  }
+  function handleConfirm() {
+    setConfirmDelete(false)
+    onDeleteQuestion?.()
+  }
+  function handleCancel() {
+    setConfirmDelete(false)
+  }
+
   return (
     <div
       className="flex items-center justify-between px-4 sm:px-6 py-3 flex-shrink-0 relative"
@@ -844,6 +899,63 @@ function HUDBar({ stats, currentIndex, queueLength, onClose, accentColor = '#089
           <div className="sm:hidden font-bebas text-sm tracking-wider" style={{ color: accentColor }}>
             {currentIndex}/{queueLength}
           </div>
+        )}
+
+        {/* Admin: soru sil */}
+        {isAdmin && (
+          <AnimatePresence mode="wait">
+            {confirmDelete ? (
+              <motion.div
+                key="confirm"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                transition={{ duration: 0.15 }}
+                className="flex items-center gap-1.5"
+              >
+                <span
+                  className="font-barlow font-bold text-[10px] uppercase tracking-wider"
+                  style={{ color: '#cc4444' }}
+                >
+                  Sil?
+                </span>
+                <button
+                  onClick={handleConfirm}
+                  className="font-barlow font-bold text-[10px] uppercase tracking-wider px-2 py-1 transition-colors"
+                  style={{ background: 'rgba(204,0,0,0.15)', border: '1px solid #cc0000', color: '#ff6b6b' }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(204,0,0,0.3)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'rgba(204,0,0,0.15)'}
+                >
+                  Evet
+                </button>
+                <button
+                  onClick={handleCancel}
+                  className="font-barlow font-bold text-[10px] uppercase tracking-wider px-2 py-1 transition-colors"
+                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid #1e3555', color: '#4a6080' }}
+                  onMouseEnter={e => e.currentTarget.style.color = '#8ab0c8'}
+                  onMouseLeave={e => e.currentTarget.style.color = '#4a6080'}
+                >
+                  Hayır
+                </button>
+              </motion.div>
+            ) : (
+              <motion.button
+                key="trash"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                onClick={handleDeleteClick}
+                className="p-1.5 transition-colors"
+                style={{ border: '1px solid #2a1515', background: '#150808', color: '#663333' }}
+                onMouseEnter={e => { e.currentTarget.style.color = '#ff4444'; e.currentTarget.style.borderColor = '#cc2222' }}
+                onMouseLeave={e => { e.currentTarget.style.color = '#663333'; e.currentTarget.style.borderColor = '#2a1515' }}
+                title="Bu soruyu sil (Admin)"
+              >
+                <Trash2 size={14} />
+              </motion.button>
+            )}
+          </AnimatePresence>
         )}
 
         <button
