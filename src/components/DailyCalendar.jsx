@@ -499,7 +499,19 @@ export default function DailyCalendar({ userId, todayAnswered = 0 }) {
       {/* ── Todo list ── */}
       <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
         <AnimatePresence initial={false}>
-          {todos.map(todo => (
+          {todos.map(todo => {
+            const isGoal = todo.text === GOAL_TEXT
+            const checkColor  = isGoal ? '#f0c040' : '#10b981'
+            const checkBorder = todo.completed
+              ? `1px solid ${checkColor}`
+              : isGoal ? '1px solid rgba(240,192,64,0.5)' : '1px solid rgba(8,145,178,0.35)'
+            const checkBg = todo.completed
+              ? isGoal ? 'rgba(240,192,64,0.12)' : 'rgba(16,185,129,0.12)'
+              : 'transparent'
+            const textColor = todo.completed ? '#2a3d50' : isGoal ? '#f0c040' : '#8fb0c8'
+            const strikeColor = isGoal ? '#f0c040' : '#10b981'
+
+            return (
             <motion.div
               key={todo.id}
               layout
@@ -510,7 +522,10 @@ export default function DailyCalendar({ userId, todayAnswered = 0 }) {
               style={{
                 display: 'flex', alignItems: 'flex-start', gap: 10,
                 padding: '8px 0',
+                paddingLeft: isGoal ? 6 : 0,
                 borderBottom: '1px solid rgba(18,35,55,0.9)',
+                borderLeft: isGoal ? '2px solid rgba(240,192,64,0.35)' : '2px solid transparent',
+                background: isGoal ? 'rgba(240,192,64,0.03)' : 'transparent',
               }}
               onMouseEnter={() => setHoveredId(todo.id)}
               onMouseLeave={() => setHoveredId(null)}
@@ -523,9 +538,9 @@ export default function DailyCalendar({ userId, todayAnswered = 0 }) {
                   marginTop: 2,
                   width: 16, height: 16,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  border: `1px solid ${todo.completed ? '#10b981' : 'rgba(8,145,178,0.35)'}`,
-                  background: todo.completed ? 'rgba(16,185,129,0.12)' : 'transparent',
-                  color: '#10b981',
+                  border: checkBorder,
+                  background: checkBg,
+                  color: checkColor,
                   fontSize: 10,
                   cursor: 'pointer',
                   clipPath: 'polygon(0 0, calc(100% - 3px) 0, 100% 3px, 100% 100%, 0 100%)',
@@ -540,14 +555,15 @@ export default function DailyCalendar({ userId, todayAnswered = 0 }) {
                 style={{
                   flex: 1,
                   fontFamily: 'Barlow, sans-serif',
-                  fontWeight: 500,
+                  fontWeight: isGoal ? 700 : 500,
                   fontSize: 13,
                   lineHeight: 1.45,
-                  color: todo.completed ? '#2a3d50' : '#8fb0c8',
+                  color: textColor,
                   textDecoration: todo.completed ? 'line-through' : 'none',
-                  textDecorationColor: '#10b981',
+                  textDecorationColor: strikeColor,
                   textDecorationThickness: '1.5px',
                   wordBreak: 'break-word',
+                  letterSpacing: isGoal ? '0.04em' : 'normal',
                 }}
               >
                 {todo.text}
@@ -574,6 +590,8 @@ export default function DailyCalendar({ userId, todayAnswered = 0 }) {
                 ✕
               </button>
             </motion.div>
+            )
+          })
           ))}
         </AnimatePresence>
 
