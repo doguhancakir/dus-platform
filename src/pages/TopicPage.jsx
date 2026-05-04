@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { toast } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronLeft, CheckCircle2, BookOpen, FileQuestion, Pencil, NotebookPen, X, List } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
@@ -169,11 +170,15 @@ export default function TopicPage() {
     if (!user) return
     setNoteLoading(true)
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('user_notes').select('content')
-        .eq('user_id', user.id).eq('topic_id', parseInt(id)).single()
+        .eq('user_id', user.id).eq('topic_id', parseInt(id)).maybeSingle()
+      if (error) throw error
       setNoteContent(data?.content || '')
-    } catch { setNoteContent('') }
+    } catch {
+      setNoteContent('')
+      toast.error('Notlar yüklenemedi')
+    }
     setNoteLoading(false)
   }
 
@@ -181,15 +186,19 @@ export default function TopicPage() {
     if (!user) return
     setNoteSaving('saving')
     try {
-      await supabase.from('user_notes').upsert({
+      const { error } = await supabase.from('user_notes').upsert({
         user_id: user.id,
         topic_id: parseInt(id),
         content,
         updated_at: new Date().toISOString(),
       })
+      if (error) throw error
       setNoteSaving('saved')
       setTimeout(() => setNoteSaving('idle'), 2000)
-    } catch { setNoteSaving('idle') }
+    } catch {
+      setNoteSaving('idle')
+      toast.error('Not kaydedilemedi — bağlantını kontrol et')
+    }
   }
 
   function handleNoteChange(e) {

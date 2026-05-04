@@ -26,11 +26,10 @@ export function AuthProvider({ children }) {
       .from('users')
       .select('*')
       .eq('nickname', nickname.trim())
-      .single()
+      .maybeSingle()
 
-    if (error || !data) {
-      throw new Error('Kullanıcı bulunamadı')
-    }
+    if (error) throw new Error('Sunucu hatası, tekrar dene')
+    if (!data) throw new Error('Kullanıcı bulunamadı')
 
     const valid = await bcrypt.compare(password, data.password_hash)
     if (!valid) {
@@ -53,11 +52,9 @@ export function AuthProvider({ children }) {
       .from('users')
       .select('id')
       .eq('nickname', nickname.trim())
-      .single()
+      .maybeSingle()
 
-    if (existing) {
-      throw new Error('Bu kullanıcı adı zaten alınmış')
-    }
+    if (existing) throw new Error('Bu kullanıcı adı zaten alınmış')
 
     const hash = await bcrypt.hash(password, 10)
     const { data, error } = await supabase

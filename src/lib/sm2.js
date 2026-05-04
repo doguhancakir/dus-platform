@@ -272,5 +272,7 @@ export function getStatusLabel(status) {
  */
 export function isDue(card) {
   if (!card.due_date) return true
-  return new Date(card.due_date) <= new Date()
+  const d = new Date(card.due_date)
+  if (isNaN(d.getTime())) return true   // geçersiz tarih → due say
+  return d <= new Date()
 }

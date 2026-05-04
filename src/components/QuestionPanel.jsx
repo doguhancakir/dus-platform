@@ -279,10 +279,12 @@ export default function QuestionPanel({ topicId, onClose }) {
   }
 
   if (finished) {
+    const allNew = questions.every(q => !cards[q.id] || cards[q.id]?.status === 'new')
+    const hitDailyLimit = allNew && questions.length > DAILY_NEW_LIMIT
     return (
       <BattleScreen onClose={onClose}>
         <HUDBar stats={stats} currentIndex={queue.length} queueLength={queue.length} onClose={onClose} />
-        <FinishedScreen stats={stats} total={questions.length} onClose={onClose} />
+        <FinishedScreen stats={stats} total={questions.length} hitDailyLimit={hitDailyLimit} onClose={onClose} />
       </BattleScreen>
     )
   }
@@ -900,7 +902,7 @@ function CardStatusBadge({ card }) {
 }
 
 /* ── Finished Screen ── */
-function FinishedScreen({ stats, total, onClose }) {
+function FinishedScreen({ stats, total, hitDailyLimit, onClose }) {
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -950,10 +952,22 @@ function FinishedScreen({ stats, total, onClose }) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.25 }}
-          className="font-barlow font-bold text-gray-600 text-[11px] uppercase tracking-[0.25em] mb-8"
+          className="font-barlow font-bold text-gray-600 text-[11px] uppercase tracking-[0.25em] mb-2"
         >
           Bugünlük seans tamamlandı
         </motion.p>
+        {hitDailyLimit && (
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.35 }}
+            className="font-barlow font-bold text-[10px] uppercase tracking-wider mb-8 px-3 py-2"
+            style={{ background: 'rgba(240,192,64,0.06)', borderLeft: '2px solid rgba(240,192,64,0.4)', color: '#f0c040' }}
+          >
+            ◈ Günlük yeni kart limiti: {DAILY_NEW_LIMIT} — kalan sorular yarın açılır
+          </motion.p>
+        )}
+        {!hitDailyLimit && <div className="mb-8" />}
 
         {/* Stats grid */}
         <motion.div

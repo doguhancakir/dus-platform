@@ -203,7 +203,28 @@ export default function Register() {
                 placeholder="Şifreni tekrar gir"
                 value={confirm}
                 onChange={e => setConfirm(e.target.value)}
+                style={{
+                  borderColor: confirm && password
+                    ? confirm === password ? 'rgba(16,185,129,0.6)' : 'rgba(255,23,68,0.5)'
+                    : undefined,
+                }}
               />
+              {confirm && password && confirm !== password && (
+                <p
+                  className="font-barlow font-bold text-[10px] uppercase tracking-wider mt-1.5"
+                  style={{ color: '#ff6b6b' }}
+                >
+                  Şifreler eşleşmiyor
+                </p>
+              )}
+              {confirm && password && confirm === password && (
+                <p
+                  className="font-barlow font-bold text-[10px] uppercase tracking-wider mt-1.5"
+                  style={{ color: '#10b981' }}
+                >
+                  ✓ Şifreler eşleşiyor
+                </p>
+              )}
             </div>
 
             {error && (

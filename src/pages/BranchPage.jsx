@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, Navigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { ChevronLeft, CheckCircle2, Circle, ChevronRight } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
@@ -33,8 +33,10 @@ export default function BranchPage() {
   const [topicStats, setTopicStats] = useState({})
   const [loading, setLoading] = useState(true)
 
+  if (!branch) return <Navigate to="/" replace />
+
   useEffect(() => {
-    if (branch) loadData()
+    loadData()
   }, [id, user?.id])
 
   async function loadData() {

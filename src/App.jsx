@@ -1,5 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
+import { Toaster, toast } from 'sonner'
+import { useEffect, useState } from 'react'
 import Dashboard from './pages/Dashboard'
 import BranchPage from './pages/BranchPage'
 import TopicPage from './pages/TopicPage'
@@ -7,6 +9,43 @@ import AdminPage from './pages/AdminPage'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import MixedQuizPage from './pages/MixedQuizPage'
+
+// ── Offline banner ────────────────────────────────────────────────────────────
+function OfflineDetector() {
+  const [offline, setOffline] = useState(!navigator.onLine)
+
+  useEffect(() => {
+    function handleOffline() {
+      setOffline(true)
+      toast.error('İnternet bağlantısı kesildi', { id: 'offline', duration: Infinity })
+    }
+    function handleOnline() {
+      setOffline(false)
+      toast.success('Bağlantı yeniden kuruldu', { id: 'offline', duration: 2500 })
+    }
+    window.addEventListener('offline', handleOffline)
+    window.addEventListener('online', handleOnline)
+    return () => {
+      window.removeEventListener('offline', handleOffline)
+      window.removeEventListener('online', handleOnline)
+    }
+  }, [])
+
+  if (!offline) return null
+  return (
+    <div
+      style={{
+        position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999,
+        background: '#cc0000', color: '#fff',
+        fontFamily: 'Barlow, sans-serif', fontWeight: 700,
+        fontSize: 11, letterSpacing: '0.18em', textTransform: 'uppercase',
+        textAlign: 'center', padding: '6px 0',
+      }}
+    >
+      ⚠ İnternet bağlantısı yok — veriler kaydedilmiyor
+    </div>
+  )
+}
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
@@ -58,6 +97,20 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <OfflineDetector />
+        <Toaster
+          position="bottom-right"
+          toastOptions={{
+            style: {
+              background: '#0a1628',
+              border: '1px solid #1e3555',
+              color: '#d8dce8',
+              fontFamily: 'Barlow, sans-serif',
+              fontWeight: 600,
+              fontSize: 13,
+            },
+          }}
+        />
         <AppRoutes />
       </AuthProvider>
     </BrowserRouter>

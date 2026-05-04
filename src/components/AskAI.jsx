@@ -54,7 +54,14 @@ export default function AskAI({ questionContext, sessionKey, onClose }) {
       })
 
       const data = await res.json()
-      if (!res.ok || data.error) throw new Error(data.error || 'Sunucu hatası')
+      if (!res.ok || data.error) {
+        const msg = data.error || 'Sunucu hatası'
+        // Rate limit için daha anlaşılır mesaj
+        if (msg.includes('quota') || msg.includes('RESOURCE_EXHAUSTED') || msg.includes('rate')) {
+          throw new Error('Günlük ücretsiz limit doldu. Birkaç dakika bekleyip tekrar dene.')
+        }
+        throw new Error(msg)
+      }
 
       setMessages(prev => [...prev, { role: 'ai', text: data.text }])
     } catch (err) {
