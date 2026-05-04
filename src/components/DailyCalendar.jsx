@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../lib/supabase'
+import { useStudyTimer, formatTimerDisplay, formatTimerLabel } from '../contexts/StudyTimerContext'
 
 const MONTHS_TR = [
   'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
@@ -34,7 +35,11 @@ export default function DailyCalendar({ userId, todayAnswered = 0 }) {
   const [inputVal, setInputVal] = useState('')
   const [hoveredId, setHoveredId] = useState(null)
   const [goalTaskId, setGoalTaskId] = useState(null)
+  const [studySecondsDB, setStudySecondsDB] = useState(null) // geçmiş günler için DB'den
   const inputRef = useRef(null)
+
+  // Timer context — sadece bugün için canlı değer
+  const { seconds: timerSeconds, started: timerStarted } = useStudyTimer()
 
   const selKey = toKey(sel)
   const todayKey = toKey(today)
@@ -97,6 +102,20 @@ export default function DailyCalendar({ userId, todayAnswered = 0 }) {
     if (selKey === todayKey) {
       const goal = rows.find(t => t.text === GOAL_TEXT)
       if (goal) setGoalTaskId(goal.id)
+    }
+
+    // Geçmiş günler için study_sessions'dan süreyi yükle
+    // Bugün için canlı timer context'ten okunur (timerSeconds)
+    if (selKey !== todayKey) {
+      const { data: ss } = await supabase
+        .from('study_sessions')
+        .select('seconds')
+        .eq('user_id', userId)
+        .eq('date', selKey)
+        .maybeSingle()
+      setStudySecondsDB(ss?.seconds ?? 0)
+    } else {
+      setStudySecondsDB(null) // bugün → context'ten alınır
     }
   }, [userId, selKey, todayKey])
 
@@ -499,8 +518,14 @@ export default function DailyCalendar({ userId, todayAnswered = 0 }) {
       {/* ── Todo list ── */}
       <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
         <AnimatePresence initial={false}>
-          {todos.map(todo => {
+          {todos.flatMap(todo => {
             const isGoal = todo.text === GOAL_TEXT
+
+            // Çalışma süresi: bugün → live context, geçmiş → DB
+            const studySec = selKey === todayKey
+              ? (timerStarted || timerSeconds > 0 ? timerSeconds : (studySecondsDB ?? 0))
+              : (studySecondsDB ?? 0)
+            const studyLabel = formatTimerLabel(studySec)
             const checkColor  = isGoal ? '#f0c040' : '#10b981'
             const checkBorder = todo.completed
               ? `1px solid ${checkColor}`
@@ -511,7 +536,7 @@ export default function DailyCalendar({ userId, todayAnswered = 0 }) {
             const textColor = todo.completed ? '#2a3d50' : isGoal ? '#f0c040' : '#8fb0c8'
             const strikeColor = isGoal ? '#f0c040' : '#10b981'
 
-            return (
+            const todoEl = (
             <motion.div
               key={todo.id}
               layout
@@ -523,7 +548,7 @@ export default function DailyCalendar({ userId, todayAnswered = 0 }) {
                 display: 'flex', alignItems: 'flex-start', gap: 10,
                 padding: '8px 0',
                 paddingLeft: isGoal ? 6 : 0,
-                borderBottom: '1px solid rgba(18,35,55,0.9)',
+                borderBottom: isGoal && studyLabel ? 'none' : '1px solid rgba(18,35,55,0.9)',
                 borderLeft: isGoal ? '2px solid rgba(240,192,64,0.35)' : '2px solid transparent',
                 background: isGoal ? 'rgba(240,192,64,0.03)' : 'transparent',
               }}
@@ -591,6 +616,56 @@ export default function DailyCalendar({ userId, todayAnswered = 0 }) {
               </button>
             </motion.div>
             )
+
+            // Goal satırının hemen altına çalışma süresi
+            if (isGoal && studyLabel) {
+              return [
+                todoEl,
+                <motion.div
+                  key="study-time-row"
+                  layout
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '5px 6px 7px 6px',
+                    borderBottom: '1px solid rgba(18,35,55,0.9)',
+                    borderLeft: '2px solid rgba(240,192,64,0.2)',
+                    background: 'rgba(240,192,64,0.02)',
+                  }}
+                >
+                  <span style={{ fontSize: 10, color: 'rgba(240,192,64,0.5)' }}>⏱</span>
+                  <span
+                    style={{
+                      fontFamily: 'Barlow, sans-serif',
+                      fontWeight: 700,
+                      fontSize: 11,
+                      letterSpacing: '0.06em',
+                      color: 'rgba(240,192,64,0.55)',
+                    }}
+                  >
+                    {studyLabel}
+                  </span>
+                  {selKey === todayKey && timerStarted && (
+                    <span
+                      style={{
+                        fontFamily: '"Bebas Neue", sans-serif',
+                        fontSize: 11,
+                        letterSpacing: '0.08em',
+                        color: 'rgba(240,192,64,0.35)',
+                        marginLeft: 'auto',
+                      }}
+                    >
+                      {formatTimerDisplay(timerSeconds)}
+                    </span>
+                  )}
+                </motion.div>,
+              ]
+            }
+
+            return [todoEl]
           })}
         </AnimatePresence>
 

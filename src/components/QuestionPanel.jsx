@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, ChevronRight, Trophy, Zap, Sparkles, Trash2 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
+import { useStudyTimer } from '../contexts/StudyTimerContext'
 import { supabase } from '../lib/supabase'
 import { processCard, newCard, getEstimatedTime, RATINGS, CARD_STATUS, isDue } from '../lib/sm2'
 import AskAI from './AskAI'
@@ -50,6 +51,7 @@ const DAILY_NEW_LIMIT = 20
 
 export default function QuestionPanel({ topicId, onClose }) {
   const { user } = useAuth()
+  const { triggerQuestion } = useStudyTimer()
   const [questions, setQuestions] = useState([])
   const [cards, setCards] = useState({})
   const [queue, setQueue] = useState([])
@@ -211,6 +213,8 @@ export default function QuestionPanel({ topicId, onClose }) {
     } catch (err) {
       console.error('Save error:', err)
     }
+    // Timer: soru cevaplanınca başla/devam et
+    triggerQuestion()
     setAnswering(false)
   }
 

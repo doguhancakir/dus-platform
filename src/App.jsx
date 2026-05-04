@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
+import { StudyTimerProvider } from './contexts/StudyTimerContext'
 import { Toaster, toast } from 'sonner'
 import { useEffect, useState } from 'react'
 import Dashboard from './pages/Dashboard'
@@ -9,6 +10,7 @@ import AdminPage from './pages/AdminPage'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import MixedQuizPage from './pages/MixedQuizPage'
+import StudyTimerWidget from './components/StudyTimerWidget'
 
 // ── Offline banner ────────────────────────────────────────────────────────────
 function OfflineDetector() {
@@ -97,21 +99,24 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <OfflineDetector />
-        <Toaster
-          position="bottom-right"
-          toastOptions={{
-            style: {
-              background: '#0a1628',
-              border: '1px solid #1e3555',
-              color: '#d8dce8',
-              fontFamily: 'Barlow, sans-serif',
-              fontWeight: 600,
-              fontSize: 13,
-            },
-          }}
-        />
-        <AppRoutes />
+        <StudyTimerProvider>
+          <OfflineDetector />
+          <Toaster
+            position="bottom-right"
+            toastOptions={{
+              style: {
+                background: '#0a1628',
+                border: '1px solid #1e3555',
+                color: '#d8dce8',
+                fontFamily: 'Barlow, sans-serif',
+                fontWeight: 600,
+                fontSize: 13,
+              },
+            }}
+          />
+          <StudyTimerWidget />
+          <AppRoutes />
+        </StudyTimerProvider>
       </AuthProvider>
     </BrowserRouter>
   )
