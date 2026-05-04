@@ -458,6 +458,12 @@ export default function QuestionPanel({ topicId, onClose }) {
                         whileHover={!showAnswer ? { x: 6, transition: { duration: 0.1 } } : {}}
                         whileTap={!showAnswer ? { scale: 0.99 } : {}}
                         onClick={() => !showAnswer && setSelectedOption(i)}
+                        onDoubleClick={() => {
+                          if (showAnswer) return
+                          setSelectedOption(i)
+                          setShowAnswer(true)
+                          setEliminatedOptions(new Set())
+                        }}
                         disabled={showAnswer}
                         className="flex-1 text-left flex items-start gap-3 transition-all duration-200 cursor-pointer disabled:cursor-default relative overflow-hidden"
                         style={{
