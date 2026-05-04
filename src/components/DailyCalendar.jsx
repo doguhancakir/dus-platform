@@ -7,6 +7,8 @@ const MONTHS_TR = [
   'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık',
 ]
 
+const GOAL_TEXT = '50 Soru Çöz'
+
 function toKey(d) {
   const y = d.getFullYear()
   const m = String(d.getMonth() + 1).padStart(2, '0')
@@ -20,7 +22,7 @@ function getToday() {
   return d
 }
 
-export default function DailyCalendar({ userId }) {
+export default function DailyCalendar({ userId, todayAnswered = 0 }) {
   const today = getToday()
   const [sel, setSel] = useState(getToday())
   const [calOpen, setCalOpen] = useState(false)
@@ -31,6 +33,7 @@ export default function DailyCalendar({ userId }) {
   const [dayStatus, setDayStatus] = useState({})
   const [inputVal, setInputVal] = useState('')
   const [hoveredId, setHoveredId] = useState(null)
+  const [goalTaskId, setGoalTaskId] = useState(null)
   const inputRef = useRef(null)
 
   const selKey = toKey(sel)
@@ -64,17 +67,76 @@ export default function DailyCalendar({ userId }) {
 
   const loadTodos = useCallback(async () => {
     if (!userId) return
+
+    // For today: ensure "50 Soru Çöz" exists before fetching (sequential, not racy)
+    if (selKey === todayKey) {
+      const { data: existing } = await supabase
+        .from('daily_todos')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('date', todayKey)
+        .eq('text', GOAL_TEXT)
+        .maybeSingle()
+      if (!existing) {
+        await supabase
+          .from('daily_todos')
+          .insert({ user_id: userId, date: todayKey, text: GOAL_TEXT, completed: false })
+      }
+    }
+
     const { data } = await supabase
       .from('daily_todos')
       .select('*')
       .eq('user_id', userId)
       .eq('date', selKey)
       .order('created_at')
-    setTodos(data || [])
-  }, [userId, selKey])
+    const rows = data || []
+    setTodos(rows)
+
+    // Track goal task ID for auto-complete (needed even when not viewing today)
+    if (selKey === todayKey) {
+      const goal = rows.find(t => t.text === GOAL_TEXT)
+      if (goal) setGoalTaskId(goal.id)
+    }
+  }, [userId, selKey, todayKey])
 
   useEffect(() => { loadStatus() }, [loadStatus])
   useEffect(() => { loadTodos() }, [loadTodos])
+
+  // Backup: ensure goalTaskId is known even when not viewing today
+  useEffect(() => {
+    if (!userId || goalTaskId) return
+    supabase
+      .from('daily_todos')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('date', todayKey)
+      .eq('text', GOAL_TEXT)
+      .maybeSingle()
+      .then(({ data }) => { if (data?.id) setGoalTaskId(data.id) })
+  }, [userId, todayKey, goalTaskId])
+
+  // Auto-complete "50 Soru Çöz" when todayAnswered reaches 50
+  useEffect(() => {
+    if (!userId || !goalTaskId || todayAnswered < 50) return
+    supabase
+      .from('daily_todos')
+      .update({ completed: true })
+      .eq('id', goalTaskId)
+      .eq('completed', false)   // no-op if already ticked
+      .select()
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!data) return
+        // Update UI if the task is currently visible in the list
+        setTodos(prev => {
+          const found = prev.find(t => t.id === goalTaskId)
+          if (!found) return prev
+          return prev.map(t => t.id === goalTaskId ? data : t)
+        })
+        loadStatus()
+      })
+  }, [userId, goalTaskId, todayAnswered]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── mutations ─────────────────────────────────────────────────────────────
 
