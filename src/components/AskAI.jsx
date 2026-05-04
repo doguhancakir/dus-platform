@@ -1,7 +1,7 @@
 /**
- * AskAI — Soru bazlı Gemini chat paneli
+ * AskAI — Soru bazlı AI chat paneli
  * Her yeni soru → yeni session (messages sıfırlanır)
- * Gemini API key'i Supabase Edge Function üzerinden gizli tutulur
+ * Model seçimi: Gemini Flash veya Groq (Llama 3.3 70B)
  */
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -10,16 +10,33 @@ import { X, Send, Sparkles, Loader2 } from 'lucide-react'
 const EDGE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ask-ai`
 const GREETING = 'Soruyu görüyorum. Ne sormak istersin?'
 
+const MODELS = [
+  { id: 'gemini', label: 'Gemini', sub: 'Flash' },
+  { id: 'groq',   label: 'Groq',   sub: 'Llama 3.3' },
+]
+
 export default function AskAI({ questionContext, sessionKey, onClose }) {
   const [messages,    setMessages]    = useState([])   // { role:'user'|'ai', text:string }
   const [input,       setInput]       = useState('')
   const [loading,     setLoading]     = useState(false)
   const [error,       setError]       = useState(null)
   const [retryAfter,  setRetryAfter]  = useState(null) // countdown seconds
+  const [model,       setModel]       = useState(() => localStorage.getItem('askai_model') ?? 'gemini')
   const bottomRef    = useRef(null)
   const inputRef     = useRef(null)
   const retryTimerRef = useRef(null)
   const pendingMsgRef = useRef(null)  // mesajlar: retry sırasında tekrar gönderilecek
+
+  function selectModel(id) {
+    setModel(id)
+    localStorage.setItem('askai_model', id)
+    // Model değişince mevcut session'ı sıfırla
+    setMessages([])
+    setError(null)
+    setRetryAfter(null)
+    clearInterval(retryTimerRef.current)
+    pendingMsgRef.current = null
+  }
 
   // Yeni soru → session sıfırla
   useEffect(() => {
@@ -74,6 +91,7 @@ export default function AskAI({ questionContext, sessionKey, onClose }) {
         body: JSON.stringify({
           messages: msgList.map(m => ({ role: m.role === 'user' ? 'user' : 'model', text: m.text })),
           questionContext,
+          model,
         }),
       })
 
@@ -165,6 +183,42 @@ export default function AskAI({ questionContext, sessionKey, onClose }) {
         >
           <X size={13} />
         </button>
+      </div>
+
+      {/* ── Model seçici ── */}
+      <div
+        className="flex-shrink-0 flex items-center gap-[3px] px-4 py-2"
+        style={{ background: '#040910', borderBottom: '1px solid #0d2a40' }}
+      >
+        {MODELS.map(m => {
+          const active = model === m.id
+          return (
+            <button
+              key={m.id}
+              onClick={() => selectModel(m.id)}
+              className="flex items-center gap-1.5 px-3 py-1.5 transition-all duration-150"
+              style={{
+                background: active ? 'rgba(8,145,178,0.15)' : 'transparent',
+                border: active ? '1px solid rgba(8,145,178,0.45)' : '1px solid #1a3050',
+                borderLeft: active ? '2px solid #0891b2' : '2px solid transparent',
+                cursor: 'pointer',
+              }}
+            >
+              <span
+                className="font-bebas tracking-[0.12em] text-sm leading-none"
+                style={{ color: active ? '#0891b2' : '#2a4060' }}
+              >
+                {m.label}
+              </span>
+              <span
+                className="font-barlow font-bold text-[9px] uppercase tracking-wider leading-none"
+                style={{ color: active ? 'rgba(8,145,178,0.65)' : '#1a3050' }}
+              >
+                {m.sub}
+              </span>
+            </button>
+          )
+        })}
       </div>
 
       {/* ── Soru özeti ── */}
