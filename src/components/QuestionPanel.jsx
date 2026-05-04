@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, ChevronRight, Trophy, Zap, Sparkles } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
@@ -64,6 +64,8 @@ export default function QuestionPanel({ topicId, onClose }) {
   const [showAI,    setShowAI]    = useState(false)
   // Shuffled options — re-randomized on every card appearance
   const [shuffledDisplay, setShuffledDisplay] = useState(null) // { forIndex, options, correctIndex }
+  // Double-click tracking
+  const lastClickRef = useRef({ time: 0, index: -1 })
 
   function shuffleOptions(question, forIndex) {
     if (!question?.options?.length) return
@@ -457,12 +459,21 @@ export default function QuestionPanel({ topicId, onClose }) {
                       <motion.button
                         whileHover={!showAnswer ? { x: 6, transition: { duration: 0.1 } } : {}}
                         whileTap={!showAnswer ? { scale: 0.99 } : {}}
-                        onClick={() => !showAnswer && setSelectedOption(i)}
-                        onDoubleClick={() => {
+                        onClick={() => {
                           if (showAnswer) return
-                          setSelectedOption(i)
-                          setShowAnswer(true)
-                          setEliminatedOptions(new Set())
+                          const now = Date.now()
+                          const last = lastClickRef.current
+                          if (last.index === i && now - last.time < 350) {
+                            // Double-click: select + reveal
+                            setSelectedOption(i)
+                            setShowAnswer(true)
+                            setEliminatedOptions(new Set())
+                            lastClickRef.current = { time: 0, index: -1 }
+                          } else {
+                            // Single click: just select
+                            setSelectedOption(i)
+                            lastClickRef.current = { time: now, index: i }
+                          }
                         }}
                         disabled={showAnswer}
                         className="flex-1 text-left flex items-start gap-3 transition-all duration-200 cursor-pointer disabled:cursor-default relative overflow-hidden"
