@@ -591,8 +591,7 @@ export default function DailyCalendar({ userId, todayAnswered = 0 }) {
               </button>
             </motion.div>
             )
-          })
-          ))}
+          })}
         </AnimatePresence>
 
         {todos.length === 0 && (
