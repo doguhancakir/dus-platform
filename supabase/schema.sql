@@ -67,6 +67,17 @@ CREATE TABLE IF NOT EXISTS user_cards (
   PRIMARY KEY (user_id, question_id)
 );
 
+-- Günlük çalışma süreleri
+CREATE TABLE IF NOT EXISTS study_sessions (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id uuid NOT NULL,
+  date date NOT NULL,
+  seconds integer NOT NULL DEFAULT 0,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now(),
+  UNIQUE (user_id, date)
+);
+
 -- =============================================
 -- INDEXLER
 -- =============================================
@@ -110,6 +121,12 @@ CREATE POLICY "user_topic_progress_all" ON user_topic_progress FOR ALL USING (tr
 
 -- User cards: herkes kendi verisini yönetir
 CREATE POLICY "user_cards_all" ON user_cards FOR ALL USING (true);
+
+-- Study sessions: kullanıcı yalnızca kendi satırlarını görür/yazar
+ALTER TABLE study_sessions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "study_sessions_select_own" ON study_sessions FOR SELECT USING (user_id = auth.uid());
+CREATE POLICY "study_sessions_insert_own" ON study_sessions FOR INSERT WITH CHECK (user_id = auth.uid());
+CREATE POLICY "study_sessions_update_own" ON study_sessions FOR UPDATE USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
 
 -- =============================================
 -- ÖRNEK VERİ
