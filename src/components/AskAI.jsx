@@ -1,42 +1,25 @@
 /**
  * AskAI — Soru bazlı AI chat paneli
  * Her yeni soru → yeni session (messages sıfırlanır)
- * Model seçimi: Gemini Flash veya Groq (Llama 3.3 70B)
+ * Backend: 3 Gemini key pool, otomatik rotation
  */
 import { useState, useEffect, useRef } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { X, Send, Sparkles, Loader2 } from 'lucide-react'
 
 const EDGE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ask-ai`
 const GREETING = 'Soruyu görüyorum. Ne sormak istersin?'
 
-const MODELS = [
-  { id: 'gemini', label: 'Gemini', sub: 'Flash' },
-  { id: 'groq',   label: 'Groq',   sub: 'Llama 3.3' },
-]
-
 export default function AskAI({ questionContext, sessionKey, onClose }) {
-  const [messages,    setMessages]    = useState([])   // { role:'user'|'ai', text:string }
+  const [messages,    setMessages]    = useState([])
   const [input,       setInput]       = useState('')
   const [loading,     setLoading]     = useState(false)
   const [error,       setError]       = useState(null)
-  const [retryAfter,  setRetryAfter]  = useState(null) // countdown seconds
-  const [model,       setModel]       = useState(() => localStorage.getItem('askai_model') ?? 'gemini')
-  const bottomRef    = useRef(null)
-  const inputRef     = useRef(null)
+  const [retryAfter,  setRetryAfter]  = useState(null)
+  const bottomRef     = useRef(null)
+  const inputRef      = useRef(null)
   const retryTimerRef = useRef(null)
-  const pendingMsgRef = useRef(null)  // mesajlar: retry sırasında tekrar gönderilecek
-
-  function selectModel(id) {
-    setModel(id)
-    localStorage.setItem('askai_model', id)
-    // Model değişince mevcut session'ı sıfırla
-    setMessages([])
-    setError(null)
-    setRetryAfter(null)
-    clearInterval(retryTimerRef.current)
-    pendingMsgRef.current = null
-  }
+  const pendingMsgRef = useRef(null)
 
   // Yeni soru → session sıfırla
   useEffect(() => {
@@ -55,17 +38,15 @@ export default function AskAI({ questionContext, sessionKey, onClose }) {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, loading])
 
-  // Countdown başlat: retryAfter saniye geri sayar, 0'da otomatik send() çağırır
+  // Countdown: retryAfter saniye geri sayar, 0'da otomatik retry
   function startRetryCountdown(seconds, msgList) {
     setRetryAfter(seconds)
     pendingMsgRef.current = msgList
     clearInterval(retryTimerRef.current)
-
     retryTimerRef.current = setInterval(() => {
       setRetryAfter(prev => {
         if (prev <= 1) {
           clearInterval(retryTimerRef.current)
-          // 0'a ulaştı → otomatik retry
           sendWithMessages(pendingMsgRef.current)
           return null
         }
@@ -81,7 +62,7 @@ export default function AskAI({ questionContext, sessionKey, onClose }) {
     clearInterval(retryTimerRef.current)
 
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 28000) // 28sn max
+    const timeout = setTimeout(() => controller.abort(), 35000)
 
     try {
       const res = await fetch(EDGE_URL, {
@@ -91,13 +72,11 @@ export default function AskAI({ questionContext, sessionKey, onClose }) {
         body: JSON.stringify({
           messages: msgList.map(m => ({ role: m.role === 'user' ? 'user' : 'model', text: m.text })),
           questionContext,
-          model,
         }),
       })
 
       const data = await res.json()
 
-      // Rate limit → countdown + auto-retry
       if (res.status === 429 || data.error === 'RATE_LIMIT') {
         const wait = data.retryAfter ?? 60
         startRetryCountdown(Math.ceil(wait), msgList)
@@ -105,11 +84,7 @@ export default function AskAI({ questionContext, sessionKey, onClose }) {
       }
 
       if (!res.ok || data.error) {
-        const msg = data.error || 'Sunucu hatası'
-        if (msg.includes('quota') || msg.includes('RESOURCE_EXHAUSTED') || msg.includes('rate')) {
-          throw new Error('Limit doldu — birkaç dakika bekleyip tekrar dene.')
-        }
-        throw new Error(msg)
+        throw new Error(data.error || 'Sunucu hatası')
       }
 
       setMessages(prev => [...prev, { role: 'ai', text: data.text }])
@@ -128,7 +103,6 @@ export default function AskAI({ questionContext, sessionKey, onClose }) {
   async function send() {
     const text = input.trim()
     if (!text || loading || retryAfter !== null) return
-
     const userMsg = { role: 'user', text }
     const nextMessages = [...messages, userMsg]
     setMessages(nextMessages)
@@ -175,6 +149,12 @@ export default function AskAI({ questionContext, sessionKey, onClose }) {
           >
             AI'A SOR
           </span>
+          <span
+            className="font-barlow font-bold text-[9px] uppercase tracking-widest"
+            style={{ color: '#0d3550', marginLeft: 4 }}
+          >
+            Gemini Flash
+          </span>
         </div>
         <button
           onClick={onClose}
@@ -183,42 +163,6 @@ export default function AskAI({ questionContext, sessionKey, onClose }) {
         >
           <X size={13} />
         </button>
-      </div>
-
-      {/* ── Model seçici ── */}
-      <div
-        className="flex-shrink-0 flex items-center gap-[3px] px-4 py-2"
-        style={{ background: '#040910', borderBottom: '1px solid #0d2a40' }}
-      >
-        {MODELS.map(m => {
-          const active = model === m.id
-          return (
-            <button
-              key={m.id}
-              onClick={() => selectModel(m.id)}
-              className="flex items-center gap-1.5 px-3 py-1.5 transition-all duration-150"
-              style={{
-                background: active ? 'rgba(8,145,178,0.15)' : 'transparent',
-                border: active ? '1px solid rgba(8,145,178,0.45)' : '1px solid #1a3050',
-                borderLeft: active ? '2px solid #0891b2' : '2px solid transparent',
-                cursor: 'pointer',
-              }}
-            >
-              <span
-                className="font-bebas tracking-[0.12em] text-sm leading-none"
-                style={{ color: active ? '#0891b2' : '#2a4060' }}
-              >
-                {m.label}
-              </span>
-              <span
-                className="font-barlow font-bold text-[9px] uppercase tracking-wider leading-none"
-                style={{ color: active ? 'rgba(8,145,178,0.65)' : '#1a3050' }}
-              >
-                {m.sub}
-              </span>
-            </button>
-          )
-        })}
       </div>
 
       {/* ── Soru özeti ── */}
@@ -244,7 +188,6 @@ export default function AskAI({ questionContext, sessionKey, onClose }) {
 
       {/* ── Mesajlar ── */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
-        {/* Karşılama mesajı */}
         <AIBubble text={GREETING} />
 
         {messages.map((m, i) =>
@@ -350,7 +293,6 @@ function UserBubble({ text }) {
 }
 
 function AIBubble({ text }) {
-  // Basit markdown: **bold**, satır başı - madde
   const lines = text.split('\n')
   return (
     <div className="flex justify-start">
@@ -367,7 +309,6 @@ function AIBubble({ text }) {
       >
         {lines.map((line, i) => {
           if (!line.trim()) return <div key={i} className="h-1" />
-          // Bold markers
           const parts = line.split(/\*\*(.*?)\*\*/g)
           return (
             <p key={i}>
@@ -420,7 +361,7 @@ function RetryCountdownBubble({ seconds }) {
         }}
       >
         <span style={{ color: '#f0a020' }}>⏱</span>
-        {' '}API limiti aşıldı — <span style={{ color: '#f0c040', fontWeight: 700 }}>{seconds}sn</span> sonra otomatik tekrar deneniyor…
+        {' '}Tüm keyler meşgul — <span style={{ color: '#f0c040', fontWeight: 700 }}>{seconds}sn</span> sonra otomatik tekrar deneniyor…
       </div>
     </div>
   )
