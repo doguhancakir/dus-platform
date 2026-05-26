@@ -8,7 +8,7 @@ const GEMINI_KEYS = [
   Deno.env.get('GEMINI_API_KEY_3') ?? '',
 ].filter(k => k.length > 0)
 
-const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key='
+const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key='
 
 const SYSTEM_PROMPT = `Sen Davy's Dental, bir DUS (Diş Hekimliği Uzmanlık Sınavı) hazırlık platformunun yapay zeka asistanısın.
 Öğrencilerin diş hekimliği sorularını daha iyi anlamalarına ve konuları pekiştirmelerine yardımcı olursun.
