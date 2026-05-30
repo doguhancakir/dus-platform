@@ -63,7 +63,36 @@ function Handle({ pos, onMouseDown }) {
 }
 
 /* ── Text element ────────────────────────────────────────────────────── */
-function TextEl({ el, selected, editing, onMouseDown, onDoubleClick, onContentChange, onResizeMouseDown, onBlur }) {
+function DuplicateBtn({ onDuplicate }) {
+  return (
+    <div
+      onMouseDown={e => { e.stopPropagation(); e.preventDefault() }}
+      onClick={e => { e.stopPropagation(); onDuplicate() }}
+      title="Kopyala (Ctrl+C → Ctrl+V)"
+      style={{
+        position: 'absolute', top: -13, right: -13,
+        width: 22, height: 22,
+        background: '#0891b2',
+        border: '2px solid #06101e',
+        borderRadius: '50%',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        cursor: 'pointer',
+        zIndex: 9999,
+        fontSize: 14, fontWeight: 700, color: '#fff',
+        lineHeight: 1,
+        userSelect: 'none',
+        boxShadow: '0 2px 8px rgba(8,145,178,0.5)',
+        transition: 'transform 0.12s, background 0.12s',
+      }}
+      onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.15)'; e.currentTarget.style.background = '#0bb8d8' }}
+      onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.background = '#0891b2' }}
+    >
+      +
+    </div>
+  )
+}
+
+function TextEl({ el, selected, editing, onMouseDown, onDoubleClick, onContentChange, onResizeMouseDown, onBlur, onDuplicate }) {
   const ref = useRef(null)
 
   useEffect(() => {
@@ -142,26 +171,29 @@ function TextEl({ el, selected, editing, onMouseDown, onDoubleClick, onContentCh
         />
       )}
 
-      {/* Right-edge resize */}
+      {/* Duplicate btn + right-edge resize */}
       {selected && !editing && (
-        <div
-          onMouseDown={e => onResizeMouseDown(e, 'e')}
-          style={{
-            position: 'absolute', top: 0, right: -5, bottom: 0,
-            width: 10,
-            cursor: 'e-resize',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}
-        >
-          <div style={{ width: 4, height: 24, background: '#0891b2', borderRadius: 2 }} />
-        </div>
+        <>
+          <DuplicateBtn onDuplicate={onDuplicate} />
+          <div
+            onMouseDown={e => onResizeMouseDown(e, 'e')}
+            style={{
+              position: 'absolute', top: 0, right: -5, bottom: 0,
+              width: 10,
+              cursor: 'e-resize',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+          >
+            <div style={{ width: 4, height: 24, background: '#0891b2', borderRadius: 2 }} />
+          </div>
+        </>
       )}
     </div>
   )
 }
 
 /* ── Image element ───────────────────────────────────────────────────── */
-function ImageEl({ el, selected, onMouseDown, onResizeMouseDown }) {
+function ImageEl({ el, selected, onMouseDown, onResizeMouseDown, onDuplicate }) {
   return (
     <div
       style={{
@@ -171,19 +203,26 @@ function ImageEl({ el, selected, onMouseDown, onResizeMouseDown }) {
         outline: selected ? '1px solid rgba(8,145,178,0.8)' : '1px solid transparent',
         cursor: 'move',
         userSelect: 'none',
-        overflow: 'hidden',
+        overflow: 'visible',
       }}
       onMouseDown={onMouseDown}
     >
-      <img
-        src={el.src}
-        alt=""
-        draggable={false}
-        style={{ width: '100%', height: '100%', objectFit: 'fill', display: 'block', pointerEvents: 'none', userSelect: 'none' }}
-      />
-      {selected && Object.keys(HANDLES).map(h => (
-        <Handle key={h} pos={h} onMouseDown={e => onResizeMouseDown(e, h)} />
-      ))}
+      <div style={{ width: '100%', height: '100%', overflow: 'hidden' }}>
+        <img
+          src={el.src}
+          alt=""
+          draggable={false}
+          style={{ width: '100%', height: '100%', objectFit: 'fill', display: 'block', pointerEvents: 'none', userSelect: 'none' }}
+        />
+      </div>
+      {selected && (
+        <>
+          <DuplicateBtn onDuplicate={onDuplicate} />
+          {Object.keys(HANDLES).map(h => (
+            <Handle key={h} pos={h} onMouseDown={e => onResizeMouseDown(e, h)} />
+          ))}
+        </>
+      )}
     </div>
   )
 }
@@ -650,12 +689,14 @@ export default function NotesCanvas({ branchId, branchName, userId, onBack }) {
                 onContentChange={c => updateEl(el.id, { content: c })}
                 onResizeMouseDown={(e, h) => onResizeMouseDown(e, el.id, h)}
                 onBlur={() => setEditingId(null)}
+                onDuplicate={() => addEl({ ...el, x: el.x + 24, y: el.y + 24 })}
               />
             : <ImageEl
                 key={el.id} el={el}
                 selected={selectedId === el.id}
                 onMouseDown={e => onElMouseDown(e, el.id)}
                 onResizeMouseDown={(e, h) => onResizeMouseDown(e, el.id, h)}
+                onDuplicate={() => addEl({ ...el, x: el.x + 24, y: el.y + 24 })}
               />
           )}
         </div>
