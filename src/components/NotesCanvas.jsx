@@ -174,7 +174,7 @@ function TextEl({ el, selected, editing, onMouseDown, onDoubleClick, onContentCh
       {/* Duplicate btn + right-edge resize */}
       {selected && !editing && (
         <>
-          <DuplicateBtn onDuplicate={onDuplicate} />
+          {onDuplicate && <DuplicateBtn onDuplicate={onDuplicate} />}
           <div
             onMouseDown={e => onResizeMouseDown(e, 'e')}
             style={{
@@ -217,7 +217,7 @@ function ImageEl({ el, selected, onMouseDown, onResizeMouseDown, onDuplicate }) 
       </div>
       {selected && (
         <>
-          <DuplicateBtn onDuplicate={onDuplicate} />
+          {onDuplicate && <DuplicateBtn onDuplicate={onDuplicate} />}
           {Object.keys(HANDLES).map(h => (
             <Handle key={h} pos={h} onMouseDown={e => onResizeMouseDown(e, h)} />
           ))}
@@ -311,25 +311,27 @@ function Sep() {
 
 /* ── Main Canvas ─────────────────────────────────────────────────────── */
 export default function NotesCanvas({ branchId, branchName, userId, onBack }) {
-  const [elements, setElements]       = useState([])
-  const [selectedId, setSelectedId]   = useState(null)
-  const [editingId, setEditingId]     = useState(null)
+  const [elements, setElements]         = useState([])
+  const [selectedIds, setSelectedIds]   = useState(new Set())  // çoklu seçim
+  const [editingId, setEditingId]       = useState(null)
   const [canvasHeight, setCanvasHeight] = useState(CANVAS_MIN)
-  const [saving, setSaving]           = useState(false)
-  const [savedAt, setSavedAt]         = useState(null)
-  const [loading, setLoading]         = useState(true)
+  const [saving, setSaving]             = useState(false)
+  const [savedAt, setSavedAt]           = useState(null)
+  const [loading, setLoading]           = useState(true)
 
-  const canvasRef      = useRef(null)
-  const scrollRef      = useRef(null)
-  const dragRef        = useRef(null)      // active drag state
-  const elementsRef    = useRef([])
-  const heightRef      = useRef(CANVAS_MIN)
-  const saveTimerRef   = useRef(null)
-  const fileInputRef   = useRef(null)
-  const copiedElRef    = useRef(null)      // Ctrl+C ile kopyalanan element
+  const canvasRef       = useRef(null)
+  const scrollRef       = useRef(null)
+  const dragRef         = useRef(null)
+  const elementsRef     = useRef([])
+  const selectedIdsRef  = useRef(new Set())
+  const heightRef       = useRef(CANVAS_MIN)
+  const saveTimerRef    = useRef(null)
+  const fileInputRef    = useRef(null)
+  const copiedElsRef    = useRef([])      // Ctrl+C ile kopyalanan elementler (array)
 
   // Keep refs in sync
   useEffect(() => { elementsRef.current = elements }, [elements])
+  useEffect(() => { selectedIdsRef.current = selectedIds }, [selectedIds])
   useEffect(() => { heightRef.current = canvasHeight }, [canvasHeight])
 
   // ── Load ──────────────────────────────────────────────────────────
@@ -426,10 +428,9 @@ export default function NotesCanvas({ branchId, branchName, userId, onBack }) {
       }
 
       // 3. Canvas elementi kopyalanmış mı? (Ctrl+C ile)
-      if (copiedElRef.current) {
+      if (copiedElsRef.current.length > 0) {
         e.preventDefault()
-        const src = copiedElRef.current
-        addEl({ ...src, x: src.x + 24, y: src.y + 24 })
+        copiedElsRef.current.forEach(src => addEl({ ...src, x: src.x + 24, y: src.y + 24 }))
       }
     }
     window.addEventListener('paste', handler)
@@ -442,25 +443,25 @@ export default function NotesCanvas({ branchId, branchName, userId, onBack }) {
       if (editingId) return
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return
 
-      // Ctrl+C → seçili elementi kopyala
-      if ((e.ctrlKey || e.metaKey) && e.key === 'c' && selectedId) {
-        const el = elementsRef.current.find(x => x.id === selectedId)
-        if (el) {
+      // Ctrl+C → seçili elementleri kopyala
+      if ((e.ctrlKey || e.metaKey) && e.key === 'c' && selectedIdsRef.current.size > 0) {
+        const sel = elementsRef.current.filter(x => selectedIdsRef.current.has(x.id))
+        if (sel.length > 0) {
           e.preventDefault()
-          copiedElRef.current = { ...el } // tüm özellikleriyle sakla
+          copiedElsRef.current = sel.map(el => ({ ...el }))
         }
         return
       }
 
-      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId) {
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedIdsRef.current.size > 0) {
         e.preventDefault()
-        removeEl(selectedId)
+        removeSelected()
       }
-      if (e.key === 'Escape') { setSelectedId(null); setEditingId(null) }
+      if (e.key === 'Escape') { setSelectedIds(new Set()); setEditingId(null) }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [selectedId, editingId])
+  }, [editingId])
 
   // ── Global mouse move / up (drag & resize) ────────────────────────
   useEffect(() => {
@@ -471,6 +472,12 @@ export default function NotesCanvas({ branchId, branchName, userId, onBack }) {
       const dy = e.clientY - ds.startY
 
       setElements(prev => prev.map(el => {
+        // Çoklu taşıma
+        if (ds.type === 'move-multi') {
+          const orig = ds.origins[el.id]
+          if (!orig) return el
+          return { ...el, x: Math.max(0, orig.x + dx), y: Math.max(0, orig.y + dy) }
+        }
         if (el.id !== ds.id) return el
         if (ds.type === 'move') {
           return { ...el, x: Math.max(0, ds.ox + dx), y: Math.max(0, ds.oy + dy) }
@@ -525,7 +532,16 @@ export default function NotesCanvas({ branchId, branchName, userId, onBack }) {
     const newEls = elementsRef.current.filter(e => e.id !== id)
     setElements(newEls)
     scheduleSave(newEls, heightRef.current)
-    setSelectedId(null)
+    setSelectedIds(prev => { const n = new Set(prev); n.delete(id); return n })
+    setEditingId(null)
+  }
+
+  function removeSelected() {
+    const ids = selectedIdsRef.current
+    const newEls = elementsRef.current.filter(e => !ids.has(e.id))
+    setElements(newEls)
+    scheduleSave(newEls, heightRef.current)
+    setSelectedIds(new Set())
     setEditingId(null)
   }
 
@@ -538,7 +554,7 @@ export default function NotesCanvas({ branchId, branchName, userId, onBack }) {
   // ── Canvas click handlers ─────────────────────────────────────────
   function onCanvasBgMouseDown(e) {
     if (e.target !== canvasRef.current && !e.target.classList.contains('canvas-bg-dot')) return
-    setSelectedId(null)
+    setSelectedIds(new Set())
     setEditingId(null)
   }
 
@@ -548,18 +564,46 @@ export default function NotesCanvas({ branchId, branchName, userId, onBack }) {
     const x = e.clientX - rect.left
     const y = e.clientY - rect.top + (scrollRef.current?.scrollTop ?? 0)
     const el = addEl({ type: 'text', x: Math.max(0, x - 150), y: Math.max(0, y - 14) })
-    setSelectedId(el.id)
+    setSelectedIds(new Set([el.id]))
     setEditingId(el.id)
   }
 
   function onElMouseDown(e, id) {
     if (editingId === id) return
     e.stopPropagation()
-    setSelectedId(id)
     setEditingId(null)
-    const el = elementsRef.current.find(x => x.id === id)
-    if (!el) return
-    dragRef.current = { type: 'move', id, startX: e.clientX, startY: e.clientY, ox: el.x, oy: el.y }
+
+    if (e.ctrlKey || e.metaKey) {
+      // Ctrl basılı: toggle seçim
+      setSelectedIds(prev => {
+        const next = new Set(prev)
+        next.has(id) ? next.delete(id) : next.add(id)
+        return next
+      })
+      return  // drag başlatma
+    }
+
+    // Normal tıklama: eğer zaten seçiliyse seçimi koru (drag için), değilse tek seç
+    if (!selectedIdsRef.current.has(id)) {
+      setSelectedIds(new Set([id]))
+    }
+
+    // Drag başlat — seçili tüm elementlerin başlangıç pozisyonlarını kaydet
+    const currentSelected = selectedIdsRef.current.has(id)
+      ? selectedIdsRef.current
+      : new Set([id])
+
+    const origins = {}
+    elementsRef.current.forEach(el => {
+      if (currentSelected.has(el.id)) origins[el.id] = { x: el.x, y: el.y }
+    })
+
+    dragRef.current = {
+      type: 'move-multi',
+      origins,
+      startX: e.clientX,
+      startY: e.clientY,
+    }
   }
 
   function onResizeMouseDown(e, id, handle) {
@@ -592,11 +636,13 @@ export default function NotesCanvas({ branchId, branchName, userId, onBack }) {
   function addTextAtView() {
     const scrollTop = scrollRef.current?.scrollTop ?? 0
     const el = addEl({ type: 'text', x: 60, y: scrollTop + 80 })
-    setSelectedId(el.id)
+    setSelectedIds(new Set([el.id]))
     setEditingId(el.id)
   }
 
-  const selected = elements.find(e => e.id === selectedId)
+  // Toolbar için: tek seçim varsa o elementi göster, çoklu seçimde sadece sil butonu
+  const selectedArr = elements.filter(e => selectedIds.has(e.id))
+  const singleSelected = selectedArr.length === 1 ? selectedArr[0] : null
 
   // ── Render ────────────────────────────────────────────────────────
   return (
@@ -645,12 +691,27 @@ export default function NotesCanvas({ branchId, branchName, userId, onBack }) {
 
       {/* ── Element toolbar (when selected) ── */}
       <AnimatePresence>
-        {selected && (
-          <ElementToolbar
-            el={selected}
-            onChange={changes => updateEl(selected.id, changes)}
-            onDelete={() => removeEl(selected.id)}
-          />
+        {selectedIds.size > 0 && (
+          singleSelected
+            ? <ElementToolbar
+                el={singleSelected}
+                onChange={changes => updateEl(singleSelected.id, changes)}
+                onDelete={removeSelected}
+              />
+            : /* Çoklu seçim toolbar */
+              <motion.div
+                initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
+                style={{ flexShrink: 0, background: '#040c18', borderBottom: '1px solid #0d1e30', padding: '6px 14px', display: 'flex', alignItems: 'center', gap: 10 }}
+              >
+                <span style={{ fontFamily: 'Barlow', fontWeight: 700, fontSize: 11, color: '#0891b2', letterSpacing: '0.1em' }}>
+                  {selectedIds.size} ÖĞE SEÇİLİ
+                </span>
+                <span style={{ color: '#0d1e30', fontSize: 11 }}>—</span>
+                <span style={{ fontFamily: 'Barlow', fontWeight: 600, fontSize: 10, color: '#1a3050', letterSpacing: '0.08em' }}>Sürükle → hepsini taşı &nbsp;·&nbsp; Ctrl+C → kopyala</span>
+                <button onClick={removeSelected} style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4, color: '#ef4444', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', padding: '3px 8px', cursor: 'pointer', fontFamily: 'Barlow', fontWeight: 700, fontSize: 10, letterSpacing: '0.1em' }}>
+                  <Trash2 size={10} /> HEPSİNİ SİL
+                </button>
+              </motion.div>
         )}
       </AnimatePresence>
 
@@ -684,21 +745,21 @@ export default function NotesCanvas({ branchId, branchName, userId, onBack }) {
           {elements.map(el => el.type === 'text'
             ? <TextEl
                 key={el.id} el={el}
-                selected={selectedId === el.id}
+                selected={selectedIds.has(el.id)}
                 editing={editingId === el.id}
                 onMouseDown={e => onElMouseDown(e, el.id)}
-                onDoubleClick={e => { e.stopPropagation(); setSelectedId(el.id); setEditingId(el.id) }}
+                onDoubleClick={e => { e.stopPropagation(); setSelectedIds(new Set([el.id])); setEditingId(el.id) }}
                 onContentChange={c => updateEl(el.id, { content: c })}
                 onResizeMouseDown={(e, h) => onResizeMouseDown(e, el.id, h)}
                 onBlur={() => setEditingId(null)}
-                onDuplicate={() => addEl({ ...el, x: el.x + 24, y: el.y + 24 })}
+                onDuplicate={selectedIds.size === 1 ? () => addEl({ ...el, x: el.x + 24, y: el.y + 24 }) : null}
               />
             : <ImageEl
                 key={el.id} el={el}
-                selected={selectedId === el.id}
+                selected={selectedIds.has(el.id)}
                 onMouseDown={e => onElMouseDown(e, el.id)}
                 onResizeMouseDown={(e, h) => onResizeMouseDown(e, el.id, h)}
-                onDuplicate={() => addEl({ ...el, x: el.x + 24, y: el.y + 24 })}
+                onDuplicate={selectedIds.size === 1 ? () => addEl({ ...el, x: el.x + 24, y: el.y + 24 }) : null}
               />
           )}
         </div>
