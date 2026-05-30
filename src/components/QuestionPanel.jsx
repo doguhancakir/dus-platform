@@ -96,6 +96,39 @@ export default function QuestionPanel({ topicId, onClose }) {
     return () => window.removeEventListener('keydown', handler)
   }, [topicId])
 
+  // Klavye kısayolları: soru fazı 1-5, cevap fazı 1-4
+  useEffect(() => {
+    const handler = (e) => {
+      if (answering || showAI) return
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return
+      const num = parseInt(e.key)
+      if (isNaN(num) || num === 0) return
+
+      if (!showAnswer) {
+        // Soru fazı: 1-5 → şık highlight / confirm
+        const opts = shuffledDisplay?.options
+        if (!opts) return
+        const idx = num - 1
+        if (idx < 0 || idx >= opts.length) return
+        if (selectedOption === idx) {
+          // Aynı tuş tekrar → cevabı göster
+          setShowAnswer(true)
+          setEliminatedOptions(new Set())
+        } else {
+          // Yeni tuş → highlight
+          setSelectedOption(idx)
+        }
+      } else {
+        // Cevap fazı: 1=TEKRAR, 2=ZOR, 3=İYİ, 4=KOLAY
+        if (num >= 1 && num <= RATING_CONFIG.length) {
+          handleRating(RATING_CONFIG[num - 1].rating)
+        }
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [showAnswer, selectedOption, shuffledDisplay, answering, showAI, handleRating])
+
   // Re-shuffle every time a new card position is shown (same question = new shuffle)
   useEffect(() => {
     const q = questions.find(q => q.id === queue[currentIndex])
@@ -544,6 +577,23 @@ export default function QuestionPanel({ topicId, onClose }) {
                           />
                         )}
 
+                        {/* Keyboard badge */}
+                        {!showAnswer && (
+                          <span
+                            style={{
+                              position: 'absolute', top: 5, right: 7,
+                              fontFamily: 'Barlow, sans-serif', fontWeight: 700,
+                              fontSize: 9, letterSpacing: '0.05em',
+                              color: selectedOption === i ? accentColor : '#2a3a50',
+                              opacity: selectedOption === i ? 0.9 : 0.45,
+                              transition: 'color 0.2s, opacity 0.2s',
+                              pointerEvents: 'none',
+                            }}
+                          >
+                            [{i + 1}]
+                          </span>
+                        )}
+
                         {/* Letter */}
                         <span
                           className="font-barlow font-bold text-[11px] mt-0.5 w-5 flex-shrink-0 tracking-wider"
@@ -752,6 +802,16 @@ export default function QuestionPanel({ topicId, onClose }) {
                       clipPath: 'polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px))',
                     }}
                   >
+                    <span
+                      style={{
+                        fontFamily: 'Barlow, sans-serif', fontWeight: 700,
+                        fontSize: 8, letterSpacing: '0.05em',
+                        color: cfg.textColor, opacity: 0.35,
+                        lineHeight: 1, marginBottom: -2,
+                      }}
+                    >
+                      [{idx + 1}]
+                    </span>
                     <span
                       className="font-bebas text-sm tracking-[0.12em] leading-none"
                       style={{ color: cfg.textColor }}
