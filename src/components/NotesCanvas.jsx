@@ -562,7 +562,7 @@ export default function NotesCanvas({ branchId, branchName, userId, onBack }) {
     if (e.target !== canvasRef.current && !e.target.classList.contains('canvas-bg-dot')) return
     const rect = canvasRef.current.getBoundingClientRect()
     const x = e.clientX - rect.left
-    const y = e.clientY - rect.top + (scrollRef.current?.scrollTop ?? 0)
+    const y = e.clientY - rect.top  // rect zaten scroll'u içeriyor, scrollTop ekleme
     const el = addEl({ type: 'text', x: Math.max(0, x - 150), y: Math.max(0, y - 14) })
     setSelectedIds(new Set([el.id]))
     setEditingId(el.id)
