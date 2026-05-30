@@ -10,6 +10,7 @@ import AdminPage from './pages/AdminPage'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import MixedQuizPage from './pages/MixedQuizPage'
+import NotesPage from './pages/NotesPage'
 import StudyTimerWidget from './components/StudyTimerWidget'
 
 // ── Offline banner ────────────────────────────────────────────────────────────
@@ -87,6 +88,8 @@ function AppRoutes() {
       <Route path="/branch/:id" element={<BranchPage />} />
       <Route path="/topic/:id" element={<TopicPage />} />
       <Route path="/mixed-quiz" element={<MixedQuizPage />} />
+      <Route path="/notes" element={<NotesPage />} />
+      <Route path="/notes/:branchId" element={<NotesPage />} />
       <Route path="/admin" element={
         <ProtectedRoute><AdminPage /></ProtectedRoute>
       } />

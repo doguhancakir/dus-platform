@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
@@ -25,6 +25,7 @@ const cardVariants = {
 }
 
 export default function Dashboard() {
+  const navigate = useNavigate()
   const { user } = useAuth()
   const [branchStats, setBranchStats] = useState({})
   const [todayAnswered, setTodayAnswered] = useState(0)
@@ -292,16 +293,37 @@ export default function Dashboard() {
               )}
             </motion.div>
 
-            {/* 3D Model Button */}
+            {/* Buttons row */}
             <motion.div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.35, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-              className="mt-6 relative z-10"
+              className="mt-6 relative z-10 flex flex-col gap-2"
             >
+              {/* Notlarım */}
+              {user && (
+                <button
+                  onClick={() => navigate('/notes')}
+                  className="flex items-center gap-3 font-barlow font-bold text-[11px] tracking-[0.22em] uppercase px-5 py-3 transition-all duration-200 w-fit"
+                  style={{
+                    color: '#f0c040',
+                    background: 'rgba(240,192,64,0.06)',
+                    border: '1px solid rgba(240,192,64,0.25)',
+                    clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(240,192,64,0.14)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'rgba(240,192,64,0.06)'}
+                >
+                  <span style={{ fontSize: '1rem' }}>📓</span>
+                  Notlarım
+                  <span style={{ opacity: 0.5 }}>→</span>
+                </button>
+              )}
+
+              {/* 3D Model Button */}
               <button
                 onClick={() => setShowModel(true)}
-                className="group flex items-center gap-3 font-barlow font-bold text-[11px] tracking-[0.22em] uppercase px-5 py-3 transition-all duration-200"
+                className="group flex items-center gap-3 font-barlow font-bold text-[11px] tracking-[0.22em] uppercase px-5 py-3 transition-all duration-200 w-fit"
                 style={{
                   color: '#0891b2',
                   background: 'rgba(8,145,178,0.08)',
