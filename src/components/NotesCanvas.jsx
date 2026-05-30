@@ -287,6 +287,7 @@ export default function NotesCanvas({ branchId, branchName, userId, onBack }) {
   const heightRef      = useRef(CANVAS_MIN)
   const saveTimerRef   = useRef(null)
   const fileInputRef   = useRef(null)
+  const copiedElRef    = useRef(null)      // Ctrl+C ile kopyalanan element
 
   // Keep refs in sync
   useEffect(() => { elementsRef.current = elements }, [elements])
@@ -358,17 +359,39 @@ export default function NotesCanvas({ branchId, branchName, userId, onBack }) {
   // ── Paste (Ctrl+V) ────────────────────────────────────────────────
   useEffect(() => {
     const handler = async (e) => {
-      if (editingId) return  // text edit mode → let browser handle
+      if (editingId) return  // text edit mode → tarayıcı halleder
       const items = [...(e.clipboardData?.items ?? [])]
-      const imgItem = items.find(i => i.type.startsWith('image/'))
-      if (!imgItem) return
-      e.preventDefault()
-      const file = imgItem.getAsFile()
-      const { src, w, h } = await compressImage(file)
       const scrollTop = scrollRef.current?.scrollTop ?? 0
-      const maxW = Math.min(w, 500)
-      const ratio = h / w
-      addEl({ type: 'image', src, width: maxW, height: Math.round(maxW * ratio), x: 60, y: scrollTop + 80 })
+
+      // 1. Görsel var mı?
+      const imgItem = items.find(i => i.type.startsWith('image/'))
+      if (imgItem) {
+        e.preventDefault()
+        const file = imgItem.getAsFile()
+        const { src, w, h } = await compressImage(file)
+        const maxW = Math.min(w, 500)
+        const ratio = h / w
+        addEl({ type: 'image', src, width: maxW, height: Math.round(maxW * ratio), x: 60, y: scrollTop + 80 })
+        return
+      }
+
+      // 2. Metin var mı?
+      const textItem = items.find(i => i.type === 'text/plain')
+      if (textItem) {
+        e.preventDefault()
+        textItem.getAsString(text => {
+          if (!text.trim()) return
+          addEl({ type: 'text', content: text.trim(), x: 60, y: scrollTop + 80 })
+        })
+        return
+      }
+
+      // 3. Canvas elementi kopyalanmış mı? (Ctrl+C ile)
+      if (copiedElRef.current) {
+        e.preventDefault()
+        const src = copiedElRef.current
+        addEl({ ...src, x: src.x + 24, y: src.y + 24 })
+      }
     }
     window.addEventListener('paste', handler)
     return () => window.removeEventListener('paste', handler)
@@ -379,6 +402,17 @@ export default function NotesCanvas({ branchId, branchName, userId, onBack }) {
     const handler = (e) => {
       if (editingId) return
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return
+
+      // Ctrl+C → seçili elementi kopyala
+      if ((e.ctrlKey || e.metaKey) && e.key === 'c' && selectedId) {
+        const el = elementsRef.current.find(x => x.id === selectedId)
+        if (el) {
+          e.preventDefault()
+          copiedElRef.current = { ...el } // tüm özellikleriyle sakla
+        }
+        return
+      }
+
       if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId) {
         e.preventDefault()
         removeEl(selectedId)
