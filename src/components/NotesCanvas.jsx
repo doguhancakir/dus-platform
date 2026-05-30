@@ -503,15 +503,17 @@ export default function NotesCanvas({ branchId, branchName, userId, onBack }) {
 
   // ── Element helpers ───────────────────────────────────────────────
   function addEl(partial) {
+    // id her zaman taze üret — partial içinden gelen id'yi düşür
+    const { id: _drop, ...rest } = partial
     const el = {
       id: uid(),
       zIndex: elementsRef.current.length + 1,
-      ...(partial.type === 'text' ? {
+      ...(rest.type === 'text' ? {
         content: '', color: '#e2e8f0', fontSize: 16,
         fontWeight: 'normal', fontStyle: 'normal', textDecoration: 'none',
         width: 300,
       } : {}),
-      ...partial,
+      ...rest,
     }
     const newEls = [...elementsRef.current, el]
     setElements(newEls)
