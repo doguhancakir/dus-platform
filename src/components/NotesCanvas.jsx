@@ -235,8 +235,10 @@ function ElementToolbar({ el, onChange, onDelete, onColorChange }) {
       exit={{ opacity: 0, y: -6 }}
       transition={{ duration: 0.18 }}
       style={{
-        flexShrink: 0, background: '#040c18',
+        position: 'absolute', top: 0, left: 0, right: 0, zIndex: 20,
+        background: 'rgba(4,12,24,0.97)',
         borderBottom: '1px solid #0d1e30',
+        backdropFilter: 'blur(4px)',
         padding: '6px 14px',
         display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
       }}
@@ -797,35 +799,36 @@ export default function NotesCanvas({ branchId, branchName, userId, onBack }) {
         </div>
       </div>
 
-      {/* ── Element toolbar (when selected) ── */}
-      <AnimatePresence>
-        {selectedIds.size > 0 && (
-          singleSelected
-            ? <ElementToolbar
-                el={singleSelected}
-                onChange={changes => updateEl(singleSelected.id, changes)}
-                onDelete={removeSelected}
-                onColorChange={handleColorChange}
-              />
-            : /* Çoklu seçim toolbar */
-              <motion.div
-                initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
-                style={{ flexShrink: 0, background: '#040c18', borderBottom: '1px solid #0d1e30', padding: '6px 14px', display: 'flex', alignItems: 'center', gap: 10 }}
-              >
-                <span style={{ fontFamily: 'Barlow', fontWeight: 700, fontSize: 11, color: '#0891b2', letterSpacing: '0.1em' }}>
-                  {selectedIds.size} ÖĞE SEÇİLİ
-                </span>
-                <span style={{ color: '#0d1e30', fontSize: 11 }}>—</span>
-                <span style={{ fontFamily: 'Barlow', fontWeight: 600, fontSize: 10, color: '#1a3050', letterSpacing: '0.08em' }}>Sürükle → hepsini taşı &nbsp;·&nbsp; Ctrl+C → kopyala</span>
-                <button onClick={removeSelected} style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4, color: '#ef4444', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', padding: '3px 8px', cursor: 'pointer', fontFamily: 'Barlow', fontWeight: 700, fontSize: 10, letterSpacing: '0.1em' }}>
-                  <Trash2 size={10} /> HEPSİNİ SİL
-                </button>
-              </motion.div>
-        )}
-      </AnimatePresence>
+      {/* ── Canvas scroll area + toolbar overlay ── */}
+      <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
 
-      {/* ── Canvas scroll area ── */}
-      <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', overflowX: 'auto' }}>
+        {/* Toolbar: position absolute → canvas kaymaz */}
+        <AnimatePresence>
+          {selectedIds.size > 0 && (
+            singleSelected
+              ? <ElementToolbar
+                  el={singleSelected}
+                  onChange={changes => updateEl(singleSelected.id, changes)}
+                  onDelete={removeSelected}
+                  onColorChange={handleColorChange}
+                />
+              : <motion.div
+                  initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
+                  style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 20, background: 'rgba(4,12,24,0.97)', borderBottom: '1px solid #0d1e30', padding: '6px 14px', display: 'flex', alignItems: 'center', gap: 10, backdropFilter: 'blur(4px)' }}
+                >
+                  <span style={{ fontFamily: 'Barlow', fontWeight: 700, fontSize: 11, color: '#0891b2', letterSpacing: '0.1em' }}>
+                    {selectedIds.size} ÖĞE SEÇİLİ
+                  </span>
+                  <span style={{ color: '#0d1e30', fontSize: 11 }}>—</span>
+                  <span style={{ fontFamily: 'Barlow', fontWeight: 600, fontSize: 10, color: '#1a3050', letterSpacing: '0.08em' }}>Sürükle → hepsini taşı · Ctrl+C → kopyala</span>
+                  <button onClick={removeSelected} style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4, color: '#ef4444', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', padding: '3px 8px', cursor: 'pointer', fontFamily: 'Barlow', fontWeight: 700, fontSize: 10, letterSpacing: '0.1em' }}>
+                    <Trash2 size={10} /> HEPSİNİ SİL
+                  </button>
+                </motion.div>
+          )}
+        </AnimatePresence>
+
+      <div ref={scrollRef} style={{ position: 'absolute', inset: 0, overflowY: 'auto', overflowX: 'auto' }}>
         <div
           ref={canvasRef}
           style={{ position: 'relative', width: '100%', minWidth: 900, minHeight: canvasHeight }}
@@ -891,6 +894,7 @@ export default function NotesCanvas({ branchId, branchName, userId, onBack }) {
               />
           )}
         </div>
+      </div>
       </div>
     </div>
   )
