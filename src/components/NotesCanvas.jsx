@@ -92,17 +92,20 @@ function DuplicateBtn({ onDuplicate }) {
   )
 }
 
-function TextEl({ el, selected, editing, onMouseDown, onDoubleClick, onContentChange, onResizeMouseDown, onBlur, onDuplicate }) {
+function TextEl({ el, selected, editing, onMouseDown, onDoubleClick, onContentChange, onResizeMouseDown, onBlur, onDuplicate, onEditRef, onWidthChange }) {
   const ref = useRef(null)
 
+  // Editing moduna girince DOM ref'ini üst bileşene bildir
   useEffect(() => {
-    if (!editing || !ref.current) return
-    ref.current.focus()
-    // set initial content
-    if (ref.current.innerText !== (el.content ?? '')) {
-      ref.current.innerText = el.content ?? ''
+    if (!ref.current) return
+    onEditRef?.(editing ? ref.current : null)
+    if (!editing) return
+
+    // innerHTML ile içeriği yükle (renk span'leri korunur)
+    if (ref.current.innerHTML !== (el.content ?? '')) {
+      ref.current.innerHTML = el.content ?? ''
     }
-    // cursor at end
+    ref.current.focus()
     try {
       const range = document.createRange()
       range.selectNodeContents(ref.current)
@@ -113,11 +116,26 @@ function TextEl({ el, selected, editing, onMouseDown, onDoubleClick, onContentCh
     } catch {}
   }, [editing])
 
+  const baseTextStyle = {
+    fontFamily: 'Barlow, sans-serif',
+    fontSize: el.fontSize ?? 16,
+    fontWeight: el.fontWeight ?? 'normal',
+    fontStyle: el.fontStyle ?? 'normal',
+    textDecoration: el.textDecoration ?? 'none',
+    color: el.color ?? '#e2e8f0',
+    padding: '4px 6px',
+    lineHeight: 1.5,
+    minHeight: 28,
+  }
+
   return (
     <div
       style={{
         position: 'absolute', left: el.x, top: el.y,
-        width: el.width, minHeight: 28,
+        // Editing: genişlik içeriğe göre uzar; değilse kayıtlı genişlik
+        width: editing ? 'fit-content' : el.width,
+        minWidth: editing ? Math.max(el.width ?? 80, 80) : (el.width ?? 80),
+        minHeight: 28,
         zIndex: el.zIndex,
         outline: selected ? '1px solid rgba(8,145,178,0.8)' : '1px solid transparent',
         cursor: editing ? 'text' : 'move',
@@ -127,47 +145,29 @@ function TextEl({ el, selected, editing, onMouseDown, onDoubleClick, onContentCh
       onMouseDown={onMouseDown}
       onDoubleClick={onDoubleClick}
     >
-      {/* Non-edit display */}
+      {/* Non-edit: HTML içerik olarak göster */}
       {!editing && (
-        <div style={{
-          fontFamily: 'Barlow, sans-serif',
-          fontSize: el.fontSize ?? 16,
-          fontWeight: el.fontWeight ?? 'normal',
-          fontStyle: el.fontStyle ?? 'normal',
-          textDecoration: el.textDecoration ?? 'none',
-          color: el.color ?? '#e2e8f0',
-          wordBreak: 'break-word',
-          whiteSpace: 'pre-wrap',
-          padding: '4px 6px',
-          lineHeight: 1.5,
-          minHeight: 28,
-        }}>
-          {el.content || <span style={{ opacity: 0.18, fontStyle: 'italic', fontSize: 13 }}>Yazmak için çift tıkla…</span>}
+        <div style={{ ...baseTextStyle, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+          {el.content
+            ? <span dangerouslySetInnerHTML={{ __html: el.content }} />
+            : <span style={{ opacity: 0.18, fontStyle: 'italic', fontSize: 13 }}>Yazmak için çift tıkla…</span>
+          }
         </div>
       )}
 
-      {/* Edit mode */}
+      {/* Edit mode: white-space: pre → yatay uzar, Enter = yeni satır */}
       {editing && (
         <div
           ref={ref}
           contentEditable
           suppressContentEditableWarning
-          onInput={e => onContentChange(e.currentTarget.innerText)}
-          onBlur={onBlur}
-          style={{
-            fontFamily: 'Barlow, sans-serif',
-            fontSize: el.fontSize ?? 16,
-            fontWeight: el.fontWeight ?? 'normal',
-            fontStyle: el.fontStyle ?? 'normal',
-            textDecoration: el.textDecoration ?? 'none',
-            color: el.color ?? '#e2e8f0',
-            wordBreak: 'break-word',
-            whiteSpace: 'pre-wrap',
-            padding: '4px 6px',
-            lineHeight: 1.5,
-            minHeight: 28,
-            outline: 'none',
+          onInput={e => onContentChange(e.currentTarget.innerHTML)}
+          onBlur={() => {
+            // Gerçek genişliği ölç ve kaydet
+            if (ref.current) onWidthChange?.(ref.current.scrollWidth + 12)
+            onBlur()
           }}
+          style={{ ...baseTextStyle, whiteSpace: 'pre', outline: 'none' }}
         />
       )}
 
@@ -179,8 +179,7 @@ function TextEl({ el, selected, editing, onMouseDown, onDoubleClick, onContentCh
             onMouseDown={e => onResizeMouseDown(e, 'e')}
             style={{
               position: 'absolute', top: 0, right: -5, bottom: 0,
-              width: 10,
-              cursor: 'e-resize',
+              width: 10, cursor: 'e-resize',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}
           >
@@ -228,7 +227,7 @@ function ImageEl({ el, selected, onMouseDown, onResizeMouseDown, onDuplicate }) 
 }
 
 /* ── Element toolbar ─────────────────────────────────────────────────── */
-function ElementToolbar({ el, onChange, onDelete }) {
+function ElementToolbar({ el, onChange, onDelete, onColorChange }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: -6 }}
@@ -262,15 +261,19 @@ function ElementToolbar({ el, onChange, onDelete }) {
 
           <Sep />
 
-          {/* Color presets */}
+          {/* Color presets — onMouseDown + preventDefault: contentEditable odağı kaybolmaz */}
           {COLORS.map(c => (
-            <button key={c} onClick={() => onChange({ color: c })} style={{
-              width: 16, height: 16, background: c, border: el.color === c ? '2px solid #0891b2' : '1px solid #1a2d45',
-              cursor: 'pointer', flexShrink: 0, borderRadius: 2,
-            }} />
+            <button key={c}
+              onMouseDown={e => { e.preventDefault(); onColorChange ? onColorChange(c) : onChange({ color: c }) }}
+              style={{
+                width: 16, height: 16, background: c, border: el.color === c ? '2px solid #0891b2' : '1px solid #1a2d45',
+                cursor: 'pointer', flexShrink: 0, borderRadius: 2,
+              }} />
           ))}
-          <input type="color" value={el.color ?? '#e2e8f0'} onChange={e => onChange({ color: e.target.value })}
-            title="Özel renk"
+          {/* Özel renk picker — dialog açıyor, seçim kayboluyor, tüm elementi renklendirir */}
+          <input type="color" value={el.color ?? '#e2e8f0'}
+            onChange={e => onChange({ color: e.target.value })}
+            title="Özel renk (tüm metni değiştirir)"
             style={{ width: 20, height: 20, padding: 0, border: '1px solid #1a2d45', background: 'transparent', cursor: 'pointer', borderRadius: 2 }} />
         </>
       )}
@@ -329,11 +332,12 @@ export default function NotesCanvas({ branchId, branchName, userId, onBack }) {
   const saveTimerRef       = useRef(null)
   const fileInputRef       = useRef(null)
   const copiedElsRef       = useRef([])
-  const selDragRef         = useRef(null)  // rubber-band başlangıç bilgisi
-  const selBoxRef          = useRef(null)  // selBox'ın ref kopyası (callback'lerde kullanım)
-  const historyRef         = useRef([[]])  // undo stack: element snapshot'ları
-  const historyIdxRef      = useRef(0)    // şu anki konum
-  const textHistTimerRef   = useRef(null) // metin yazımı için debounced history push
+  const selDragRef         = useRef(null)
+  const selBoxRef          = useRef(null)
+  const historyRef         = useRef([[]])
+  const historyIdxRef      = useRef(0)
+  const textHistTimerRef   = useRef(null)
+  const editingDomRef      = useRef(null)  // düzenlenen contentEditable DOM node'u
 
   // Keep refs in sync
   useEffect(() => { elementsRef.current = elements }, [elements])
@@ -381,6 +385,22 @@ export default function NotesCanvas({ branchId, branchName, userId, onBack }) {
     scheduleSave(prev, heightRef.current)
     setSelectedIds(new Set())
     setEditingId(null)
+  }
+
+  // ── Kısmi renk değişimi ───────────────────────────────────────────
+  // Seçili metin varsa → sadece seçime uygula (execCommand)
+  // Yoksa → tüm element rengini değiştir
+  function handleColorChange(color) {
+    if (!singleSelected) return
+    if (editingId === singleSelected.id && editingDomRef.current) {
+      const sel = window.getSelection()
+      if (sel && !sel.isCollapsed) {
+        document.execCommand('foreColor', false, color)
+        updateEl(singleSelected.id, { content: editingDomRef.current.innerHTML })
+        return
+      }
+    }
+    updateEl(singleSelected.id, { color })
   }
 
   // ── Rubber-band helper ────────────────────────────────────────────
@@ -785,6 +805,7 @@ export default function NotesCanvas({ branchId, branchName, userId, onBack }) {
                 el={singleSelected}
                 onChange={changes => updateEl(singleSelected.id, changes)}
                 onDelete={removeSelected}
+                onColorChange={handleColorChange}
               />
             : /* Çoklu seçim toolbar */
               <motion.div
@@ -857,6 +878,8 @@ export default function NotesCanvas({ branchId, branchName, userId, onBack }) {
                 }}
                 onResizeMouseDown={(e, h) => onResizeMouseDown(e, el.id, h)}
                 onBlur={() => setEditingId(null)}
+                onEditRef={domNode => { editingDomRef.current = domNode }}
+                onWidthChange={w => updateEl(el.id, { width: w })}
                 onDuplicate={selectedIds.size === 1 ? () => addEl({ ...el, x: el.x + 24, y: el.y + 24 }) : null}
               />
             : <ImageEl
