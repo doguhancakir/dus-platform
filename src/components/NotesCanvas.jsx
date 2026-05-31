@@ -312,22 +312,28 @@ function Sep() {
 /* ── Main Canvas ─────────────────────────────────────────────────────── */
 export default function NotesCanvas({ branchId, branchName, userId, onBack }) {
   const [elements, setElements]         = useState([])
-  const [selectedIds, setSelectedIds]   = useState(new Set())  // çoklu seçim
+  const [selectedIds, setSelectedIds]   = useState(new Set())
   const [editingId, setEditingId]       = useState(null)
   const [canvasHeight, setCanvasHeight] = useState(CANVAS_MIN)
   const [saving, setSaving]             = useState(false)
   const [savedAt, setSavedAt]           = useState(null)
   const [loading, setLoading]           = useState(true)
+  const [selBox, setSelBox]             = useState(null) // rubber-band seçim kutusu
 
-  const canvasRef       = useRef(null)
-  const scrollRef       = useRef(null)
-  const dragRef         = useRef(null)
-  const elementsRef     = useRef([])
-  const selectedIdsRef  = useRef(new Set())
-  const heightRef       = useRef(CANVAS_MIN)
-  const saveTimerRef    = useRef(null)
-  const fileInputRef    = useRef(null)
-  const copiedElsRef    = useRef([])      // Ctrl+C ile kopyalanan elementler (array)
+  const canvasRef          = useRef(null)
+  const scrollRef          = useRef(null)
+  const dragRef            = useRef(null)
+  const elementsRef        = useRef([])
+  const selectedIdsRef     = useRef(new Set())
+  const heightRef          = useRef(CANVAS_MIN)
+  const saveTimerRef       = useRef(null)
+  const fileInputRef       = useRef(null)
+  const copiedElsRef       = useRef([])
+  const selDragRef         = useRef(null)  // rubber-band başlangıç bilgisi
+  const selBoxRef          = useRef(null)  // selBox'ın ref kopyası (callback'lerde kullanım)
+  const historyRef         = useRef([[]])  // undo stack: element snapshot'ları
+  const historyIdxRef      = useRef(0)    // şu anki konum
+  const textHistTimerRef   = useRef(null) // metin yazımı için debounced history push
 
   // Keep refs in sync
   useEffect(() => { elementsRef.current = elements }, [elements])
@@ -345,9 +351,10 @@ export default function NotesCanvas({ branchId, branchName, userId, onBack }) {
       .eq('branch_id', branchId)
       .maybeSingle()
       .then(({ data }) => {
-        if (data?.elements?.length) {
-          setElements(data.elements)
-        }
+        const loaded = data?.elements?.length ? data.elements : []
+        setElements(loaded)
+        historyRef.current = [loaded.map(el => ({ ...el }))]
+        historyIdxRef.current = 0
         if (data?.canvas_height) {
           const h = Math.max(data.canvas_height, CANVAS_MIN)
           setCanvasHeight(h)
@@ -356,6 +363,35 @@ export default function NotesCanvas({ branchId, branchName, userId, onBack }) {
         setLoading(false)
       })
   }, [branchId, userId])
+
+  // ── History (undo) ────────────────────────────────────────────────
+  function pushHistory(els) {
+    // Gelecekteki geçmişi sil (yeni aksiyon)
+    historyRef.current = historyRef.current.slice(0, historyIdxRef.current + 1)
+    historyRef.current.push(els.map(el => ({ ...el })))
+    if (historyRef.current.length > 60) historyRef.current.shift()
+    else historyIdxRef.current = historyRef.current.length - 1
+  }
+
+  function undo() {
+    if (historyIdxRef.current <= 0) return
+    historyIdxRef.current -= 1
+    const prev = historyRef.current[historyIdxRef.current]
+    setElements(prev)
+    scheduleSave(prev, heightRef.current)
+    setSelectedIds(new Set())
+    setEditingId(null)
+  }
+
+  // ── Rubber-band helper ────────────────────────────────────────────
+  function overlaps(el, box) {
+    const elW = el.width ?? 300
+    const elH = typeof el.height === 'number' ? el.height : 40
+    return (
+      el.x < box.x + box.w && el.x + elW > box.x &&
+      el.y < box.y + box.h && el.y + elH > box.y
+    )
+  }
 
   // ── Save ──────────────────────────────────────────────────────────
   function scheduleSave(els, h) {
@@ -443,6 +479,13 @@ export default function NotesCanvas({ branchId, branchName, userId, onBack }) {
       if (editingId) return
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return
 
+      // Ctrl+Z → geri al
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+        e.preventDefault()
+        undo()
+        return
+      }
+
       // Ctrl+C → seçili elementleri kopyala
       if ((e.ctrlKey || e.metaKey) && e.key === 'c' && selectedIdsRef.current.size > 0) {
         const sel = elementsRef.current.filter(x => selectedIdsRef.current.has(x.id))
@@ -466,6 +509,26 @@ export default function NotesCanvas({ branchId, branchName, userId, onBack }) {
   // ── Global mouse move / up (drag & resize) ────────────────────────
   useEffect(() => {
     const onMove = (e) => {
+      // Rubber-band selection
+      if (selDragRef.current) {
+        const s = selDragRef.current
+        const adx = Math.abs(e.clientX - s.startClientX)
+        const ady = Math.abs(e.clientY - s.startClientY)
+        if (!s.active && (adx > 5 || ady > 5)) s.active = true
+        if (s.active && canvasRef.current) {
+          const rect = canvasRef.current.getBoundingClientRect()
+          const ecx = e.clientX - rect.left
+          const ecy = e.clientY - rect.top
+          const box = {
+            x: Math.min(s.cx, ecx), y: Math.min(s.cy, ecy),
+            w: Math.abs(ecx - s.cx),  h: Math.abs(ecy - s.cy),
+          }
+          selBoxRef.current = box
+          setSelBox(box)
+        }
+        return // rubber-band aktifken drag işlemi yapma
+      }
+
       const ds = dragRef.current
       if (!ds) return
       const dx = e.clientX - ds.startX
@@ -496,7 +559,19 @@ export default function NotesCanvas({ branchId, branchName, userId, onBack }) {
     const onUp = () => {
       if (dragRef.current) {
         dragRef.current = null
+        pushHistory(elementsRef.current)
         scheduleSave(elementsRef.current, heightRef.current)
+      }
+      // Rubber-band: seçim kutusunu tamamla
+      if (selDragRef.current) {
+        const box = selBoxRef.current
+        if (selDragRef.current.active && box && box.w > 4 && box.h > 4) {
+          const matched = elementsRef.current.filter(el => overlaps(el, box))
+          if (matched.length > 0) setSelectedIds(new Set(matched.map(x => x.id)))
+        }
+        selDragRef.current = null
+        selBoxRef.current = null
+        setSelBox(null)
       }
     }
 
@@ -524,6 +599,7 @@ export default function NotesCanvas({ branchId, branchName, userId, onBack }) {
     }
     const newEls = [...elementsRef.current, el]
     setElements(newEls)
+    pushHistory(newEls)
     scheduleSave(newEls, heightRef.current)
     return el
   }
@@ -531,6 +607,7 @@ export default function NotesCanvas({ branchId, branchName, userId, onBack }) {
   function removeEl(id) {
     const newEls = elementsRef.current.filter(e => e.id !== id)
     setElements(newEls)
+    pushHistory(newEls)
     scheduleSave(newEls, heightRef.current)
     setSelectedIds(prev => { const n = new Set(prev); n.delete(id); return n })
     setEditingId(null)
@@ -540,6 +617,7 @@ export default function NotesCanvas({ branchId, branchName, userId, onBack }) {
     const ids = selectedIdsRef.current
     const newEls = elementsRef.current.filter(e => !ids.has(e.id))
     setElements(newEls)
+    pushHistory(newEls)
     scheduleSave(newEls, heightRef.current)
     setSelectedIds(new Set())
     setEditingId(null)
@@ -556,6 +634,16 @@ export default function NotesCanvas({ branchId, branchName, userId, onBack }) {
     if (e.target !== canvasRef.current && !e.target.classList.contains('canvas-bg-dot')) return
     setSelectedIds(new Set())
     setEditingId(null)
+    // Rubber-band başlat
+    if (canvasRef.current) {
+      const rect = canvasRef.current.getBoundingClientRect()
+      selDragRef.current = {
+        startClientX: e.clientX, startClientY: e.clientY,
+        cx: e.clientX - rect.left,
+        cy: e.clientY - rect.top,
+        active: false,
+      }
+    }
   }
 
   function onCanvasBgDblClick(e) {
@@ -741,6 +829,19 @@ export default function NotesCanvas({ branchId, branchName, userId, onBack }) {
             </div>
           )}
 
+          {/* Rubber-band seçim kutusu */}
+          {selBox && (
+            <div style={{
+              position: 'absolute',
+              left: selBox.x, top: selBox.y,
+              width: selBox.w, height: selBox.h,
+              border: '1px dashed rgba(8,145,178,0.9)',
+              background: 'rgba(8,145,178,0.06)',
+              pointerEvents: 'none',
+              zIndex: 9998,
+            }} />
+          )}
+
           {/* Elements */}
           {elements.map(el => el.type === 'text'
             ? <TextEl
@@ -749,7 +850,11 @@ export default function NotesCanvas({ branchId, branchName, userId, onBack }) {
                 editing={editingId === el.id}
                 onMouseDown={e => onElMouseDown(e, el.id)}
                 onDoubleClick={e => { e.stopPropagation(); setSelectedIds(new Set([el.id])); setEditingId(el.id) }}
-                onContentChange={c => updateEl(el.id, { content: c })}
+                onContentChange={c => {
+                  updateEl(el.id, { content: c })
+                  clearTimeout(textHistTimerRef.current)
+                  textHistTimerRef.current = setTimeout(() => pushHistory(elementsRef.current), 1000)
+                }}
                 onResizeMouseDown={(e, h) => onResizeMouseDown(e, el.id, h)}
                 onBlur={() => setEditingId(null)}
                 onDuplicate={selectedIds.size === 1 ? () => addEl({ ...el, x: el.x + 24, y: el.y + 24 }) : null}
