@@ -26,14 +26,14 @@ function compressImage(file) {
     reader.onload = e => {
       const img = new Image()
       img.onload = () => {
-        const MAX = 1200
+        const MAX = 600
         let w = img.naturalWidth, h = img.naturalHeight
         if (w > MAX) { h = Math.round(h * MAX / w); w = MAX }
-        if (h > 1800) { w = Math.round(w * 1800 / h); h = 1800 }
+        if (h > 900) { w = Math.round(w * 900 / h); h = 900 }
         const cv = document.createElement('canvas')
         cv.width = w; cv.height = h
         cv.getContext('2d').drawImage(img, 0, 0, w, h)
-        resolve({ src: cv.toDataURL('image/jpeg', 0.82), w, h })
+        resolve({ src: cv.toDataURL('image/jpeg', 0.75), w, h })
       }
       img.src = e.target.result
     }
