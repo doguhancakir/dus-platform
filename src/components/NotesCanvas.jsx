@@ -116,58 +116,54 @@ function TextEl({ el, selected, editing, onMouseDown, onDoubleClick, onContentCh
     } catch {}
   }, [editing])
 
-  const baseTextStyle = {
+  const textStyle = {
     fontFamily: 'Barlow, sans-serif',
     fontSize: el.fontSize ?? 16,
     fontWeight: el.fontWeight ?? 'normal',
     fontStyle: el.fontStyle ?? 'normal',
     textDecoration: el.textDecoration ?? 'none',
     color: el.color ?? '#e2e8f0',
-    padding: '4px 6px',
+    padding: '2px 3px',    // minimal padding
     lineHeight: 1.5,
-    minHeight: 28,
+    minHeight: 24,
+    whiteSpace: 'pre',     // her zaman pre: yatay uzar, Enter = yeni satır, wrap yok
+    outline: 'none',
   }
 
   return (
     <div
       style={{
         position: 'absolute', left: el.x, top: el.y,
-        // Editing: genişlik içeriğe göre uzar; değilse kayıtlı genişlik
-        width: editing ? 'fit-content' : el.width,
-        minWidth: editing ? Math.max(el.width ?? 80, 80) : (el.width ?? 80),
-        minHeight: 28,
+        width: 'fit-content',   // her zaman içeriğe göre genişler
+        minWidth: 24,
+        minHeight: 24,
         zIndex: el.zIndex,
         outline: selected ? '1px solid rgba(8,145,178,0.8)' : '1px solid transparent',
         cursor: editing ? 'text' : 'move',
         userSelect: editing ? 'text' : 'none',
-        boxSizing: 'border-box',
       }}
       onMouseDown={onMouseDown}
       onDoubleClick={onDoubleClick}
     >
-      {/* Non-edit: HTML içerik olarak göster */}
+      {/* Non-edit */}
       {!editing && (
-        <div style={{ ...baseTextStyle, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+        <div style={textStyle}>
           {el.content
             ? <span dangerouslySetInnerHTML={{ __html: el.content }} />
-            : <span style={{ opacity: 0.18, fontStyle: 'italic', fontSize: 13 }}>Yazmak için çift tıkla…</span>
+            : <span style={{ opacity: 0.18, fontStyle: 'italic', fontSize: 13 }}>Çift tıkla…</span>
           }
         </div>
       )}
 
-      {/* Edit mode: white-space: pre → yatay uzar, Enter = yeni satır */}
+      {/* Edit mode */}
       {editing && (
         <div
           ref={ref}
           contentEditable
           suppressContentEditableWarning
           onInput={e => onContentChange(e.currentTarget.innerHTML)}
-          onBlur={() => {
-            // Gerçek genişliği ölç ve kaydet
-            if (ref.current) onWidthChange?.(ref.current.scrollWidth + 12)
-            onBlur()
-          }}
-          style={{ ...baseTextStyle, whiteSpace: 'pre', outline: 'none' }}
+          onBlur={onBlur}
+          style={textStyle}
         />
       )}
 
@@ -615,7 +611,6 @@ export default function NotesCanvas({ branchId, branchName, userId, onBack }) {
       ...(rest.type === 'text' ? {
         content: '', color: '#e2e8f0', fontSize: 16,
         fontWeight: 'normal', fontStyle: 'normal', textDecoration: 'none',
-        width: 300,
       } : {}),
       ...rest,
     }
@@ -802,33 +797,8 @@ export default function NotesCanvas({ branchId, branchName, userId, onBack }) {
       {/* ── Canvas scroll area + toolbar overlay ── */}
       <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
 
-        {/* Toolbar: position absolute → canvas kaymaz */}
-        <AnimatePresence>
-          {selectedIds.size > 0 && (
-            singleSelected
-              ? <ElementToolbar
-                  el={singleSelected}
-                  onChange={changes => updateEl(singleSelected.id, changes)}
-                  onDelete={removeSelected}
-                  onColorChange={handleColorChange}
-                />
-              : <motion.div
-                  initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
-                  style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 20, background: 'rgba(4,12,24,0.97)', borderBottom: '1px solid #0d1e30', padding: '6px 14px', display: 'flex', alignItems: 'center', gap: 10, backdropFilter: 'blur(4px)' }}
-                >
-                  <span style={{ fontFamily: 'Barlow', fontWeight: 700, fontSize: 11, color: '#0891b2', letterSpacing: '0.1em' }}>
-                    {selectedIds.size} ÖĞE SEÇİLİ
-                  </span>
-                  <span style={{ color: '#0d1e30', fontSize: 11 }}>—</span>
-                  <span style={{ fontFamily: 'Barlow', fontWeight: 600, fontSize: 10, color: '#1a3050', letterSpacing: '0.08em' }}>Sürükle → hepsini taşı · Ctrl+C → kopyala</span>
-                  <button onClick={removeSelected} style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4, color: '#ef4444', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', padding: '3px 8px', cursor: 'pointer', fontFamily: 'Barlow', fontWeight: 700, fontSize: 10, letterSpacing: '0.1em' }}>
-                    <Trash2 size={10} /> HEPSİNİ SİL
-                  </button>
-                </motion.div>
-          )}
-        </AnimatePresence>
-
-      <div ref={scrollRef} style={{ position: 'absolute', inset: 0, overflowY: 'auto', overflowX: 'auto' }}>
+        {/* Scroll area: zIndex 0, toolbar'ın altında kalır */}
+      <div ref={scrollRef} style={{ position: 'absolute', inset: 0, zIndex: 0, overflowY: 'auto', overflowX: 'auto' }}>
         <div
           ref={canvasRef}
           style={{ position: 'relative', width: '100%', minWidth: 900, minHeight: canvasHeight }}
@@ -882,7 +852,6 @@ export default function NotesCanvas({ branchId, branchName, userId, onBack }) {
                 onResizeMouseDown={(e, h) => onResizeMouseDown(e, el.id, h)}
                 onBlur={() => setEditingId(null)}
                 onEditRef={domNode => { editingDomRef.current = domNode }}
-                onWidthChange={w => updateEl(el.id, { width: w })}
                 onDuplicate={selectedIds.size === 1 ? () => addEl({ ...el, x: el.x + 24, y: el.y + 24 }) : null}
               />
             : <ImageEl
@@ -895,6 +864,33 @@ export default function NotesCanvas({ branchId, branchName, userId, onBack }) {
           )}
         </div>
       </div>
+
+        {/* Toolbar: DOM'da scroll div'den SONRA → otomatik üstte çizilir */}
+        <AnimatePresence>
+          {selectedIds.size > 0 && (
+            singleSelected
+              ? <ElementToolbar
+                  el={singleSelected}
+                  onChange={changes => updateEl(singleSelected.id, changes)}
+                  onDelete={removeSelected}
+                  onColorChange={handleColorChange}
+                />
+              : <motion.div
+                  initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
+                  style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100, background: 'rgba(4,12,24,0.97)', borderBottom: '1px solid #0d1e30', padding: '6px 14px', display: 'flex', alignItems: 'center', gap: 10 }}
+                >
+                  <span style={{ fontFamily: 'Barlow', fontWeight: 700, fontSize: 11, color: '#0891b2', letterSpacing: '0.1em' }}>
+                    {selectedIds.size} ÖĞE SEÇİLİ
+                  </span>
+                  <span style={{ color: '#0d1e30', fontSize: 11 }}>—</span>
+                  <span style={{ fontFamily: 'Barlow', fontWeight: 600, fontSize: 10, color: '#1a3050', letterSpacing: '0.08em' }}>Sürükle → hepsini taşı · Ctrl+C → kopyala</span>
+                  <button onClick={removeSelected} style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4, color: '#ef4444', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', padding: '3px 8px', cursor: 'pointer', fontFamily: 'Barlow', fontWeight: 700, fontSize: 10, letterSpacing: '0.1em' }}>
+                    <Trash2 size={10} /> HEPSİNİ SİL
+                  </button>
+                </motion.div>
+          )}
+        </AnimatePresence>
+
       </div>
     </div>
   )
