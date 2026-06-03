@@ -69,6 +69,8 @@ export default function QuestionPanel({ topicId, onClose }) {
   const [shuffledDisplay, setShuffledDisplay] = useState(null) // { forIndex, options, correctIndex }
   // Double-click tracking
   const lastClickRef = useRef({ time: 0, index: -1 })
+  // Klavye double-tap tracking (aynı tuşa 400ms içinde 2x = confirm)
+  const lastKeyRef = useRef({ num: -1, time: 0 })
 
   function shuffleOptions(question, forIndex) {
     if (!question?.options?.length) return
@@ -97,27 +99,48 @@ export default function QuestionPanel({ topicId, onClose }) {
     return () => window.removeEventListener('keydown', handler)
   }, [topicId])
 
-  // Klavye kısayolları: soru fazı 1-5, cevap fazı 1-4
+  // Klavye kısayolları: soru fazı 1-5 (double-tap = confirm), Space = boş bırak, cevap fazı 1-4
   useEffect(() => {
+    const DOUBLE_TAP_MS = 400
+
     const handler = (e) => {
       if (answering || showAI) return
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return
+
+      // Space → cevabı göster (boş bırak)
+      if (e.code === 'Space' || e.key === ' ') {
+        if (!showAnswer) {
+          e.preventDefault()
+          setShowAnswer(true)
+          setEliminatedOptions(new Set())
+          lastKeyRef.current = { num: -1, time: 0 }
+        }
+        return
+      }
+
       const num = parseInt(e.key)
       if (isNaN(num) || num === 0) return
 
       if (!showAnswer) {
-        // Soru fazı: 1-5 → şık highlight / confirm
+        // Soru fazı
         const opts = shuffledDisplay?.options
         if (!opts) return
         const idx = num - 1
         if (idx < 0 || idx >= opts.length) return
-        if (selectedOption === idx) {
-          // Aynı tuş tekrar → cevabı göster
+
+        const now  = Date.now()
+        const last = lastKeyRef.current
+
+        if (last.num === num && now - last.time < DOUBLE_TAP_MS) {
+          // Double-tap: şıkkı seç + cevabı göster
+          setSelectedOption(idx)
           setShowAnswer(true)
           setEliminatedOptions(new Set())
+          lastKeyRef.current = { num: -1, time: 0 }
         } else {
-          // Yeni tuş → highlight
+          // İlk basış: sadece highlight
           setSelectedOption(idx)
+          lastKeyRef.current = { num, time: now }
         }
       } else {
         // Cevap fazı: 1=TEKRAR, 2=ZOR, 3=İYİ, 4=KOLAY
@@ -128,7 +151,7 @@ export default function QuestionPanel({ topicId, onClose }) {
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [showAnswer, selectedOption, shuffledDisplay, answering, showAI, handleRating])
+  }, [showAnswer, shuffledDisplay, answering, showAI, handleRating])
 
   // Re-shuffle every time a new card position is shown (same question = new shuffle)
   useEffect(() => {
