@@ -367,7 +367,7 @@ export default function QuestionPanel({ topicId, onClose }) {
     return (
       <BattleScreen onClose={onClose}>
         <HUDBar stats={stats} currentIndex={queue.length} queueLength={queue.length} onClose={onClose} />
-        <FinishedScreen stats={stats} total={questions.length} hitDailyLimit={hitDailyLimit} onClose={onClose} />
+        <FinishedScreen stats={stats} total={questions.length} hitDailyLimit={hitDailyLimit} onClose={onClose} sessionResult={sessionResult} />
       </BattleScreen>
     )
   }
@@ -1090,7 +1090,7 @@ function CardStatusBadge({ card }) {
 }
 
 /* ── Finished Screen ── */
-function FinishedScreen({ stats, total, hitDailyLimit, onClose }) {
+function FinishedScreen({ stats, total, hitDailyLimit, onClose, sessionResult }) {
   return (
     <motion.div
       initial={{ opacity: 0 }}
