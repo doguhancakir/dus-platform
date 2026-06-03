@@ -61,6 +61,7 @@ export default function QuestionPanel({ topicId, onClose }) {
   const [eliminatedOptions, setEliminatedOptions] = useState(new Set())
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState({ newCount: 0, learningCount: 0, reviewCount: 0 })
+  const [sessionResult, setSessionResult] = useState({ correct: 0, wrong: 0, skipped: 0 })
   const [finished, setFinished] = useState(false)
   const [answering, setAnswering] = useState(false)
   const [showAI,    setShowAI]    = useState(false)
@@ -209,6 +210,17 @@ export default function QuestionPanel({ topicId, onClose }) {
     const currentQId = queue[currentIndex]
     const question = questions.find(q => q.id === currentQId)
     if (!question) { setAnswering(false); return }
+
+    // Doğru / yanlış / boş (cevap göster tuşuna direkt basılanlar)
+    const correctIdx = shuffledDisplay?.correctIndex ?? null
+    const wasCorrect = selectedOption !== null && selectedOption === correctIdx
+    const wasWrong   = selectedOption !== null && selectedOption !== correctIdx
+    const wasSkipped = selectedOption === null
+    setSessionResult(prev => ({
+      correct: prev.correct + (wasCorrect ? 1 : 0),
+      wrong:   prev.wrong   + (wasWrong   ? 1 : 0),
+      skipped: prev.skipped + (wasSkipped ? 1 : 0),
+    }))
 
     const existingCard = cards[currentQId] || newCard(user.id, currentQId)
     const updatedCard = processCard(existingCard, rating)
@@ -1145,11 +1157,43 @@ function FinishedScreen({ stats, total, hitDailyLimit, onClose }) {
         )}
         {!hitDailyLimit && <div className="mb-8" />}
 
-        {/* Stats grid */}
+        {/* Session result — doğru / yanlış / boş */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.14, ease: [0.22, 1, 0.36, 1] }}
+          className="grid grid-cols-3 mb-2"
+          style={{ gap: '2px' }}
+        >
+          {[
+            { label: 'DOĞRU',  value: sessionResult.correct, color: '#10b981' },
+            { label: 'YANLIŞ', value: sessionResult.wrong,   color: '#ef4444' },
+            { label: 'BOŞ',    value: sessionResult.skipped, color: '#4a6a80' },
+          ].map((s, i) => (
+            <motion.div
+              key={s.label}
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.16 + i * 0.05, ease: [0.22, 1, 0.36, 1] }}
+              className="relative px-4 py-4"
+              style={{ background: '#060d1a' }}
+            >
+              <div className="absolute left-0 top-0 bottom-0 w-[2px]" style={{ background: s.color }} />
+              <div className="font-bebas leading-none mb-1" style={{ fontSize: '2rem', color: s.color }}>
+                {s.value}
+              </div>
+              <div className="font-barlow font-bold uppercase tracking-wider" style={{ fontSize: '9px', color: '#2a3a50' }}>
+                {s.label}
+              </div>
+            </motion.div>
+          ))}
+        </motion.div>
+
+        {/* Kart durumu grid */}
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.18, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ delay: 0.22, ease: [0.22, 1, 0.36, 1] }}
           className="grid grid-cols-3 mb-8"
           style={{ gap: '2px' }}
         >
@@ -1162,21 +1206,15 @@ function FinishedScreen({ stats, total, hitDailyLimit, onClose }) {
               key={s.label}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.22 + i * 0.06, ease: [0.22, 1, 0.36, 1] }}
+              transition={{ delay: 0.26 + i * 0.06, ease: [0.22, 1, 0.36, 1] }}
               className="relative px-4 py-5"
               style={{ background: '#080f1e' }}
             >
               <div className="absolute left-0 top-0 bottom-0 w-[2px]" style={{ background: s.color }} />
-              <div
-                className="font-bebas leading-none mb-1"
-                style={{ fontSize: '2.2rem', color: s.color }}
-              >
+              <div className="font-bebas leading-none mb-1" style={{ fontSize: '2.2rem', color: s.color }}>
                 {s.value}
               </div>
-              <div
-                className="font-barlow font-bold uppercase tracking-wider"
-                style={{ fontSize: '9px', color: '#2a3a50' }}
-              >
+              <div className="font-barlow font-bold uppercase tracking-wider" style={{ fontSize: '9px', color: '#2a3a50' }}>
                 {s.label}
               </div>
             </motion.div>
