@@ -1,6 +1,6 @@
 // DUS 2027 Çalışma Planı — hesaplama motoru
 
-const P1_START = new Date('2026-06-08T00:00:00')
+const P1_START = new Date('2026-06-15T00:00:00')
 const P2_START = new Date('2026-09-01T00:00:00')
 const P3_START = new Date('2027-02-01T00:00:00')
 const P4_START = new Date('2027-07-01T00:00:00')
