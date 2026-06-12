@@ -373,7 +373,7 @@ export default function Dashboard() {
               </div>
               {/* Calendar widget */}
               <div className="relative z-10 flex-1 flex flex-col">
-                <DailyCalendar userId={user.id} todayAnswered={todayAnswered} />
+                <DailyCalendar userId={user.id} todayAnswered={todayAnswered} isAdmin={!!user.is_admin} />
               </div>
             </motion.div>
           )}

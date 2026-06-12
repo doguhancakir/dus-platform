@@ -62,7 +62,7 @@ export default function AskAI({ questionContext, sessionKey, onClose }) {
     clearInterval(retryTimerRef.current)
 
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 35000)
+    const timeout = setTimeout(() => controller.abort(), 50000)
 
     try {
       const res = await fetch(EDGE_URL, {

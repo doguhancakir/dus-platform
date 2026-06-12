@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../lib/supabase'
 import { useStudyTimer, formatTimerDisplay, formatTimerLabel } from '../contexts/StudyTimerContext'
+import { getPhaseInfo, generateWeekTodoList, getWeekMonday } from '../lib/studyPlan'
 
 const MONTHS_TR = [
   'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
@@ -23,8 +24,9 @@ function getToday() {
   return d
 }
 
-export default function DailyCalendar({ userId, todayAnswered = 0 }) {
+export default function DailyCalendar({ userId, todayAnswered = 0, isAdmin = false }) {
   const today = getToday()
+  const maxFuture = new Date(today); maxFuture.setDate(maxFuture.getDate() + 7)
   const [sel, setSel] = useState(getToday())
   const [calOpen, setCalOpen] = useState(false)
   const [viewMonth, setViewMonth] = useState(
@@ -36,7 +38,11 @@ export default function DailyCalendar({ userId, todayAnswered = 0 }) {
   const [hoveredId, setHoveredId] = useState(null)
   const [goalTaskId, setGoalTaskId] = useState(null)
   const [studySecondsDB, setStudySecondsDB] = useState(null) // geçmiş günler için DB'den
+  const [generating, setGenerating] = useState(false)
+  const [genDone, setGenDone] = useState(false)
   const inputRef = useRef(null)
+
+  const phaseInfo = getPhaseInfo(sel)
 
   // Timer context — sadece bugün için canlı değer
   const { seconds: timerSeconds, started: timerStarted } = useStudyTimer()
@@ -194,19 +200,46 @@ export default function DailyCalendar({ userId, todayAnswered = 0 }) {
     loadStatus()
   }
 
+  async function generateWeekTodos() {
+    if (!userId || generating) return
+    setGenerating(true)
+    setGenDone(false)
+    try {
+      const monday = getWeekMonday(new Date())
+      const weekData = generateWeekTodoList(monday)
+      for (const { date, texts } of weekData) {
+        const { data: existing } = await supabase
+          .from('daily_todos').select('text').eq('user_id', userId).eq('date', date)
+        const existingSet = new Set(existing?.map(t => t.text) || [])
+        const toInsert = texts.filter(text => !existingSet.has(text))
+        if (toInsert.length > 0) {
+          await supabase.from('daily_todos').insert(
+            toInsert.map(text => ({ user_id: userId, date, text, completed: false }))
+          )
+        }
+      }
+      setGenDone(true)
+      setTimeout(() => setGenDone(false), 3000)
+      loadTodos()
+      loadStatus()
+    } finally {
+      setGenerating(false)
+    }
+  }
+
   // ── navigation ────────────────────────────────────────────────────────────
 
   function goDay(delta) {
     const d = new Date(sel)
     d.setDate(d.getDate() + delta)
-    if (d > today) return
+    if (d > maxFuture) return
     setSel(d)
     const nm = new Date(d.getFullYear(), d.getMonth(), 1)
     if (nm.getTime() !== viewMonth.getTime()) setViewMonth(nm)
   }
 
   function pickDay(d) {
-    if (d > today) return
+    if (d > maxFuture) return
     setSel(new Date(d))
     const nm = new Date(d.getFullYear(), d.getMonth(), 1)
     if (nm.getTime() !== viewMonth.getTime()) setViewMonth(nm)
@@ -228,7 +261,7 @@ export default function DailyCalendar({ userId, todayAnswered = 0 }) {
 
   const prevDay = new Date(sel); prevDay.setDate(prevDay.getDate() - 1)
   const nextDay = new Date(sel); nextDay.setDate(nextDay.getDate() + 1)
-  const nextFuture = nextDay > today
+  const nextFuture = nextDay > maxFuture
 
   const fmtShort = d => `${d.getDate()} ${MONTHS_TR[d.getMonth()].slice(0, 3)}`
   const fmtFull  = d => `${d.getDate()} ${MONTHS_TR[d.getMonth()]}`
@@ -375,6 +408,42 @@ export default function DailyCalendar({ userId, todayAnswered = 0 }) {
         </div>
       </div>
 
+      {/* ── Faz rozeti + oluştur butonu (sadece admin) ── */}
+      {isAdmin && phaseInfo && (
+        <div className="flex items-center justify-between flex-shrink-0 mb-2">
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            background: 'rgba(8,145,178,0.07)',
+            border: '1px solid rgba(8,145,178,0.2)',
+            padding: '3px 8px',
+          }}>
+            <span style={{ fontFamily: '"Bebas Neue", sans-serif', fontSize: 12, letterSpacing: '0.15em', color: '#0891b2' }}>
+              {`FAZ ${phaseInfo.phase}`}
+            </span>
+            <span style={{ width: 1, height: 10, background: 'rgba(8,145,178,0.3)' }} />
+            <span style={{ fontFamily: 'Barlow, sans-serif', fontWeight: 700, fontSize: 10, letterSpacing: '0.1em', color: '#1e6a80' }}>
+              {`HAFTA ${phaseInfo.weekNum} / ${phaseInfo.totalWeeks}`}
+            </span>
+          </div>
+          <button
+            onClick={generateWeekTodos}
+            disabled={generating}
+            style={{
+              fontFamily: 'Barlow, sans-serif', fontWeight: 700,
+              fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase',
+              padding: '3px 8px',
+              background: genDone ? 'rgba(16,185,129,0.1)' : 'rgba(8,145,178,0.07)',
+              border: `1px solid ${genDone ? 'rgba(16,185,129,0.4)' : 'rgba(8,145,178,0.2)'}`,
+              color: genDone ? '#10b981' : generating ? '#1e4a5e' : '#0891b2',
+              cursor: generating ? 'default' : 'pointer',
+              transition: 'all 0.2s',
+            }}
+          >
+            {genDone ? '✓ Oluşturuldu' : generating ? 'Oluşturuluyor…' : '📋 Bu Haftayı Oluştur'}
+          </button>
+        </div>
+      )}
+
       {/* ── Full calendar panel ── */}
       <AnimatePresence>
         {calOpen && (
@@ -411,8 +480,8 @@ export default function DailyCalendar({ userId, todayAnswered = 0 }) {
                 <button
                   onClick={() => {
                     const nm = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 1)
-                    const thisMonth = new Date(today.getFullYear(), today.getMonth(), 1)
-                    if (nm <= thisMonth) setViewMonth(nm)
+                    const maxMonth = new Date(maxFuture.getFullYear(), maxFuture.getMonth(), 1)
+                    if (nm <= maxMonth) setViewMonth(nm)
                   }}
                   style={{ fontFamily: '"Bebas Neue", sans-serif', fontSize: 22, color: '#0891b2', cursor: 'pointer', width: 28, textAlign: 'center', lineHeight: 1 }}
                 >›</button>
@@ -442,7 +511,7 @@ export default function DailyCalendar({ userId, todayAnswered = 0 }) {
                   const key       = toKey(d)
                   const isSel     = key === selKey
                   const isToday   = key === todayKey
-                  const isFuture  = d > today
+                  const isFuture  = d > maxFuture
                   const isDone    = dayStatus[key] === 'complete'
                   const isPartial = dayStatus[key] === 'partial'
 

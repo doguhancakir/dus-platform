@@ -8,7 +8,7 @@ const GEMINI_KEYS = [
   Deno.env.get('GEMINI_API_KEY_3') ?? '',
 ].filter(k => k.length > 0)
 
-const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key='
+const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key='
 
 const SYSTEM_PROMPT = `Sen Davy's Dental, bir DUS (Diş Hekimliği Uzmanlık Sınavı) hazırlık platformunun yapay zeka asistanısın.
 Öğrencilerin diş hekimliği sorularını daha iyi anlamalarına ve konuları pekiştirmelerine yardımcı olursun.
@@ -56,15 +56,27 @@ async function callGemini(
   let lastRetryAfter = 60
 
   for (const key of GEMINI_KEYS) {
-    const res = await fetch(GEMINI_BASE + key, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-        contents,
-        generationConfig: { temperature: 0.65, maxOutputTokens: 8192 },
-      }),
-    })
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 25000)
+
+    let res: Response
+    try {
+      res = await fetch(GEMINI_BASE + key, {
+        method: 'POST',
+        signal: controller.signal,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+          contents,
+          generationConfig: { temperature: 0.65, maxOutputTokens: 4096 },
+        }),
+      })
+    } catch {
+      // timeout veya network hatası — sonraki key'e geç
+      continue
+    } finally {
+      clearTimeout(timer)
+    }
 
     if (res.status === 429) {
       const data = await res.json()
@@ -75,8 +87,7 @@ async function callGemini(
     }
 
     if (!res.ok) {
-      const data = await res.json()
-      throw new Error(data.error?.message ?? 'Gemini API hatası')
+      continue // 500/503 gibi hatalar — sonraki key'i dene
     }
 
     const data = await res.json()
