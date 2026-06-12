@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
-import { BRANCHES } from '../lib/data'
+import { BRANCHES, TEMEL_BILIMLER } from '../lib/data'
 import Layout from '../components/Layout'
 import { SkeletonBranchCard } from '../components/SkeletonCard'
 import ToothViewer from '../components/ToothViewer'
@@ -610,6 +610,57 @@ export default function Dashboard() {
               })
           }
         </motion.div>
+
+        {/* ── TEMEL BİLİMLER ── */}
+        <div className="mt-8">
+          <div className="flex items-center gap-4 mb-4 mt-2">
+            <div className="flex items-center gap-3 flex-shrink-0">
+              <div className="w-[3px] h-5" style={{ background: '#6366f1' }} />
+              <h2
+                className="font-bebas text-white tracking-[0.22em]"
+                style={{ fontSize: 'clamp(16px, 3vw, 22px)', transform: 'skewX(-3deg)', display: 'inline-block' }}
+              >
+                TEMEL BİLİMLER
+              </h2>
+            </div>
+            <div className="flex-1 h-px" style={{ background: 'linear-gradient(to right, #2a1a5e, transparent)' }} />
+            <span
+              className="font-barlow font-bold text-[10px] tracking-[0.15em] uppercase flex-shrink-0"
+              style={{ color: '#2a3a50' }}
+            >
+              {TEMEL_BILIMLER.length} BRANŞ
+            </span>
+          </div>
+
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            animate="show"
+            className="flex flex-col"
+            style={{ gap: '2px' }}
+          >
+            {loading
+              ? TEMEL_BILIMLER.map((_, i) => <SkeletonBranchCard key={i} />)
+              : TEMEL_BILIMLER.map((branch) => {
+                  const stats = branchStats[branch.id]
+                  return (
+                    <motion.div key={branch.id} variants={cardVariants}>
+                      <BranchCard
+                        branch={branch}
+                        stats={stats}
+                        loading={false}
+                        showProgress={!!user}
+                        isHovered={hoveredId === branch.id}
+                        isDimmed={hoveredId !== null && hoveredId !== branch.id}
+                        onHover={setHoveredId}
+                        imageUrl={branchImages[branch.id]}
+                      />
+                    </motion.div>
+                  )
+                })
+            }
+          </motion.div>
+        </div>
       </div>
       {/* ── 3D TOOTH MODEL MODAL ── */}
       <AnimatePresence>
