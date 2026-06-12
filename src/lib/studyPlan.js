@@ -224,21 +224,50 @@ export function getDayBlocks(date) {
   const weekIdx  = info.weekNum - 1
 
   if (info.phase === 1) {
-    const tbLabel = `TB Hafta ${weekIdx + 1} (Anatomi · Histoloji · Fizyoloji · Mikrobiyoloji)`
-
     return P1_DAYS[dayIndex].map(b => {
       const icon = ICONS[b.t] || '•'
-      const typeLabel = TYPE_LABEL[b.t] || b.t
+
+      // Pzt-Per: yeni konu bloğu — o haftanın spesifik konusuyla
       if (b.t === 'yeni_konu' && dayIndex < 4) {
         const dersName = DERS[b.d] || b.d
         const topic = P1_TOPICS[b.d]?.[weekIdx] || ''
-        return `${icon} ${dersName} (${b.s}dk) — ${topic || typeLabel}`
+        return `${icon} ${dersName} (${b.s}dk) — ${topic}`
       }
-      if (b.d === 'karma_temel_bilimler') {
-        return `${icon} ${tbLabel} (${b.s}dk) — ${typeLabel}`
+
+      // Pzt-Per: ikincil bloklar — JSON aciklama birebir
+      if (dayIndex < 4 && b.t === 'soru_bankasi') {
+        return `${icon} (${b.s}dk) — O güne kadar işlenen TB konularından soru`
       }
+      if (dayIndex < 4 && b.t === 'srs_tekrar') {
+        return `${icon} (${b.s}dk) — Önceki haftaların flashcard tekrarı`
+      }
+
+      // Cuma
+      if (dayIndex === 4 && b.t === 'soru_bankasi') {
+        return `${icon} (${b.s}dk) — Haftanın 4 konusundan karma soru (Anatomi, Histoloji, Fizyoloji, Mikrobiyoloji)`
+      }
+      if (dayIndex === 4 && b.t === 'zayif_nokta_tekrar') {
+        return `${icon} (${b.s}dk) — Cuma soru sonuçlarına göre en çok hata yaptığın konuya ekstra zaman ver`
+      }
+
+      // Cumartesi
+      if (dayIndex === 5 && b.t === 'haftalik_deneme') {
+        return `${icon} (${b.s}dk) — Haftalık deneme: 40-50 soru, o haftaya kadar işlenen TB konuları`
+      }
+      if (dayIndex === 5 && b.t === 'hata_analizi') {
+        return `${icon} (${b.s}dk) — Hata analizi: hata defterine ekle`
+      }
+
+      // Pazar
+      if (dayIndex === 6 && b.t === 'srs_tekrar') {
+        return `${icon} (${b.s}dk) — SRS tekrar: tüm geçmiş konulardan flashcard — hafif gün ama sıfır değil`
+      }
+      if (dayIndex === 6 && b.t === 'planlama') {
+        return `${icon} (${b.s}dk) — Haftalık planlama: kaç soru çözdüm, en çok nerede hata yaptım, gelecek hafta odak ne`
+      }
+
       const dersName = DERS[b.d] || b.d
-      return `${icon} ${dersName} (${b.s}dk) — ${typeLabel}`
+      return `${icon} ${dersName} (${b.s}dk) — ${TYPE_LABEL[b.t] || b.t}`
     })
   }
 
