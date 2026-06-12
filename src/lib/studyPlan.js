@@ -224,14 +224,28 @@ export function getDayBlocks(date) {
   const weekIdx  = info.weekNum - 1
 
   if (info.phase === 1) {
+    // Haftalık spesifik konular (Mon-Thu için, hafta indeksine göre)
+    const weekTopics = [
+      P1_TOPICS.anatomi?.[weekIdx],
+      P1_TOPICS.histoloji_embriyoloji?.[weekIdx],
+      P1_TOPICS.fizyoloji_biyokimya?.[weekIdx],
+      P1_TOPICS.mikrobiyoloji_patoloji?.[weekIdx],
+    ]
+    // Cuma-Pazar review bloklarında o haftanın 4 konusunu göster
+    const reviewNote = weekTopics.filter(Boolean).length === 4
+      ? `Anatomi · Histoloji · Fizyoloji · Mikrobiyoloji — Hafta ${weekIdx + 1} konularını karıştır`
+      : 'Karma Temel Bilimler'
+
     return P1_DAYS[dayIndex].map(b => {
       const dersName = DERS[b.d] || b.d
       const icon = ICONS[b.t] || '•'
       const typeLabel = TYPE_LABEL[b.t] || b.t
-      // Yeni konu bloğu için haftalık konuyu ekle
       if (b.t === 'yeni_konu' && dayIndex < 4) {
         const topic = P1_TOPICS[b.d]?.[weekIdx] || ''
         return `${icon} ${dersName} (${b.s}dk) — ${topic || typeLabel}`
+      }
+      if (b.d === 'karma_temel_bilimler') {
+        return `${icon} (${b.s}dk) — ${typeLabel}: ${reviewNote}`
       }
       return `${icon} ${dersName} (${b.s}dk) — ${typeLabel}`
     })
