@@ -266,5 +266,5 @@ export default function QuickNotesSidebar() {
       </div>
     </div>,
     document.body
-  ))
+  )
 }
