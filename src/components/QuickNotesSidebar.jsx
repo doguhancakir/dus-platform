@@ -11,7 +11,6 @@ export default function QuickNotesSidebar() {
   const [adding, setAdding] = useState(false)
   const [checking, setChecking] = useState(null)
   const inputRef = useRef(null)
-  const panelRef = useRef(null)
 
   useEffect(() => {
     if (!user) return
@@ -47,7 +46,6 @@ export default function QuickNotesSidebar() {
 
   async function removeTodo(id) {
     setChecking(id)
-    // Small flash of the checkbox before removing
     setTimeout(async () => {
       setTodos(p => p.filter(t => t.id !== id))
       setChecking(null)
@@ -58,6 +56,9 @@ export default function QuickNotesSidebar() {
   if (!user) return null
 
   return (
+    // Single wrapper — no pointer-events:none so onMouseEnter fires correctly
+    // position:fixed + right:0 pins the RIGHT edge to viewport right
+    // flex row: [PANEL][STRIP] — strip is always the rightmost element
     <div
       style={{
         position: 'fixed',
@@ -66,17 +67,16 @@ export default function QuickNotesSidebar() {
         bottom: 0,
         zIndex: 9800,
         display: 'flex',
+        flexDirection: 'row',
         alignItems: 'stretch',
-        pointerEvents: 'none',
+        direction: 'ltr',
       }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      {/* Expanded panel */}
+      {/* Panel — slides in from the right edge, expanding leftward */}
       <div
-        ref={panelRef}
         style={{
-          pointerEvents: hovered ? 'all' : 'none',
           width: hovered ? 260 : 0,
           overflow: 'hidden',
           transition: 'width 0.24s cubic-bezier(0.22,1,0.36,1)',
@@ -122,7 +122,7 @@ export default function QuickNotesSidebar() {
           </p>
         </div>
 
-        {/* List */}
+        {/* Todo list */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '6px 0' }}>
           {todos.length === 0 ? (
             <p
@@ -154,7 +154,6 @@ export default function QuickNotesSidebar() {
                   transition: 'opacity 0.2s',
                 }}
               >
-                {/* Checkbox */}
                 <button
                   onClick={() => removeTodo(todo.id)}
                   style={{
@@ -175,12 +174,17 @@ export default function QuickNotesSidebar() {
                 >
                   {checking === todo.id && (
                     <svg width="8" height="6" viewBox="0 0 8 6" fill="none">
-                      <path d="M1 3L3 5L7 1" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      <path
+                        d="M1 3L3 5L7 1"
+                        stroke="#fff"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
                     </svg>
                   )}
                 </button>
 
-                {/* Text */}
                 <span
                   style={{
                     fontFamily: 'Barlow, sans-serif',
@@ -256,10 +260,10 @@ export default function QuickNotesSidebar() {
         </div>
       </div>
 
-      {/* Trigger strip */}
+      {/* Trigger strip — always 14px, always the rightmost element */}
       <div
         style={{
-          pointerEvents: 'all',
+          flexShrink: 0,
           width: 14,
           background: hovered
             ? 'rgba(8,145,178,0.35)'
@@ -268,9 +272,9 @@ export default function QuickNotesSidebar() {
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          cursor: 'default',
           transition: 'background 0.2s',
           userSelect: 'none',
+          cursor: 'default',
         }}
       >
         {todos.length > 0 && (
