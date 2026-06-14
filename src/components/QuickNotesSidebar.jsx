@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { Plus } from 'lucide-react'
@@ -60,11 +61,11 @@ export default function QuickNotesSidebar() {
 
   const totalW = open ? STRIP_W + PANEL_W : STRIP_W
 
-  return (
+  return createPortal(
     /*
-     * position:fixed + explicit right:0 + explicit width
-     * This guarantees the RIGHT edge of the box = viewport right edge.
-     * Flex row: [PANEL][STRIP] → strip is always rightmost 14px.
+     * Rendered via portal directly into document.body — bypasses any
+     * CSS transform/stacking-context in the React component tree.
+     * position:fixed + right:0 is now always relative to the viewport.
      */
     <div
       style={{
@@ -263,6 +264,7 @@ export default function QuickNotesSidebar() {
           </span>
         )}
       </div>
-    </div>
-  )
+    </div>,
+    document.body
+  ))
 }
