@@ -254,6 +254,8 @@ function QuestionsTab() {
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [saving, setSaving] = useState(false)
+  const [selectedIds, setSelectedIds] = useState(new Set())
+  const [bulkDeleting, setBulkDeleting] = useState(false)
   const [form, setForm] = useState({
     question_text: '',
     options: ['', '', '', '', ''],

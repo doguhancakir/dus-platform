@@ -311,7 +311,7 @@ function Sep() {
 }
 
 /* ── Main Canvas ─────────────────────────────────────────────────────── */
-export default function NotesCanvas({ branchId, branchName, userId, onBack }) {
+export default function NotesCanvas({ canvasId, branchId, branchName, userId, onBack }) {
   const [elements, setElements]         = useState([])
   const [selectedIds, setSelectedIds]   = useState(new Set())
   const [editingId, setEditingId]       = useState(null)
@@ -319,6 +319,7 @@ export default function NotesCanvas({ branchId, branchName, userId, onBack }) {
   const [saving, setSaving]             = useState(false)
   const [savedAt, setSavedAt]           = useState(null)
   const [loading, setLoading]           = useState(true)
+  const [canvasName, setCanvasName]     = useState('')
   const [selBox, setSelBox]             = useState(null) // rubber-band seçim kutusu
 
   const canvasRef          = useRef(null)
@@ -344,17 +345,17 @@ export default function NotesCanvas({ branchId, branchName, userId, onBack }) {
 
   // ── Load ──────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!userId || !branchId) return
+    if (!canvasId) return
     setLoading(true)
     supabase
       .from('note_canvases')
-      .select('elements, canvas_height')
-      .eq('user_id', userId)
-      .eq('branch_id', branchId)
+      .select('elements, canvas_height, name')
+      .eq('id', canvasId)
       .maybeSingle()
       .then(({ data }) => {
         const loaded = data?.elements?.length ? data.elements : []
         setElements(loaded)
+        setCanvasName(data?.name ?? '')
         historyRef.current = [loaded.map(el => ({ ...el }))]
         historyIdxRef.current = 0
         if (data?.canvas_height) {
@@ -364,7 +365,7 @@ export default function NotesCanvas({ branchId, branchName, userId, onBack }) {
         }
         setLoading(false)
       })
-  }, [branchId, userId])
+  }, [canvasId])
 
   // ── History (undo) ────────────────────────────────────────────────
   function pushHistory(els) {
@@ -418,12 +419,12 @@ export default function NotesCanvas({ branchId, branchName, userId, onBack }) {
   }
 
   async function doSave(els, h) {
-    if (!userId) return
+    if (!canvasId) return
     setSaving(true)
     try {
       await supabase.from('note_canvases').upsert(
-        { user_id: userId, branch_id: branchId, elements: els, canvas_height: h, updated_at: new Date().toISOString() },
-        { onConflict: 'user_id,branch_id' }
+        { id: canvasId, user_id: userId, branch_id: branchId, elements: els, canvas_height: h, updated_at: new Date().toISOString() },
+        { onConflict: 'id' }
       )
       setSavedAt(new Date())
     } catch (e) { console.error('NotesCanvas save error:', e) }
@@ -781,6 +782,11 @@ export default function NotesCanvas({ branchId, branchName, userId, onBack }) {
           <span style={{ fontFamily: 'Barlow', fontWeight: 700, fontSize: 10, letterSpacing: '0.1em', color: '#1a3050', textTransform: 'uppercase' }}>
             / {branchName}
           </span>
+          {canvasName && (
+            <span style={{ fontFamily: 'Barlow', fontWeight: 700, fontSize: 10, letterSpacing: '0.1em', color: '#1a3050', textTransform: 'uppercase' }}>
+              / {canvasName}
+            </span>
+          )}
         </div>
 
         {/* Right */}

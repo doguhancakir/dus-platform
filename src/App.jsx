@@ -90,6 +90,7 @@ function AppRoutes() {
       <Route path="/mixed-quiz" element={<MixedQuizPage />} />
       <Route path="/notes" element={<NotesPage />} />
       <Route path="/notes/:branchId" element={<NotesPage />} />
+      <Route path="/notes/:branchId/:canvasId" element={<NotesPage />} />
       <Route path="/admin" element={
         <ProtectedRoute><AdminPage /></ProtectedRoute>
       } />

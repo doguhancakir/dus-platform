@@ -1,0 +1,482 @@
+{
+  "program_bilgisi": {
+    "ogrenci": "Davy",
+    "olusturulma_tarihi": "2026-06-12",
+    "hedef_sinav": "DUS 2027 (tahmini Eylul - ÖSYM 2027 takvimi henüz resmi açıklanmadı, faz4 tarihleri netleşince güncellenmeli)",
+    "hedef_net": "95+ / 120",
+    "gunluk_minimum_dakika": 150,
+    "gunluk_kural": "150 dakika (2.5 saat) FIX taban. Hicbir gun atlanmaz, hicbir bahane yok. Daha fazla istersen ust sinir yok - o gunku enerjine gore arttir.",
+    "toplam_sure_aciklama": "~15 ay: 15 Haziran 2026 - Eylul 2027 arasi 4 faz",
+    "metodoloji": [
+      "Aktif hatirlama (active recall) - konuyu okuduktan sonra kapat, bos kagida yaz",
+      "Aralikli tekrar (spaced repetition) - SRS bloklari her gun farkli gunlerin konularini geri getirir",
+      "Interleaving - her gun en az 2 farkli ders/blok turu, tek derste bogulma yok",
+      "Olcum - haftalik/aylik deneme sinavlari ile gercek ilerleme takibi, hata defteri zorunlu"
+    ]
+  },
+
+  "sinav_stratejisi": {
+    "puanlama_notu": "DUS'ta yanlislar dogrulardan dusuluyor (4 yanlis = 1 dogru goturur). Bu yuzden bos birakma karari net stratejinin parcasi olmali.",
+    "karar_tablosu": [
+      {"durum": "%80+ eminim", "karar": "Isaretle - risk yok"},
+      {"durum": "2 sik elendi, 2 sik arasinda kaldim", "karar": "Isaretle - matematiksel olarak avantajli"},
+      {"durum": "Sadece 1 sik elendi veya hic elenmedi", "karar": "BOS BIRAK - kesin"}
+    ],
+    "altin_kural": "Hata defterine 'bos biraktigim ama dogru bilseydim' analizini de yaz - bu seni gercek bilgi seviyeni gormeye zorlar."
+  },
+
+  "deneme_takip_sablonu": {
+    "aciklama": "Her deneme sinavi sonrasi bu alanlari doldur, platformda grafik/trend olarak goster",
+    "alanlar": ["tarih", "deneme_adi", "toplam_soru", "dogru", "yanlis", "bos", "net", "ders_bazli_kirilim", "en_cok_hata_yapilan_3_konu", "bos_birakma_dogrulugu"]
+  },
+
+  "fazlar": [
+
+    {
+      "faz_id": 1,
+      "ad": "Faz 1 - Yaz Sprint: Temel Bilimler Sifirdan",
+      "baslangic": "2026-06-15",
+      "bitis": "2026-08-31",
+      "sure_aciklama": "~11.5 hafta, yaz tatili - klinik yok, en yuksek verim penceresi",
+      "amac": "Anatomi, Histoloji/Embriyoloji, Fizyoloji/Biyokimya, Mikrobiyoloji/Patoloji'de SIFIRDAN ilk tur. Bu 4 ders 5. sinifta zaten ekstra yuk getirecegi icin temeli simdi atmak kritik.",
+      "gunluk_dakika_onerisi": "150 taban, yazda 180-240'a cikarmak mumkunse cik - bu pencere geri gelmiyor",
+      "haftalik_sablon": [
+        {"gun": "Pazartesi", "bloklar": [
+          {"tur": "yeni_konu", "ders": "anatomi", "sure_dk": 90, "aciklama": "Mufredat sirasindan bir sonraki konu"},
+          {"tur": "soru_bankasi", "ders": "karma_temel_bilimler", "sure_dk": 30, "aciklama": "O gune kadar islenen TB konularindan soru"},
+          {"tur": "srs_tekrar", "ders": "karma_temel_bilimler", "sure_dk": 30, "aciklama": "Onceki haftalarin flashcard tekrari"}
+        ]},
+        {"gun": "Sali", "bloklar": [
+          {"tur": "yeni_konu", "ders": "histoloji_embriyoloji", "sure_dk": 90, "aciklama": "Mufredat sirasindan bir sonraki konu"},
+          {"tur": "soru_bankasi", "ders": "karma_temel_bilimler", "sure_dk": 30, "aciklama": ""},
+          {"tur": "srs_tekrar", "ders": "karma_temel_bilimler", "sure_dk": 30, "aciklama": ""}
+        ]},
+        {"gun": "Carsamba", "bloklar": [
+          {"tur": "yeni_konu", "ders": "fizyoloji_biyokimya", "sure_dk": 90, "aciklama": "Mufredat sirasindan bir sonraki konu"},
+          {"tur": "soru_bankasi", "ders": "karma_temel_bilimler", "sure_dk": 30, "aciklama": ""},
+          {"tur": "srs_tekrar", "ders": "karma_temel_bilimler", "sure_dk": 30, "aciklama": ""}
+        ]},
+        {"gun": "Persembe", "bloklar": [
+          {"tur": "yeni_konu", "ders": "mikrobiyoloji_patoloji", "sure_dk": 90, "aciklama": "Mufredat sirasindan bir sonraki konu"},
+          {"tur": "soru_bankasi", "ders": "karma_temel_bilimler", "sure_dk": 30, "aciklama": ""},
+          {"tur": "srs_tekrar", "ders": "karma_temel_bilimler", "sure_dk": 30, "aciklama": ""}
+        ]},
+        {"gun": "Cuma", "bloklar": [
+          {"tur": "soru_bankasi", "ders": "karma_temel_bilimler", "sure_dk": 90, "aciklama": "Haftanin 4 konusundan karma soru"},
+          {"tur": "zayif_nokta_tekrar", "ders": "karma_temel_bilimler", "sure_dk": 60, "aciklama": "Cuma soru sonuclarina gore en cok hata yapilan konuya ekstra zaman"}
+        ]},
+        {"gun": "Cumartesi", "bloklar": [
+          {"tur": "haftalik_deneme", "ders": "karma_temel_bilimler", "sure_dk": 120, "aciklama": "40-50 soru, sadece o haftaya kadar islenen TB konulari"},
+          {"tur": "hata_analizi", "ders": "karma_temel_bilimler", "sure_dk": 30, "aciklama": "Hata defterine ekle"}
+        ]},
+        {"gun": "Pazar", "bloklar": [
+          {"tur": "srs_tekrar", "ders": "karma_temel_bilimler", "sure_dk": 60, "aciklama": "Tum gecmis konulardan flashcard - hafif gun ama sifir degil"},
+          {"tur": "planlama", "ders": "genel", "sure_dk": 30, "aciklama": "Haftalik degerlendirme: kac soru cozdum, en cok nerede hata yaptim, gelecek hafta odak ne olmali"}
+        ]}
+      ],
+      "mufredat": {
+        "anatomi": [
+          "Kafa iskeleti - norokranyum ve viserokranyum kemikleri",
+          "Mandibula ve maksilla detayli anatomisi",
+          "Temporomandibular eklem (TME) anatomisi",
+          "Cigneme kaslari (masseter, temporalis, pterygoidler)",
+          "Trigeminal sinir (N.V) - dallanma ve innervasyon alanlari",
+          "Fasiyal sinir (N.VII) ve diger kraniyal sinirler (IX, X, XII)",
+          "Bas-boyun arteriyel sistemi (a. carotis externa dallari)",
+          "Bas-boyun venoz ve lenfatik drenaj",
+          "Fasiyal aralik (spatium) anatomisi",
+          "Tukuruk bezleri anatomisi (parotis, submandibular, sublingual)",
+          "Boyun ucgenleri ve klinik onemi"
+        ],
+        "histoloji_embriyoloji": [
+          "Dis gelisiminin embriyolojik evreleri (tomurcuk-kep-can)",
+          "Mine (enamel) histolojisi ve mineralizasyon",
+          "Dentin histolojisi ve dentin tipleri",
+          "Pulpa dokusu histolojisi",
+          "Sement histolojisi",
+          "Periodontal ligament histolojisi",
+          "Alveol kemigi histolojisi",
+          "Oral mukoza histolojisi (keratinize/non-keratinize bolgeler)",
+          "Tukuruk bezleri histolojisi ve salgi tipleri",
+          "TME histolojisi",
+          "Kraniofasiyal gelisim ve yarik damak/dudak embriyolojisi"
+        ],
+        "fizyoloji_biyokimya": [
+          "Sinir hucresi fizyolojisi - aksiyon potansiyeli, sinaptik iletim",
+          "Kas kasilma mekanizmasi (cizgili kas fizyolojisi)",
+          "Kan fizyolojisi - hucreler, hemostaz, pihtilasma kaskadi",
+          "Kardiyovaskuler fizyoloji temelleri",
+          "Solunum fizyolojisi temelleri",
+          "Sindirim sistemi fizyolojisi ve tukuruk salgisi kontrolu",
+          "Endokrin sistem - hormonlarin dis-kemik metabolizmasina etkisi",
+          "Karbonhidrat metabolizmasi (glikoliz, Krebs - sinav odakli)",
+          "Lipid ve protein metabolizmasi (kolajen sentezi dahil)",
+          "Vitaminler ve mineraller - eksiklik durumlarinin oral bulgulari",
+          "Asit-baz dengesi ve tukuruk tamponlama sistemi"
+        ],
+        "mikrobiyoloji_patoloji": [
+          "Genel bakteriyoloji - gram pozitif/negatif, yapi",
+          "Agiz florasi ve dental plak mikrobiyolojisi",
+          "Sterilizasyon ve dezenfeksiyon yontemleri",
+          "Viroloji - herpes ailesi ve oral bulgular",
+          "Mikoloji - Candida ve oral kandidiazis",
+          "Immunoloji temelleri - hipersensitivite reaksiyonlari",
+          "Genel patoloji - inflamasyon (akut/kronik)",
+          "Genel patoloji - yara iyilesmesi ve onarim",
+          "Hucre hasari, nekroz ve apoptoz",
+          "Neoplazi - genel kavramlar, benign/malign ayrimi",
+          "Oral lezyonlar - premalign ve malign oral lezyonlar genel bakis"
+        ]
+      },
+      "faz_sonu_hedefi": "4 temel bilim dersinin tamami en az 1 kez islenmis, her biri icin temel SRS havuzu olusmus, ~150-200 soru cozulmus olmali."
+    },
+
+    {
+      "faz_id": 2,
+      "ad": "Faz 2 - 5. Sinif Guz/Kis Turu: Zayif Klinik + Temel Bilimler Ileri",
+      "baslangic": "2026-09-01",
+      "bitis": "2027-01-31",
+      "sure_aciklama": "~22 hafta, klinik yogun donem",
+      "amac": "Zayif klinik dersleri (Periodontoloji, Ortodonti, Protetik, Farmakoloji, Restoratif, AGCBH/TMD, Biyoistatistik) sifirdan isle. Ayni anda temel bilimleri ileri konularla derinlestir. Guclu derslerini (Patoloji, Pedodonti, Endodonti, Oral Cerrahi, Radyoloji, Tukuruk Bezi) SRS ile canli tut - unutma riski en buyuk dusman.",
+      "gunluk_dakika_onerisi": "150 taban. Klinik gunu agirsa Cumartesi/Pazar'a kaydir ama ASLA atlama.",
+      "ders_rotasyon_listeleri": {
+        "zayif_dersler_sirasi": ["periodontoloji", "ortodonti", "protetik", "farmakoloji", "restoratif", "acbh_tmd", "biyoistatistik_etik"],
+        "guclu_dersler_sirasi": ["patoloji_oral", "pedodonti", "endodonti", "oral_cerrahi", "radyoloji", "tukuruk_bezi"]
+      },
+      "haftalik_sablon": [
+        {"gun": "Pazartesi", "bloklar": [
+          {"tur": "yeni_konu", "ders": "HAFTANIN_ZAYIF_DERSI", "sure_dk": 70, "aciklama": "O haftanin zayif dersinden mufredat sirasiyla bir sonraki konu"},
+          {"tur": "yeni_konu", "ders": "TEMEL_BILIMLER_ILERI", "sure_dk": 50, "aciklama": "TB ileri mufredatindan donusumlu konu (anatomi->histo->fizyo->mikro sirasiyla haftadan haftaya degisir)"},
+          {"tur": "soru_bankasi", "ders": "karma", "sure_dk": 30, "aciklama": "Genel karma soru"}
+        ]},
+        {"gun": "Sali", "bloklar": [
+          {"tur": "srs_tekrar_soru", "ders": "HAFTANIN_GUCLU_DERSI", "sure_dk": 60, "aciklama": "Review checklist'ten konu + o konudan soru cozumu"},
+          {"tur": "yeni_konu", "ders": "HAFTANIN_ZAYIF_DERSI", "sure_dk": 60, "aciklama": "Pazartesi konusunun devami veya ikinci konu"},
+          {"tur": "soru_bankasi", "ders": "karma", "sure_dk": 30, "aciklama": ""}
+        ]},
+        {"gun": "Carsamba", "bloklar": [
+          {"tur": "yeni_konu", "ders": "TEMEL_BILIMLER_ILERI", "sure_dk": 70, "aciklama": "Pazartesi'nin TB konusuyla ayni ders, bir sonraki konu"},
+          {"tur": "yeni_konu", "ders": "HAFTANIN_ZAYIF_DERSI", "sure_dk": 50, "aciklama": "Devam"},
+          {"tur": "soru_bankasi", "ders": "karma", "sure_dk": 30, "aciklama": ""}
+        ]},
+        {"gun": "Persembe", "bloklar": [
+          {"tur": "srs_tekrar_soru", "ders": "HAFTANIN_GUCLU_DERSI", "sure_dk": 60, "aciklama": "Review checklist'ten bir sonraki konu + soru"},
+          {"tur": "yeni_konu", "ders": "HAFTANIN_ZAYIF_DERSI", "sure_dk": 60, "aciklama": "Devam"},
+          {"tur": "soru_bankasi", "ders": "karma", "sure_dk": 30, "aciklama": ""}
+        ]},
+        {"gun": "Cuma", "bloklar": [
+          {"tur": "soru_bankasi", "ders": "HAFTANIN_ZAYIF_DERSI", "sure_dk": 80, "aciklama": "Hafta boyunca islenen konulardan yogun soru"},
+          {"tur": "soru_bankasi", "ders": "HAFTANIN_GUCLU_DERSI", "sure_dk": 70, "aciklama": "Bu haftanin guclu dersinden soru"}
+        ]},
+        {"gun": "Cumartesi", "bloklar": [
+          {"tur": "haftalik_deneme", "ders": "karma_genel", "sure_dk": 150, "aciklama": "40-50 soru, agirlik o haftanin konularinda ama tum o ana kadar islenenlerden karma"},
+          {"tur": "hata_analizi", "ders": "genel", "sure_dk": 30, "aciklama": "Hata defteri guncelle"}
+        ]},
+        {"gun": "Pazar", "bloklar": [
+          {"tur": "srs_tekrar", "ders": "karma_genel", "sure_dk": 60, "aciklama": "Tum dersler karma flashcard"},
+          {"tur": "planlama", "ders": "genel", "sure_dk": 30, "aciklama": "Haftalik degerlendirme"}
+        ]}
+      ],
+      "haftalik_ders_atamasi_22_hafta": [
+        {"hafta": 1, "zayif_ders": "periodontoloji", "guclu_ders": "patoloji_oral"},
+        {"hafta": 2, "zayif_ders": "ortodonti", "guclu_ders": "pedodonti"},
+        {"hafta": 3, "zayif_ders": "protetik", "guclu_ders": "endodonti"},
+        {"hafta": 4, "zayif_ders": "farmakoloji", "guclu_ders": "oral_cerrahi"},
+        {"hafta": 5, "zayif_ders": "restoratif", "guclu_ders": "radyoloji"},
+        {"hafta": 6, "zayif_ders": "acbh_tmd", "guclu_ders": "tukuruk_bezi"},
+        {"hafta": 7, "zayif_ders": "biyoistatistik_etik", "guclu_ders": "patoloji_oral"},
+        {"hafta": 8, "zayif_ders": "periodontoloji", "guclu_ders": "pedodonti"},
+        {"hafta": 9, "zayif_ders": "ortodonti", "guclu_ders": "endodonti"},
+        {"hafta": 10, "zayif_ders": "protetik", "guclu_ders": "oral_cerrahi"},
+        {"hafta": 11, "zayif_ders": "farmakoloji", "guclu_ders": "radyoloji"},
+        {"hafta": 12, "zayif_ders": "restoratif", "guclu_ders": "tukuruk_bezi"},
+        {"hafta": 13, "zayif_ders": "acbh_tmd", "guclu_ders": "patoloji_oral"},
+        {"hafta": 14, "zayif_ders": "biyoistatistik_etik", "guclu_ders": "pedodonti"},
+        {"hafta": 15, "zayif_ders": "periodontoloji", "guclu_ders": "endodonti"},
+        {"hafta": 16, "zayif_ders": "ortodonti", "guclu_ders": "oral_cerrahi"},
+        {"hafta": 17, "zayif_ders": "protetik", "guclu_ders": "radyoloji"},
+        {"hafta": 18, "zayif_ders": "farmakoloji", "guclu_ders": "tukuruk_bezi"},
+        {"hafta": 19, "zayif_ders": "restoratif", "guclu_ders": "patoloji_oral"},
+        {"hafta": 20, "zayif_ders": "acbh_tmd", "guclu_ders": "pedodonti"},
+        {"hafta": 21, "zayif_ders": "biyoistatistik_etik", "guclu_ders": "endodonti"},
+        {"hafta": 22, "zayif_ders": "periodontoloji", "guclu_ders": "oral_cerrahi"}
+      ],
+      "temel_bilimler_ileri_donusum_sirasi": "Hafta 1: anatomi, Hafta2: histoloji_embriyoloji, Hafta3: fizyoloji_biyokimya, Hafta4: mikrobiyoloji_patoloji, Hafta5: anatomi (tekrar basa don)... her 4 haftada bir tam tur",
+      "mufredat_zayif_dersler": {
+        "periodontoloji": [
+          "Periodonsiyumun yapisi (disetinden alveol kemigine)",
+          "Periodontal hastaliklarin siniflandirilmasi (guncel siniflama)",
+          "Dental plak ve kalkulus olusumu",
+          "Gingivitis - etiyoloji ve klinik bulgular",
+          "Kronik periodontitis - evreleme ve derecelendirme",
+          "Agresif/nekrotizan periodontal hastaliklar",
+          "Periodontal cep tipleri ve olcum yontemleri",
+          "Non-cerrahi periodontal tedavi (scaling, root planing)",
+          "Cerrahi periodontal tedavi yontemleri (flep, rejeneratif teknikler)",
+          "Furkasyon defektleri ve siniflandirmasi",
+          "Periodontal-sistemik hastalik iliskileri (diyabet, kardiyovaskuler)",
+          "Periodontal bakim ve idame tedavisi"
+        ],
+        "ortodonti": [
+          "Kraniofasiyal buyume-gelisim temelleri",
+          "Angle siniflamasi ve iskelet siniflari (I, II, III)",
+          "Maloklüzyon tipleri ve etiyolojisi",
+          "Karisik dislenme donemi sorunlari",
+          "Erken ortodontik tedavi endikasyonlari",
+          "Hareketli apareyler - tipleri ve kullanim alanlari",
+          "Sabit apareyler - braket sistemleri temelleri",
+          "Dis hareketi biyomekanigi temelleri",
+          "Ekstraksiyon kararlari ve yer kazanimi yontemleri",
+          "Retansiyon ve relaps",
+          "Sefalometrik analiz temelleri",
+          "Ortodontik tedavi komplikasyonlari (kok rezorpsiyonu vb.)"
+        ],
+        "protetik": [
+          "Sabit protez endikasyon ve kontrendikasyonlari",
+          "Dis kesimi (preparasyon) prensipleri",
+          "Kopru tasarimi ve Ante Kanunu",
+          "Olcu maddeleri ve teknikleri",
+          "Gecici (provizyonel) restorasyonlar",
+          "Tam protez - anatomik temeller ve sinir hareketleri",
+          "Tam protez - okluzyon ve artikulasyon kavramlari",
+          "Bolumlu hareketli protez - Kennedy siniflandirmasi ve tasarim",
+          "Protez retansiyonu, stabilizasyonu ve destegi",
+          "Dental materyaller - seramikler",
+          "Dental materyaller - metaller ve alasimlar",
+          "Implant destekli protez temel kavramlari"
+        ],
+        "farmakoloji": [
+          "Genel farmakoloji prensipleri (farmakokinetik/farmakodinamik)",
+          "Lokal anestezikler - etki mekanizmasi ve dozlama",
+          "Analjezikler - NSAII ve opioidler dental kullanim",
+          "Antibiyotikler - dental enfeksiyonlarda secim ilkeleri",
+          "Ilac etkilesimleri ve ozel hasta gruplari (gebelik, bobrek/karaciger)",
+          "Antifungal ve antiviral ilaclar - oral kullanim alanlari",
+          "Sedasyon ve genel anestezi ile ilgili dental farmakoloji",
+          "Hemostatik ajanlar ve antikoagulan kullanan hastalarda yaklasim",
+          "Florur farmakolojisi ve toksisitesi",
+          "Recete yazma kurallari ve ilac gruplarinin siniflandirilmasi"
+        ],
+        "restoratif": [
+          "Kavite siniflandirmasi (Black siniflamasi ve genisletilmis siniflamalar)",
+          "Adeziv sistemler ve baglanma mekanizmalari",
+          "Kompozit rezinler - ozellikleri ve polimerizasyon",
+          "Cam ionomer simanlar - ozellikleri ve kullanim alanlari",
+          "Amalgam - ozellikleri, avantaj/dezavantajlari",
+          "Kavite preparasyon prensipleri",
+          "Dis renginin degerlendirilmesi ve estetik restorasyonlar",
+          "Kron-kok kiriklari ve restoratif yaklasim",
+          "Izolasyon yontemleri (rubber dam)",
+          "Restorasyon basarisizliklari ve sekonder curuk"
+        ],
+        "acbh_tmd": [
+          "TME bozukluklari - tani kriterleri ve siniflandirma",
+          "Bruksizm - etiyoloji ve yonetim",
+          "Orofasiyal agri sendromlari (trigeminal nevralji, atipik agrilar)",
+          "Tukuruk bezi hastaliklari (sialolitiazis, Sjogren) - klinik yaklasim",
+          "Agiz mukozasi sistemik hastalik bulgulari",
+          "Dental travma degerlendirmesi ve acil yaklasim",
+          "Kraniyofasiyal anomaliler genel bakis",
+          "Halitozis ve agiz kokusu degerlendirmesi"
+        ],
+        "biyoistatistik_etik": [
+          "Temel istatistik kavramlari (ortalama, standart sapma, dagilimlar)",
+          "Guven araligi ve p degeri yorumlama",
+          "Arastirma tasarimlari (RCT, kohort, vaka-kontrol)",
+          "Duyarlilik-ozgunluk ve tani testleri",
+          "Dis hekimliginde etik ilkeler ve hasta haklari",
+          "Aydinlatilmis onam ve mesleki sorumluluk"
+        ]
+      },
+      "mufredat_temel_bilimler_ileri": {
+        "anatomi": [
+          "Maksiller sinus anatomisi ve dis iliskisi",
+          "Dil anatomisi ve innervasyonu",
+          "Farinks ve larinks temel anatomisi",
+          "Otonom sinir sistemi - bas-boyun bolgesi",
+          "Kraniyal sinirlerin klinik muayenesi (genel bakis)",
+          "Yutma ve konusma ile ilgili kas-sinir koordinasyonu",
+          "Servikal vertebra ve postur iliskisi (TME baglantisi)",
+          "Anatomik varyasyonlar ve klinik onemi (orn. bifid mandibular kanal)"
+        ],
+        "histoloji_embriyoloji": [
+          "Dis surme mekanizmasi histolojisi",
+          "Kemik doku histolojisi ve remodelleme",
+          "Eklem (sinovyal) histolojisi - TME baglantisi",
+          "Epitel-mezenkim etkilesimleri dis gelisiminde",
+          "Dis anomalilerinin gelisimsel temelleri (taurodontizm, dens invaginatus vb.)",
+          "Yara iyilesmesinde doku rejenerasyonu histolojisi",
+          "Kemik iligi ve hematopoez temelleri",
+          "Implant-kemik arayuzu histolojisi (osseointegrasyon)"
+        ],
+        "fizyoloji_biyokimya": [
+          "Kemik metabolizmasi - osteoblast/osteoklast duzenlenmesi, kalsiyum-fosfor dengesi",
+          "Dis mineralizasyonu biyokimyasi",
+          "Immun sistem fizyolojisi - oral mukozal immunite",
+          "Stres fizyolojisi ve agiz sagligina etkileri",
+          "Yara iyilesmesi biyokimyasi (buyume faktorleri)",
+          "Agri fizyolojisi ve norotransmitterler",
+          "Hormonal degisikliklerin periodontal dokulara etkisi (gebelik, menopoz, diyabet)",
+          "Asit-baz bozukluklari ve sistemik yansimalari"
+        ],
+        "mikrobiyoloji_patoloji": [
+          "Biyofilm olusum dinamigi ve antimikrobiyal direnc",
+          "Firsatci enfeksiyonlar ve immun yetmezlik durumlari",
+          "Otoimmun hastaliklar - oral bulgular (pemfigus, pemfigoid, lichen planus)",
+          "Granulomatoz hastaliklar (sarkoidoz, Crohn - oral bulgular)",
+          "Hematolojik hastaliklarin oral bulgulari (anemi, losemi)",
+          "Genetik/gelisimsel anomaliler - patoloji ile iliskisi",
+          "Kanser biyolojisi temelleri - metastaz mekanizmalari",
+          "Radyasyon ve kemoterapinin oral dokulara etkileri"
+        ]
+      },
+      "guclu_dersler_review_checklist": {
+        "patoloji_oral": [
+          "Premalign oral lezyonlar (lokoplaki, eritroplaki)",
+          "Kistler (odontojenik/non-odontojenik) ayirici tani",
+          "Tukuruk bezi tumorleri (pleomorfik adenom, mukoepidermoid karsinom)",
+          "Osteomiyelit tipleri ve goruntuleme bulgulari",
+          "Kandidiazis - klinik formlar ve tedavi",
+          "Kirmizi kompleks bakteriler ve periodontal patoloji iliskisi",
+          "Oral skuamoz hucreli karsinom - risk faktorleri ve erken tani"
+        ],
+        "pedodonti": [
+          "Sut-daimi dis farklari (morfolojik, histolojik)",
+          "Pulpa tedavileri - pulpotomi vs pulpektomi endikasyonlari",
+          "MTA kullanim alanlari ve ozellikleri",
+          "Dentigeroz kist patogenezi ve yonetimi",
+          "Fissur ortucu ve preventif uygulamalar",
+          "Travma yonetimi - sut ve daimi diste",
+          "Cocukta davranis yonetimi teknikleri"
+        ],
+        "endodonti": [
+          "Pulpa vitalite testleri ve yorumlanmasi",
+          "Hidrodinamik teori ve dentin hassasiyeti",
+          "Kok kanal tedavisi asamalari ve enstrumantasyon",
+          "Apeksifikasyon/apeksogenez",
+          "Kanal dolgu materyalleri ve teknikleri",
+          "Endodontik basarisizlik nedenleri ve retreatment",
+          "Vital pulpa tedavileri (direkt/indirekt pulpa kapamasi)"
+        ],
+        "oral_cerrahi": [
+          "Odontojenik enfeksiyon yayilim zinciri",
+          "Fasiyal araliklara enfeksiyon yayilimi",
+          "Ludwig anjini - tani ve acil yonetim",
+          "Dis cekimi komplikasyonlari",
+          "Cene kistleri ve odontojenik tumorler",
+          "Impakte yirmi yas disi degerlendirmesi",
+          "Anestezi komplikasyonlari ve yonetimi"
+        ],
+        "radyoloji": [
+          "Film isleme hatalari ve duzeltilmesi",
+          "Periapikal/panoramik radyografi teknikleri",
+          "Radyografik yorumlama - periapikal lezyonlar",
+          "Radyasyon guvenligi ve doz prensipleri",
+          "Ileri goruntuleme yontemleri (CBCT) endikasyonlari"
+        ],
+        "tukuruk_bezi": [
+          "Tukuruk kompozisyonu ve fonksiyonlari",
+          "Sialoadenit ve sialolitiazis",
+          "Sjogren sendromu",
+          "Tukuruk bezi tumorleri siniflandirmasi",
+          "Tukuruk bezi goruntuleme yontemleri"
+        ]
+      },
+      "faz_sonu_hedefi": "Tum zayif klinik derslerin Tur1 mufredati tamamlanmis, TB ileri konular bitmis, guclu dersler en az 3-4 kez SRS ile tekrar edilmis, kumulatif soru sayisi 1500+."
+    },
+
+    {
+      "faz_id": 3,
+      "ad": "Faz 3 - 5. Sinif Bahar Turu: Ikinci Tur + Deneme Yogunlasmasi",
+      "baslangic": "2027-02-01",
+      "bitis": "2027-06-30",
+      "sure_aciklama": "~21 hafta",
+      "amac": "Tum derslerden ikinci tur - artik 'yeni konu ogrenme' degil 'vaka bazli derinlestirme + soru hacmi + deneme'. Tam deneme sinavlari (120 soru) bu fazda rutine girer.",
+      "gunluk_dakika_onerisi": "150 taban, ama deneme gunleri 180-210'a cikar (esnek - fazla zamani diger gunden cikarma).",
+      "ders_rotasyon_kurali": "Her hafta 2 farkli zayif ders 'odak' olur (Pzt-Carsamba = ders A, Sali-Persembe = ders B). Liste 7 elemanli oldugu icin haftadan haftaya 1 kaydirarak ilerle: hafta1=(perio,ortodonti), hafta2=(ortodonti,protetik), hafta3=(protetik,farmakoloji)... 7 haftada bir tum ciftler tamamlanir, 21 haftada 3 tur doner.",
+      "haftalik_sablon": [
+        {"gun": "Pazartesi", "bloklar": [
+          {"tur": "ileri_konu_vaka", "ders": "ODAK_DERS_A", "sure_dk": 60, "aciklama": "Tur2 mufredatindan vaka bazli konu"},
+          {"tur": "karma_soru", "ders": "temel_bilimler", "sure_dk": 60, "aciklama": "TB final ozet + karma soru bankasi"},
+          {"tur": "hata_defteri_tekrar", "ders": "genel", "sure_dk": 30, "aciklama": ""}
+        ]},
+        {"gun": "Sali", "bloklar": [
+          {"tur": "vaka_soru_seti", "ders": "ODAK_GUCLU_DERS", "sure_dk": 60, "aciklama": "Guclu derslerden rotasyonla, zorlu/vaka bazli sorular"},
+          {"tur": "ileri_konu_vaka", "ders": "ODAK_DERS_B", "sure_dk": 60, "aciklama": ""},
+          {"tur": "hata_defteri_tekrar", "ders": "genel", "sure_dk": 30, "aciklama": ""}
+        ]},
+        {"gun": "Carsamba", "bloklar": [
+          {"tur": "karma_soru", "ders": "temel_bilimler", "sure_dk": 70, "aciklama": "TB karma soru bankasi - genis kapsam"},
+          {"tur": "ileri_konu_vaka", "ders": "ODAK_DERS_A", "sure_dk": 50, "aciklama": "Devam"},
+          {"tur": "hata_defteri_tekrar", "ders": "genel", "sure_dk": 30, "aciklama": ""}
+        ]},
+        {"gun": "Persembe", "bloklar": [
+          {"tur": "vaka_soru_seti", "ders": "ODAK_GUCLU_DERS", "sure_dk": 60, "aciklama": "Devam"},
+          {"tur": "ileri_konu_vaka", "ders": "ODAK_DERS_B", "sure_dk": 60, "aciklama": "Devam"},
+          {"tur": "hata_defteri_tekrar", "ders": "genel", "sure_dk": 30, "aciklama": ""}
+        ]},
+        {"gun": "Cuma", "bloklar": [
+          {"tur": "karma_soru", "ders": "tum_dersler", "sure_dk": 150, "aciklama": "Genis kapsamli karma soru bankasi - tum dersler"}
+        ]},
+        {"gun": "Cumartesi", "bloklar": [
+          {"tur": "tam_deneme", "ders": "tum_dersler", "sure_dk": 150, "aciklama": "120 soru / 150 dakika - gercek sinav simulasyonu"},
+          {"tur": "deneme_analizi", "ders": "genel", "sure_dk": 60, "aciklama": "Ders bazli kirilim, en cok hata yapilan 3 konu, bos birakma dogrulugu - deneme_takip_sablonu'na isle"}
+        ]},
+        {"gun": "Pazar", "bloklar": [
+          {"tur": "deneme_hata_tekrari", "ders": "genel", "sure_dk": 60, "aciklama": "Cumartesi denemesindeki yanlislari tekrar et"},
+          {"tur": "srs_tekrar", "ders": "tum_dersler", "sure_dk": 30, "aciklama": "Flashcard"}
+        ]}
+      ],
+      "guclu_ders_rotasyonu_not": "Sali/Persembe icin guclu_dersler_sirasi (Faz2'deki liste) ayni mantikla haftadan haftaya 1 kaydirilarak kullanilir.",
+      "mufredat_zayif_dersler_tur2": {
+        "periodontoloji": ["Vaka bazli periodontal tedavi planlamasi", "Periodontal-protetik-ortodontik entegrasyon sorulari", "Karma soru bankasi taramasi", "Hata defteri tekrari", "Final ozet kartlari"],
+        "ortodonti": ["Vaka bazli tedavi planlama sorulari", "Sefalometri-anatomi entegre sorular", "Karma soru bankasi taramasi", "Hata defteri tekrari", "Final ozet kartlari"],
+        "protetik": ["Vaka bazli protez tasarim sorulari", "Materyal secimi senaryo sorulari", "Karma soru bankasi taramasi", "Hata defteri tekrari", "Final ozet kartlari"],
+        "farmakoloji": ["Vaka bazli ilac secimi sorulari (ozel hasta gruplari)", "Ilac etkilesim tablolari final tekrar", "Karma soru bankasi taramasi", "Hata defteri tekrari", "Final ozet kartlari"],
+        "restoratif": ["Vaka bazli materyal/teknik secimi", "Estetik-fonksiyon entegre sorular", "Karma soru bankasi taramasi", "Hata defteri tekrari", "Final ozet kartlari"],
+        "acbh_tmd": ["Vaka bazli ayirici tani sorulari", "TMD-ortodonti-protetik entegre sorular", "Karma soru bankasi taramasi", "Hata defteri tekrari", "Final ozet kartlari"],
+        "biyoistatistik_etik": ["Karma soru bankasi - tum gecmis DUS sorulari", "Hata defteri tekrari", "Final ozet - formul karti", "Etik vaka sorulari", "Final tekrar"]
+      },
+      "mufredat_temel_bilimler_tur2": {
+        "anatomi": ["Klinik anatomi - anestezi enjeksiyon bolgeleri ve riskler", "Cerrahi anatomi - flep tasariminda kritik yapilar", "Goruntulemede anatomik landmark tanima", "Anatomik varyasyonlarin radyografik gorunumu", "Hata defteri bazli en zayif anatomi konulari tekrari"],
+        "histoloji_embriyoloji": ["Dis-periodonsiyum histolojik kesit yorumlama", "Patolojik-histolojik korelasyon", "Yara iyilesmesi/dis surmesi soru tekrari", "Karma histoloji-embriyoloji soru bankasi taramasi", "Hata defteri bazli zayif konular"],
+        "fizyoloji_biyokimya": ["Entegre vaka bazli sorular (sistemik hastalik-oral fizyoloji)", "Metabolizma yollari hizli tekrar kartlari", "Karma soru bankasi taramasi", "Hata defteri bazli zayif konular", "Final ozet - tek sayfa formul/deger listesi"],
+        "mikrobiyoloji_patoloji": ["Vaka bazli oral lezyon tani algoritmalari", "Karma soru bankasi taramasi", "Hata defteri bazli zayif konular", "Sik karistirilan lezyonlarin ayirici tani tablosu", "Final ozet taramasi"]
+      },
+      "faz_sonu_hedefi": "Tum dersler ikinci turu tamamlamis, kumulatif soru sayisi 4000+, en az 12-15 tam deneme yapilmis, net ortalamasi 90+ bandinda stabil."
+    },
+
+    {
+      "faz_id": 4,
+      "ad": "Faz 4 - Final Sprint (Mezuniyet Sonrasi)",
+      "baslangic": "2027-07-01",
+      "bitis": "2027-09-15",
+      "uyari": "Bitis tarihi ve toplam sure TAHMINIDIR. ÖSYM 2027 DUS takvimi aciklaninca bu fazin uzunlugu ve gunluk sablon buna gore yeniden olceklenmeli (faz kisalirsa gunluk yuk artar, uzarsa rahatlar).",
+      "sure_aciklama": "~10-11 hafta, mezun olunmus - tam zamanli calisma imkani var",
+      "amac": "95+ icin son rotuslar: tum derslerde sifir bosluk, deneme sikligi maksimum, taper ile sinav gunune zihinsel hazirlik.",
+      "gunluk_dakika_onerisi": "150 taban GECERLI ama artik gun boyu calisilabilir - 4-6 saat blok onerilir, taper haftasinda dusurulur.",
+      "haftalik_yapı_ilk_8_hafta": {
+        "sabah_blok": "Temel bilimler tam tarama - tum ozet kartlar + karma soru (2 saat)",
+        "ogleden_sonra_blok": "Klinik dersler rotasyonla derinlestirme - hata defteri odakli (2 saat)",
+        "aksam_blok": "Soru bankasi - gunun konularindan + genel karma (1-1.5 saat)",
+        "hafta_icinde": "Haftada 2 TAM DENEME (120 soru/150dk) - orn. Carsamba ve Cumartesi, her birinden sonra detayli analiz",
+        "pazar": "Sadece deneme hata tekrari + hafif SRS - dinlenmeye yakin ama sifir degil"
+      },
+      "son_2_hafta_taper": [
+        {"gun_araligi": "Sinav -14 / -10", "icerik": "Tum derslerden 1 sayfalik ozet notlar cikar (her ders icin) - bu notlar son hafta tek kaynagin olacak"},
+        {"gun_araligi": "Sinav -9 / -5", "icerik": "Yogun soru bankasi taramasi - her oturumda zamanli 40 soru, hata defterindeki TUM konulari bir kez daha tara"},
+        {"gun_araligi": "Sinav -4 / -3", "icerik": "1 TAM DENEME (gercek sinav saatinde, gercek sinav suresinde) + detayli analiz - bu son buyuk deneme"},
+        {"gun_araligi": "Sinav -2", "icerik": "Hata analizinden cikan son bosluklari kapat, hafif tekrar"},
+        {"gun_araligi": "Sinav -1", "icerik": "SADECE ozet notlara goz gezdir, agir calisma YOK, malzemeleri hazirla, erken yat"},
+        {"gun_araligi": "Sinav gunu", "icerik": "Sinav oncesi sadece kisa ozet tarama, sakin kal - boslugu bos birakma stratejisini uygula"}
+      ],
+      "faz_sonu_hedefi": "95+ net icin gereken: tum derslerde ozet notlar hazir, son 4-5 denemede net ortalamasi 95+ bandinda, bos birakma dogrulugu yuksek (gercekten elenemeyen sorularda bos birakmis olmali)."
+    }
+  ],
+
+  "genel_notlar": {
+    "esneklik": "Klinik/staj programi degisirse gunler kayabilir ama HAFTALIK TOPLAM 1050 dakika (7x150) hedefi sabit kalmali - bir gun kaybedilirse hafta sonu telafi edilir.",
+    "hata_defteri": "Her yanlis/bos sorunun: konusu, neden yanlis yapildigi (bilgi eksigi / dikkatsizlik / yanlis eleme), dogru cevabin mantigi yazilmali. Bu defter Faz4'un en kritik kaynagi olacak.",
+    "guncelleme": "ÖSYM 2027 takvimi resmi aciklandiginda Faz4 tarihleri ve faz4 toplam suresi guncellenmeli, gerekirse Faz3 bitis tarihi de kaydirilmali."
+  }
+}
