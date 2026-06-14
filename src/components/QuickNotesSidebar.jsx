@@ -3,11 +3,14 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { Plus } from 'lucide-react'
 
+const STRIP_W = 14
+const PANEL_W = 260
+
 export default function QuickNotesSidebar() {
   const { user } = useAuth()
   const [todos, setTodos] = useState([])
   const [input, setInput] = useState('')
-  const [hovered, setHovered] = useState(false)
+  const [open, setOpen] = useState(false)
   const [adding, setAdding] = useState(false)
   const [checking, setChecking] = useState(null)
   const inputRef = useRef(null)
@@ -23,11 +26,11 @@ export default function QuickNotesSidebar() {
   }, [user])
 
   useEffect(() => {
-    if (hovered) {
-      const t = setTimeout(() => inputRef.current?.focus(), 240)
+    if (open) {
+      const t = setTimeout(() => inputRef.current?.focus(), 260)
       return () => clearTimeout(t)
     }
-  }, [hovered])
+  }, [open])
 
   async function addTodo() {
     const text = input.trim()
@@ -55,69 +58,65 @@ export default function QuickNotesSidebar() {
 
   if (!user) return null
 
+  const totalW = open ? STRIP_W + PANEL_W : STRIP_W
+
   return (
-    // Single wrapper — no pointer-events:none so onMouseEnter fires correctly
-    // position:fixed + right:0 pins the RIGHT edge to viewport right
-    // flex row: [PANEL][STRIP] — strip is always the rightmost element
+    /*
+     * position:fixed + explicit right:0 + explicit width
+     * This guarantees the RIGHT edge of the box = viewport right edge.
+     * Flex row: [PANEL][STRIP] → strip is always rightmost 14px.
+     */
     <div
       style={{
         position: 'fixed',
         top: 0,
         right: 0,
         bottom: 0,
+        width: totalW,
+        transition: 'width 0.24s cubic-bezier(0.22,1,0.36,1)',
         zIndex: 9800,
         display: 'flex',
         flexDirection: 'row',
         alignItems: 'stretch',
-        direction: 'ltr',
+        overflow: 'hidden',
       }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
     >
-      {/* Panel — slides in from the right edge, expanding leftward */}
+      {/* Panel — fills remaining space left of strip */}
       <div
         style={{
-          width: hovered ? 260 : 0,
-          overflow: 'hidden',
-          transition: 'width 0.24s cubic-bezier(0.22,1,0.36,1)',
+          flex: 1,
+          minWidth: 0,
           background: 'rgba(4,10,20,0.97)',
           borderLeft: '1px solid #0d2a40',
           backdropFilter: 'blur(10px)',
           display: 'flex',
           flexDirection: 'column',
+          overflow: 'hidden',
         }}
       >
         {/* Header */}
-        <div
-          style={{
-            padding: '14px 16px 10px',
-            borderBottom: '1px solid #0d2a40',
-            flexShrink: 0,
-          }}
-        >
-          <p
-            style={{
-              fontFamily: '"Bebas Neue", sans-serif',
-              fontSize: 13,
-              letterSpacing: '0.2em',
-              color: '#0891b2',
-              whiteSpace: 'nowrap',
-            }}
-          >
+        <div style={{ padding: '14px 16px 10px', borderBottom: '1px solid #0d2a40', flexShrink: 0 }}>
+          <p style={{
+            fontFamily: '"Bebas Neue", sans-serif',
+            fontSize: 13,
+            letterSpacing: '0.2em',
+            color: '#0891b2',
+            whiteSpace: 'nowrap',
+          }}>
             ÇALIŞMA NOTLARI
           </p>
-          <p
-            style={{
-              fontFamily: 'Barlow, sans-serif',
-              fontWeight: 600,
-              fontSize: 9,
-              letterSpacing: '0.14em',
-              color: '#1e3a52',
-              textTransform: 'uppercase',
-              marginTop: 3,
-              whiteSpace: 'nowrap',
-            }}
-          >
+          <p style={{
+            fontFamily: 'Barlow, sans-serif',
+            fontWeight: 600,
+            fontSize: 9,
+            letterSpacing: '0.14em',
+            color: '#1e3a52',
+            textTransform: 'uppercase',
+            marginTop: 3,
+            whiteSpace: 'nowrap',
+          }}>
             Tik at → silinir
           </p>
         </div>
@@ -125,149 +124,123 @@ export default function QuickNotesSidebar() {
         {/* Todo list */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '6px 0' }}>
           {todos.length === 0 ? (
-            <p
-              style={{
-                fontFamily: 'Barlow, sans-serif',
-                fontWeight: 600,
-                fontSize: 10,
-                color: '#1e3a52',
-                textTransform: 'uppercase',
-                letterSpacing: '0.12em',
-                textAlign: 'center',
-                padding: '24px 16px',
-                whiteSpace: 'nowrap',
-              }}
-            >
+            <p style={{
+              fontFamily: 'Barlow, sans-serif',
+              fontWeight: 600,
+              fontSize: 10,
+              color: '#1e3a52',
+              textTransform: 'uppercase',
+              letterSpacing: '0.12em',
+              textAlign: 'center',
+              padding: '24px 16px',
+              whiteSpace: 'nowrap',
+            }}>
               Henüz not yok
             </p>
-          ) : (
-            todos.map(todo => (
-              <div
-                key={todo.id}
+          ) : todos.map(todo => (
+            <div
+              key={todo.id}
+              style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 10,
+                padding: '7px 14px',
+                borderBottom: '1px solid rgba(13,42,64,0.45)',
+                opacity: checking === todo.id ? 0.4 : 1,
+                transition: 'opacity 0.2s',
+              }}
+            >
+              <button
+                onClick={() => removeTodo(todo.id)}
                 style={{
+                  flexShrink: 0,
+                  width: 13,
+                  height: 13,
+                  marginTop: 2,
+                  border: `1px solid ${checking === todo.id ? '#0891b2' : '#1e3a52'}`,
+                  background: checking === todo.id ? '#0891b2' : 'transparent',
+                  cursor: 'pointer',
                   display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: 10,
-                  padding: '7px 14px',
-                  borderBottom: '1px solid rgba(13,42,64,0.45)',
-                  opacity: checking === todo.id ? 0.4 : 1,
-                  transition: 'opacity 0.2s',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'background 0.15s, border-color 0.15s',
+                  padding: 0,
                 }}
               >
-                <button
-                  onClick={() => removeTodo(todo.id)}
-                  style={{
-                    flexShrink: 0,
-                    width: 13,
-                    height: 13,
-                    marginTop: 2,
-                    border: `1px solid ${checking === todo.id ? '#0891b2' : '#1e3a52'}`,
-                    background: checking === todo.id ? '#0891b2' : 'transparent',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    transition: 'background 0.15s, border-color 0.15s',
-                    padding: 0,
-                  }}
-                  title="Tamamlandı — sil"
-                >
-                  {checking === todo.id && (
-                    <svg width="8" height="6" viewBox="0 0 8 6" fill="none">
-                      <path
-                        d="M1 3L3 5L7 1"
-                        stroke="#fff"
-                        strokeWidth="1.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  )}
-                </button>
-
-                <span
-                  style={{
-                    fontFamily: 'Barlow, sans-serif',
-                    fontWeight: 600,
-                    fontSize: 11,
-                    color: '#8ab4c8',
-                    lineHeight: 1.55,
-                    flex: 1,
-                    wordBreak: 'break-word',
-                    whiteSpace: 'pre-wrap',
-                  }}
-                >
-                  {todo.text}
-                </span>
-              </div>
-            ))
-          )}
-        </div>
-
-        {/* Input */}
-        <div
-          style={{
-            padding: '10px 12px',
-            borderTop: '1px solid #0d2a40',
-            flexShrink: 0,
-          }}
-        >
-          <div style={{ display: 'flex', gap: 6 }}>
-            <input
-              ref={inputRef}
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault()
-                  addTodo()
-                }
-              }}
-              placeholder="Not ekle… (Enter)"
-              style={{
-                flex: 1,
-                background: '#070f1e',
-                border: '1px solid #1a3050',
-                borderRadius: 0,
-                color: '#c8e8f4',
+                {checking === todo.id && (
+                  <svg width="8" height="6" viewBox="0 0 8 6" fill="none">
+                    <path d="M1 3L3 5L7 1" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
+              </button>
+              <span style={{
                 fontFamily: 'Barlow, sans-serif',
                 fontWeight: 600,
                 fontSize: 11,
-                padding: '6px 8px',
-                outline: 'none',
-                minWidth: 0,
-              }}
-            />
-            <button
-              onClick={addTodo}
-              disabled={!input.trim() || adding}
-              style={{
-                flexShrink: 0,
-                background: input.trim() && !adding ? '#0891b2' : '#0a1525',
-                border: '1px solid #1a3050',
-                color: '#fff',
-                padding: '0 9px',
-                cursor: input.trim() && !adding ? 'pointer' : 'default',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                transition: 'background 0.15s',
-              }}
-            >
-              <Plus size={12} />
-            </button>
-          </div>
+                color: '#8ab4c8',
+                lineHeight: 1.55,
+                flex: 1,
+                wordBreak: 'break-word',
+                whiteSpace: 'pre-wrap',
+              }}>
+                {todo.text}
+              </span>
+            </div>
+          ))}
         </div>
+
+        {/* Input — use form for reliable Enter submit */}
+        <form
+          onSubmit={e => { e.preventDefault(); addTodo() }}
+          style={{ padding: '10px 12px', borderTop: '1px solid #0d2a40', flexShrink: 0, display: 'flex', gap: 6 }}
+        >
+          <input
+            ref={inputRef}
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            placeholder="Not ekle… (Enter)"
+            autoComplete="off"
+            style={{
+              flex: 1,
+              background: '#070f1e',
+              border: '1px solid #1a3050',
+              borderRadius: 0,
+              color: '#c8e8f4',
+              fontFamily: 'Barlow, sans-serif',
+              fontWeight: 600,
+              fontSize: 11,
+              padding: '6px 8px',
+              outline: 'none',
+              minWidth: 0,
+            }}
+          />
+          <button
+            type="submit"
+            disabled={!input.trim() || adding}
+            style={{
+              flexShrink: 0,
+              background: input.trim() && !adding ? '#0891b2' : '#0a1525',
+              border: '1px solid #1a3050',
+              color: '#fff',
+              padding: '0 9px',
+              cursor: input.trim() && !adding ? 'pointer' : 'default',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'background 0.15s',
+            }}
+          >
+            <Plus size={12} />
+          </button>
+        </form>
       </div>
 
-      {/* Trigger strip — always 14px, always the rightmost element */}
+      {/* Trigger strip — always 14px, rightmost element */}
       <div
         style={{
           flexShrink: 0,
-          width: 14,
-          background: hovered
-            ? 'rgba(8,145,178,0.35)'
-            : 'rgba(8,145,178,0.1)',
+          width: STRIP_W,
+          background: open ? 'rgba(8,145,178,0.35)' : 'rgba(8,145,178,0.1)',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -278,16 +251,14 @@ export default function QuickNotesSidebar() {
         }}
       >
         {todos.length > 0 && (
-          <span
-            style={{
-              fontFamily: 'Barlow, sans-serif',
-              fontWeight: 800,
-              fontSize: 9,
-              color: hovered ? '#fff' : '#0891b2',
-              transition: 'color 0.2s',
-              lineHeight: 1,
-            }}
-          >
+          <span style={{
+            fontFamily: 'Barlow, sans-serif',
+            fontWeight: 800,
+            fontSize: 9,
+            color: open ? '#fff' : '#0891b2',
+            transition: 'color 0.2s',
+            lineHeight: 1,
+          }}>
             {todos.length}
           </span>
         )}
