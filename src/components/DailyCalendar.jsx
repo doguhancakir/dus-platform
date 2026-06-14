@@ -107,7 +107,7 @@ export default function DailyCalendar({ userId, todayAnswered = 0, isAdmin = fal
     // Track goal task ID for auto-complete (needed even when not viewing today)
     if (selKey === todayKey) {
       const goal = rows.find(t => t.text === GOAL_TEXT)
-      if (goal) setGoalTaskId(goal.id)
+      if (goal && !goal.completed) setGoalTaskId(goal.id)
     }
 
     // Geçmiş günler için study_sessions'dan süreyi yükle
@@ -148,11 +148,11 @@ export default function DailyCalendar({ userId, todayAnswered = 0, isAdmin = fal
       .from('daily_todos')
       .update({ completed: true })
       .eq('id', goalTaskId)
-      .eq('completed', false)   // no-op if already ticked
       .select()
       .maybeSingle()
       .then(({ data }) => {
         if (!data) return
+        setGoalTaskId(null)
         // Update UI if the task is currently visible in the list
         setTodos(prev => {
           const found = prev.find(t => t.id === goalTaskId)
