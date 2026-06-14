@@ -12,6 +12,7 @@ import Register from './pages/Register'
 import MixedQuizPage from './pages/MixedQuizPage'
 import NotesPage from './pages/NotesPage'
 import StudyTimerWidget from './components/StudyTimerWidget'
+import QuickNotesSidebar from './components/QuickNotesSidebar'
 
 // ── Offline banner ────────────────────────────────────────────────────────────
 function OfflineDetector() {
@@ -119,6 +120,7 @@ export default function App() {
             }}
           />
           <StudyTimerWidget />
+          <QuickNotesSidebar />
           <AppRoutes />
         </StudyTimerProvider>
       </AuthProvider>
