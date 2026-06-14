@@ -3,7 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Plus, Trash2, Edit3, Save, X, Loader2, Upload, FileText, Image } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
-import { BRANCHES } from '../lib/data'
+import { BRANCHES, TEMEL_BILIMLER } from '../lib/data'
+
+const ALL_BRANCHES = [...BRANCHES, ...TEMEL_BILIMLER].sort((a, b) => a.id - b.id)
 import Layout from '../components/Layout'
 
 const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || 'admin123'
@@ -161,7 +163,7 @@ function TopicsTab() {
           value={selectedBranch}
           onChange={e => setSelectedBranch(Number(e.target.value))}
         >
-          {BRANCHES.map(b => (
+          {ALL_BRANCHES.map(b => (
             <option key={b.id} value={b.id}>{b.icon} {b.name}</option>
           ))}
         </select>
@@ -328,7 +330,7 @@ function QuestionsTab() {
         <select className="input w-auto flex-1 max-w-sm" value={selectedTopic}
           onChange={e => setSelectedTopic(e.target.value)}>
           <option value="">Konu seçin...</option>
-          {BRANCHES.map(branch => (
+          {ALL_BRANCHES.map(branch => (
             <optgroup key={branch.id} label={`${branch.icon} ${branch.name}`}>
               {topics.filter(t => t.branch_id === branch.id).map(t => (
                 <option key={t.id} value={t.id}>{t.title}</option>
@@ -463,7 +465,7 @@ function BranchesTab() {
         Her branş için bir arka plan görseli URL'si girebilirsiniz. Boş bırakırsanız varsayılan gradient kullanılır.
       </div>
 
-      {BRANCHES.map(branch => (
+      {ALL_BRANCHES.map(branch => (
         <div key={branch.id} className="p-4 flex items-center gap-4"
           style={{ background: '#0d1e35', border: '1px solid #1a2d45' }}>
           <div className="flex-shrink-0">
@@ -565,7 +567,7 @@ function ImportTab() {
           <label className="text-[10px] text-gray-600 uppercase tracking-wider">1. Branş Seçin</label>
           <select style={selectStyle} value={selectedBranchId} onChange={e => setSelectedBranchId(e.target.value)}>
             <option value="">— Branş seçin —</option>
-            {BRANCHES.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+            {ALL_BRANCHES.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
           </select>
         </div>
 
