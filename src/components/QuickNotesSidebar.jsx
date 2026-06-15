@@ -71,7 +71,7 @@ export default function QuickNotesSidebar() {
       style={{
         position: 'fixed',
         top: 0,
-        right: 0,
+        left: 0,
         bottom: 0,
         width: totalW,
         transition: 'width 0.24s cubic-bezier(0.22,1,0.36,1)',
@@ -84,13 +84,42 @@ export default function QuickNotesSidebar() {
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
     >
-      {/* Panel — fills remaining space left of strip */}
+      {/* Trigger strip — always 14px, leftmost element */}
+      <div
+        style={{
+          flexShrink: 0,
+          width: STRIP_W,
+          background: open ? 'rgba(8,145,178,0.35)' : 'rgba(8,145,178,0.1)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          transition: 'background 0.2s',
+          userSelect: 'none',
+          cursor: 'default',
+        }}
+      >
+        {todos.length > 0 && (
+          <span style={{
+            fontFamily: 'Barlow, sans-serif',
+            fontWeight: 800,
+            fontSize: 9,
+            color: open ? '#fff' : '#0891b2',
+            transition: 'color 0.2s',
+            lineHeight: 1,
+          }}>
+            {todos.length}
+          </span>
+        )}
+      </div>
+
+      {/* Panel — fills remaining space to the right of strip */}
       <div
         style={{
           flex: 1,
           minWidth: 0,
           background: 'rgba(4,10,20,0.97)',
-          borderLeft: '1px solid #0d2a40',
+          borderRight: '1px solid #0d2a40',
           backdropFilter: 'blur(10px)',
           display: 'flex',
           flexDirection: 'column',
@@ -236,34 +265,6 @@ export default function QuickNotesSidebar() {
         </form>
       </div>
 
-      {/* Trigger strip — always 14px, rightmost element */}
-      <div
-        style={{
-          flexShrink: 0,
-          width: STRIP_W,
-          background: open ? 'rgba(8,145,178,0.35)' : 'rgba(8,145,178,0.1)',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          transition: 'background 0.2s',
-          userSelect: 'none',
-          cursor: 'default',
-        }}
-      >
-        {todos.length > 0 && (
-          <span style={{
-            fontFamily: 'Barlow, sans-serif',
-            fontWeight: 800,
-            fontSize: 9,
-            color: open ? '#fff' : '#0891b2',
-            transition: 'color 0.2s',
-            lineHeight: 1,
-          }}>
-            {todos.length}
-          </span>
-        )}
-      </div>
     </div>,
     document.body
   )
