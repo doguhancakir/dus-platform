@@ -17,8 +17,8 @@ export const RATINGS = {
   EASY: 3,   // Kolay
 }
 
-// Öğrenme adımları (dakika cinsinden) — Anki varsayılanı
-const LEARNING_STEPS = [1, 10]
+// Öğrenme adımları (dakika cinsinden)
+const LEARNING_STEPS = [10, 2880] // 10dk, 2 gün
 const RELEARNING_STEPS = [10]
 
 const MIN_EASE = 1.3
@@ -209,9 +209,9 @@ export function getEstimatedTime(card, rating) {
 
   if (status === CARD_STATUS.NEW || status === CARD_STATUS.LEARNING) {
     switch (rating) {
-      case RATINGS.AGAIN: return '<1dk'
-      case RATINGS.HARD: return '6dk'
-      case RATINGS.GOOD: return '10dk'
+      case RATINGS.AGAIN: return '10dk'
+      case RATINGS.HARD: return '1gün'
+      case RATINGS.GOOD: return '2gün'
       case RATINGS.EASY: return '4gün'
     }
   }
