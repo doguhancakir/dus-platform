@@ -149,8 +149,27 @@ export const TEMEL_BILIMLER = [
     gradient: 'from-orange-500/20 to-orange-600/5',
     border: 'border-orange-500/20',
   },
+  {
+    id: 109,
+    name: 'Shayla',
+    icon: '💻',
+    color: '#0ea5e9',
+    p5gradient: 'linear-gradient(135deg, #001522 0%, #0a0a0a 100%)',
+    gradient: 'from-sky-500/20 to-sky-600/5',
+    border: 'border-sky-500/20',
+    restricted: true,
+  },
 ]
 
 export function getBranchById(id) {
   return BRANCHES.find(b => b.id === Number(id)) || TEMEL_BILIMLER.find(b => b.id === Number(id))
+}
+
+/**
+ * restricted branşlar sadece admin ve nickname'i "ezgisu" olan kullanıcıya görünür.
+ */
+export function isBranchVisible(branch, user) {
+  if (!branch?.restricted) return true
+  if (user?.is_admin) return true
+  return user?.nickname?.trim().toLowerCase() === 'ezgisu'
 }

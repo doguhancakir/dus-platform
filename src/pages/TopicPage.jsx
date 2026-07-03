@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, Navigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronLeft, CheckCircle2, BookOpen, FileQuestion, Pencil, NotebookPen, X, List } from 'lucide-react'
@@ -7,7 +7,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
-import { getBranchById } from '../lib/data'
+import { getBranchById, isBranchVisible } from '../lib/data'
 import { isDue } from '../lib/sm2'
 import QuestionPanel from '../components/QuestionPanel'
 import TopicEditor from '../components/TopicEditor'
@@ -63,6 +63,7 @@ export default function TopicPage() {
   const [showEditor, setShowEditor] = useState(false)
   const [showFlashcards, setShowFlashcards] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [denied, setDenied] = useState(false)
   const bottomRef = useRef(null)
 
   // TOC
@@ -113,8 +114,9 @@ export default function TopicPage() {
       const { data: topicData } = await supabase
         .from('topics').select('*').eq('id', id).single()
       if (!topicData) { setLoading(false); return }
-      setTopic(topicData)
       const b = getBranchById(topicData.branch_id)
+      if (!isBranchVisible(b, user)) { setDenied(true); setLoading(false); return }
+      setTopic(topicData)
       setBranch(b)
       const { data: questions } = await supabase
         .from('questions').select('id').eq('topic_id', id)
@@ -268,6 +270,8 @@ export default function TopicPage() {
   )
 
   // ─── Loading / not found ──────────────────────────────────────────────────
+
+  if (denied) return <Navigate to="/" replace />
 
   if (loading) {
     return (
