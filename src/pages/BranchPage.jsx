@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import { ChevronLeft, CheckCircle2, Circle, ChevronRight } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
-import { getBranchById } from '../lib/data'
+import { getBranchById, isBranchVisible } from '../lib/data'
 import { isDue } from '../lib/sm2'
 import Layout from '../components/Layout'
 
@@ -33,11 +33,13 @@ export default function BranchPage() {
   const [topicStats, setTopicStats] = useState({})
   const [loading, setLoading] = useState(true)
 
-  if (!branch) return <Navigate to="/" replace />
+  const denied = !branch || !isBranchVisible(branch, user)
 
   useEffect(() => {
-    loadData()
-  }, [id, user?.id])
+    if (!denied) loadData()
+  }, [id, user?.id, denied])
+
+  if (denied) return <Navigate to="/" replace />
 
   async function loadData() {
     setLoading(true)

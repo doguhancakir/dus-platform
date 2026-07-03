@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
-import { BRANCHES, TEMEL_BILIMLER } from '../lib/data'
+import { BRANCHES, TEMEL_BILIMLER, isBranchVisible } from '../lib/data'
 import Layout from '../components/Layout'
 import { SkeletonBranchCard } from '../components/SkeletonCard'
 import ToothViewer from '../components/ToothViewer'
@@ -35,6 +35,8 @@ export default function Dashboard() {
   const [branchImages, setBranchImages] = useState({})
   const [showModel, setShowModel] = useState(false)
   const [streak, setStreak] = useState(0)
+
+  const visibleTemelBilimler = TEMEL_BILIMLER.filter(b => isBranchVisible(b, user))
 
   useEffect(() => {
     loadBranchImages()
@@ -628,7 +630,7 @@ export default function Dashboard() {
               className="font-barlow font-bold text-[10px] tracking-[0.15em] uppercase flex-shrink-0"
               style={{ color: '#2a3a50' }}
             >
-              {TEMEL_BILIMLER.length} BRANŞ
+              {visibleTemelBilimler.length} BRANŞ
             </span>
           </div>
 
@@ -640,8 +642,8 @@ export default function Dashboard() {
             style={{ gap: '2px' }}
           >
             {loading
-              ? TEMEL_BILIMLER.map((_, i) => <SkeletonBranchCard key={i} />)
-              : TEMEL_BILIMLER.map((branch) => {
+              ? visibleTemelBilimler.map((_, i) => <SkeletonBranchCard key={i} />)
+              : visibleTemelBilimler.map((branch) => {
                   const stats = branchStats[branch.id]
                   return (
                     <motion.div key={branch.id} variants={cardVariants}>
