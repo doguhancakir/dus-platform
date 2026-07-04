@@ -118,11 +118,14 @@ export default function Dashboard() {
         .eq('user_id', user.id)
         .gte('last_review', todayStart.toISOString())
 
+      // Shayla (id 109) kısıtlı branş — hesabın toplam soru sayısına dahil edilmez,
+      // sadece günlük çözülen sayısında (todayCount) görünmeye devam eder.
       const { count: graduatedCount } = await supabase
         .from('user_cards')
-        .select('question_id', { count: 'exact', head: true })
+        .select('question_id, questions!inner(topics!inner(branch_id))', { count: 'exact', head: true })
         .eq('user_id', user.id)
         .eq('status', 'review')
+        .neq('questions.topics.branch_id', 109)
 
       setBranchStats(stats)
       setTodayAnswered(todayCount || 0)
