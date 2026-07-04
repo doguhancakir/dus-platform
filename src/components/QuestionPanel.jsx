@@ -1,11 +1,26 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, ChevronRight, Trophy, Zap, Sparkles, Trash2 } from 'lucide-react'
+import { X, ChevronRight, Trophy, Zap, Sparkles, Trash2, Copy } from 'lucide-react'
+import { toast } from 'sonner'
 import { useAuth } from '../contexts/AuthContext'
 import { useStudyTimer } from '../contexts/StudyTimerContext'
 import { supabase } from '../lib/supabase'
 import { processCard, newCard, getEstimatedTime, RATINGS, CARD_STATUS, isDue } from '../lib/sm2'
 import AskAI from './AskAI'
+
+const OPTION_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F']
+
+function buildQuestionCopyText(ctx, showAnswer) {
+  const lines = [`Soru: ${ctx.questionText}`, '']
+  ctx.options.forEach((opt, i) => lines.push(`${OPTION_LETTERS[i] ?? i + 1}) ${opt}`))
+  if (showAnswer) {
+    lines.push('')
+    if (ctx.selectedOptionText !== null) lines.push(`Seçilen şık: ${ctx.selectedOptionText}`)
+    lines.push(`Doğru şık: ${ctx.correctOptionText}`)
+    if (ctx.explanation) lines.push('', `Açıklama: ${ctx.explanation}`)
+  }
+  return lines.join('\n')
+}
 
 /* ── Rating command config ── */
 const RATING_CONFIG = [
@@ -422,6 +437,17 @@ export default function QuestionPanel({ topicId, onClose }) {
     explanation:         currentQuestion.explanation ?? '',
   } : null
 
+  async function handleCopyQuestion() {
+    if (!aiContext) return
+    const text = buildQuestionCopyText(aiContext, showAnswer)
+    try {
+      await navigator.clipboard.writeText(text)
+      toast.success('Soru kopyalandı')
+    } catch {
+      toast.error('Kopyalanamadı')
+    }
+  }
+
   return (
     <BattleScreen onClose={onClose} accentColor={accentColor}>
       <HUDBar
@@ -483,19 +509,29 @@ export default function QuestionPanel({ topicId, onClose }) {
             {/* ── Question text ── */}
             <div className="relative z-10 mb-6">
               {/* Question number badge */}
-              <div className="flex items-center gap-3 mb-3">
-                <div
-                  className="font-barlow font-bold text-[10px] tracking-[0.2em] uppercase px-2 py-0.5"
-                  style={{
-                    color: accentColor,
-                    background: `${accentColor}14`,
-                    border: `1px solid ${accentColor}30`,
-                    transition: 'all 0.4s ease',
-                  }}
-                >
-                  SORU {currentIndex + 1}
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <div className="flex items-center gap-3">
+                  <div
+                    className="font-barlow font-bold text-[10px] tracking-[0.2em] uppercase px-2 py-0.5"
+                    style={{
+                      color: accentColor,
+                      background: `${accentColor}14`,
+                      border: `1px solid ${accentColor}30`,
+                      transition: 'all 0.4s ease',
+                    }}
+                  >
+                    SORU {currentIndex + 1}
+                  </div>
+                  <CardStatusBadge card={currentCard} />
                 </div>
-                <CardStatusBadge card={currentCard} />
+                <button
+                  onClick={handleCopyQuestion}
+                  title="Soruyu kopyala (başka bir AI'a sormak için)"
+                  className="flex-shrink-0 p-1.5 text-gray-600 hover:text-gray-300 transition-colors"
+                  style={{ background: '#0a1628', border: '1px solid #1a2d45' }}
+                >
+                  <Copy size={12} />
+                </button>
               </div>
 
               <motion.div
