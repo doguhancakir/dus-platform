@@ -25,7 +25,7 @@ const itemVariants = {
 
 export default function BranchPage() {
   const { id } = useParams()
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const branch = getBranchById(id)
 
   const [topics, setTopics] = useState([])
@@ -33,12 +33,15 @@ export default function BranchPage() {
   const [topicStats, setTopicStats] = useState({})
   const [loading, setLoading] = useState(true)
 
-  const denied = !branch || !isBranchVisible(branch, user)
+  // authLoading bitene kadar reddetme — yoksa localStorage'dan kullanıcı
+  // yüklenmeden önceki anlık `user === null` durumu yanlışlıkla yönlendirir.
+  const denied = !authLoading && (!branch || !isBranchVisible(branch, user))
 
   useEffect(() => {
-    if (!denied) loadData()
-  }, [id, user?.id, denied])
+    if (!authLoading && !denied) loadData()
+  }, [id, user?.id, authLoading, denied])
 
+  if (!branch) return <Navigate to="/" replace />
   if (denied) return <Navigate to="/" replace />
 
   async function loadData() {
