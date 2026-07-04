@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../contexts/AuthContext'
-import { supabase } from '../lib/supabase'
+import { supabase, fetchAllRows } from '../lib/supabase'
 import { BRANCHES, TEMEL_BILIMLER, isBranchVisible } from '../lib/data'
 import Layout from '../components/Layout'
 import { SkeletonBranchCard } from '../components/SkeletonCard'
@@ -74,16 +74,18 @@ export default function Dashboard() {
       const completedIds = new Set(progress?.map(p => p.topic_id) || [])
 
       const now = new Date().toISOString()
-      const { data: dueCards } = await supabase
+      const dueCards = await fetchAllRows(q => q
         .from('user_cards')
         .select('question_id, status')
         .eq('user_id', user.id)
         .lte('due_date', now)
         .neq('status', 'new')
+      )
 
-      const { data: questions } = await supabase
+      const questions = await fetchAllRows(q => q
         .from('questions')
         .select('id, topic_id, topics(branch_id)')
+      )
 
       const questionBranchMap = {}
       questions?.forEach(q => { questionBranchMap[q.id] = q.topics?.branch_id })
@@ -110,29 +112,33 @@ export default function Dashboard() {
 
       const todayStart = new Date()
       todayStart.setHours(0, 0, 0, 0)
-      const { data: todayCards } = await supabase
+      const { count: todayCount } = await supabase
         .from('user_cards')
-        .select('question_id')
+        .select('question_id', { count: 'exact', head: true })
         .eq('user_id', user.id)
         .gte('last_review', todayStart.toISOString())
 
-      const { data: graduatedCards } = await supabase
+      // Shayla (id 109) kısıtlı branş — hesabın toplam soru sayısına dahil edilmez,
+      // sadece günlük çözülen sayısında (todayCount) görünmeye devam eder.
+      const { count: graduatedCount } = await supabase
         .from('user_cards')
-        .select('question_id')
+        .select('question_id, questions!inner(topics!inner(branch_id))', { count: 'exact', head: true })
         .eq('user_id', user.id)
         .eq('status', 'review')
+        .neq('questions.topics.branch_id', 109)
 
       setBranchStats(stats)
-      setTodayAnswered(todayCards?.length || 0)
-      setTotalGraduated(graduatedCards?.length || 0)
+      setTodayAnswered(todayCount || 0)
+      setTotalGraduated(graduatedCount || 0)
 
       // ── Streak: consecutive days with ≥50 reviewed cards ──────────────
-      const { data: reviewHistory } = await supabase
+      const reviewHistory = await fetchAllRows(q => q
         .from('user_cards')
         .select('last_review')
         .eq('user_id', user.id)
         .not('last_review', 'is', null)
         .gte('last_review', new Date(Date.now() - 90 * 86400000).toISOString())
+      )
 
       const dayCounts = {}
       reviewHistory?.forEach(c => {
