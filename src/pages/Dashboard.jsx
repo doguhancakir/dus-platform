@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase, fetchAllRows } from '../lib/supabase'
-import { BRANCHES, TEMEL_BILIMLER, isBranchVisible } from '../lib/data'
+import { BRANCHES, TEMEL_BILIMLER } from '../lib/data'
 import Layout from '../components/Layout'
 import { SkeletonBranchCard } from '../components/SkeletonCard'
 import ToothViewer from '../components/ToothViewer'
@@ -35,8 +35,6 @@ export default function Dashboard() {
   const [branchImages, setBranchImages] = useState({})
   const [showModel, setShowModel] = useState(false)
   const [streak, setStreak] = useState(0)
-
-  const visibleTemelBilimler = TEMEL_BILIMLER.filter(b => isBranchVisible(b, user))
 
   useEffect(() => {
     loadBranchImages()
@@ -118,14 +116,11 @@ export default function Dashboard() {
         .eq('user_id', user.id)
         .gte('last_review', todayStart.toISOString())
 
-      // Shayla (id 109) kısıtlı branş — hesabın toplam soru sayısına dahil edilmez,
-      // sadece günlük çözülen sayısında (todayCount) görünmeye devam eder.
       const { count: graduatedCount } = await supabase
         .from('user_cards')
-        .select('question_id, questions!inner(topics!inner(branch_id))', { count: 'exact', head: true })
+        .select('question_id', { count: 'exact', head: true })
         .eq('user_id', user.id)
         .eq('status', 'review')
-        .neq('questions.topics.branch_id', 109)
 
       setBranchStats(stats)
       setTodayAnswered(todayCount || 0)
@@ -636,7 +631,7 @@ export default function Dashboard() {
               className="font-barlow font-bold text-[10px] tracking-[0.15em] uppercase flex-shrink-0"
               style={{ color: '#2a3a50' }}
             >
-              {visibleTemelBilimler.length} BRANŞ
+              {TEMEL_BILIMLER.length} BRANŞ
             </span>
           </div>
 
@@ -648,8 +643,8 @@ export default function Dashboard() {
             style={{ gap: '2px' }}
           >
             {loading
-              ? visibleTemelBilimler.map((_, i) => <SkeletonBranchCard key={i} />)
-              : visibleTemelBilimler.map((branch) => {
+              ? TEMEL_BILIMLER.map((_, i) => <SkeletonBranchCard key={i} />)
+              : TEMEL_BILIMLER.map((branch) => {
                   const stats = branchStats[branch.id]
                   return (
                     <motion.div key={branch.id} variants={cardVariants}>

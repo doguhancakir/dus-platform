@@ -1,15 +1,11 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useNavigate, useLocation } from 'react-router-dom'
-import { X, ChevronRight, ChevronDown, Trophy, ArrowLeft, Check, Zap, Shuffle, ListChecks, Layers } from 'lucide-react'
-import { toast } from 'sonner'
+import { useNavigate } from 'react-router-dom'
+import { X, ChevronRight, ChevronDown, Trophy, ArrowLeft, Check, Zap } from 'lucide-react'
 import { supabase, fetchAllRows } from '../lib/supabase'
 import { BRANCHES } from '../lib/data'
 import Layout from '../components/Layout'
 import { useStudyTimer } from '../contexts/StudyTimerContext'
-import { useAuth } from '../contexts/AuthContext'
-
-const SHAYLA_TOPIC_ID = 9109
 
 function fisherYates(arr) {
   const a = [...arr]
@@ -22,12 +18,8 @@ function fisherYates(arr) {
 
 export default function MixedQuizPage() {
   const navigate = useNavigate()
-  const location = useLocation()
-  const { user } = useAuth()
   const { triggerQuestion } = useStudyTimer()
-  const shaylaPreset = !!location.state?.shaylaPreset
-  const [phase, setPhase] = useState(shaylaPreset ? 'shayla-source' : 'filter')
-  const [shaylaSource, setShaylaSource] = useState(null) // 'attempted' | 'all'
+  const [phase, setPhase] = useState('filter')
 
   const [topics, setTopics] = useState([])
   const [questionCounts, setQuestionCounts] = useState({})
@@ -43,11 +35,9 @@ export default function MixedQuizPage() {
   const [results, setResults] = useState([])
   const [quizLoading, setQuizLoading] = useState(false)
 
-  const CHOICE_PHASES = ['filter', 'shayla-source', 'shayla-count']
-
   useEffect(() => {
-    if (!shaylaPreset) loadFilterData()
-    const handler = (e) => { if (e.key === 'Escape' && CHOICE_PHASES.includes(phase)) navigate('/') }
+    loadFilterData()
+    const handler = (e) => { if (e.key === 'Escape' && phase === 'filter') navigate('/') }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   }, [])
@@ -67,46 +57,6 @@ export default function MixedQuizPage() {
       console.error('Filter load error:', err)
     }
     setFilterLoading(false)
-  }
-
-  function chooseShaylaSource(source) {
-    setShaylaSource(source)
-    setPhase('shayla-count')
-  }
-
-  async function startShaylaQuiz(limit) {
-    setQuizLoading(true)
-    try {
-      const allQuestions = await fetchAllRows(q => q
-        .from('questions').select('*').eq('topic_id', SHAYLA_TOPIC_ID)
-      )
-      let pool = allQuestions
-      if (shaylaSource === 'attempted') {
-        const attempted = await fetchAllRows(q => q
-          .from('user_cards').select('question_id').eq('user_id', user.id)
-        )
-        const attemptedIds = new Set(attempted.map(c => c.question_id))
-        pool = allQuestions.filter(q => attemptedIds.has(q.id))
-      }
-      if (pool.length === 0) {
-        toast.error('Bu seçenekte henüz çözülmüş soru yok')
-        setPhase('shayla-source')
-        setQuizLoading(false)
-        return
-      }
-      let shuffled = fisherYates(pool)
-      if (limit) shuffled = shuffled.slice(0, limit)
-      setQuestions(shuffled)
-      setCurrentIndex(0)
-      setShowAnswer(false)
-      setSelectedOption(null)
-      setEliminatedOptions(new Set())
-      setResults([])
-      setPhase('quiz')
-    } catch (err) {
-      console.error('Shayla quiz load error:', err)
-    }
-    setQuizLoading(false)
   }
 
   const totalSelectedQuestions = [...selectedTopics].reduce(
@@ -238,64 +188,9 @@ export default function MixedQuizPage() {
         results={results}
         questions={questions}
         topics={topics}
-        onRestart={() => { setPhase(shaylaPreset ? 'shayla-source' : 'filter'); setResults([]) }}
+        onRestart={() => { setPhase('filter'); setResults([]) }}
         onClose={() => navigate('/')}
       />
-    )
-  }
-
-  if (phase === 'shayla-source') {
-    return (
-      <Layout>
-        <ShaylaChoiceScreen
-          eyebrow="Shayla · Loşimani"
-          title="HANGİ SORULAR?"
-          subtitle="Karışık çözmek için soru havuzunu seç"
-          onBack={() => navigate(-1)}
-          options={[
-            {
-              icon: ListChecks,
-              label: 'Çözdüğün Sorular',
-              desc: 'Daha önce cevapladığın sorular karışık sırayla',
-              onClick: () => chooseShaylaSource('attempted'),
-            },
-            {
-              icon: Layers,
-              label: 'Tüm Sorular',
-              desc: '1000 sorunun tamamından karışık',
-              onClick: () => chooseShaylaSource('all'),
-            },
-          ]}
-        />
-      </Layout>
-    )
-  }
-
-  if (phase === 'shayla-count') {
-    return (
-      <Layout>
-        <ShaylaChoiceScreen
-          eyebrow="Shayla · Loşimani"
-          title="KAÇ SORU?"
-          subtitle="Karışık soru sayısını seç"
-          onBack={() => setPhase('shayla-source')}
-          loading={quizLoading}
-          options={[
-            {
-              icon: Zap,
-              label: '50 Soru',
-              desc: 'Havuzdan rastgele 50 soru',
-              onClick: () => startShaylaQuiz(50),
-            },
-            {
-              icon: Layers,
-              label: 'Tüm Sorular',
-              desc: 'Havuzdaki tüm sorular karışık',
-              onClick: () => startShaylaQuiz(null),
-            },
-          ]}
-        />
-      </Layout>
     )
   }
 
@@ -318,104 +213,6 @@ export default function MixedQuizPage() {
         isBranchFullySelected={isBranchFullySelected}
       />
     </Layout>
-  )
-}
-
-// ─── SHAYLA CHOICE SCREEN (kaynak / soru sayısı seçimi) ─────────────────────────
-
-function ShaylaChoiceScreen({ eyebrow, title, subtitle, onBack, options, loading }) {
-  const accent = '#0ea5e9'
-  return (
-    <div className="px-6 sm:px-10 pb-36 pt-8 relative min-h-[70vh]">
-      <div
-        className="absolute top-0 right-0 pointer-events-none select-none"
-        style={{
-          fontFamily: '"Bebas Neue", sans-serif',
-          fontSize: 'clamp(80px, 15vw, 160px)',
-          color: `${accent}08`,
-          letterSpacing: '0.05em',
-          lineHeight: 1,
-          paddingTop: '2rem',
-          paddingRight: '1rem',
-        }}
-      >
-        <Shuffle size={140} strokeWidth={1} />
-      </div>
-
-      <motion.div
-        initial={{ opacity: 0, x: -30 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-        className="flex items-center gap-4 mb-10 relative z-10"
-      >
-        <button
-          onClick={onBack}
-          className="p-2 text-gray-600 hover:text-white transition-colors flex-shrink-0"
-          style={{ border: '1px solid #1e3555', background: '#0d1a2e' }}
-        >
-          <ArrowLeft size={15} />
-        </button>
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <div className="w-[3px] h-5" style={{ background: accent }} />
-            <span
-              className="font-barlow font-bold text-[10px] tracking-[0.22em] uppercase"
-              style={{ color: accent }}
-            >
-              {eyebrow}
-            </span>
-          </div>
-          <h1
-            className="font-bebas text-white tracking-widest leading-none"
-            style={{ fontSize: 'clamp(24px, 5vw, 48px)', transform: 'skewX(-4deg)', display: 'inline-block' }}
-          >
-            {title}
-          </h1>
-          <p
-            className="font-barlow font-bold text-[10px] uppercase tracking-[0.22em] mt-1"
-            style={{ color: '#2a3a50' }}
-          >
-            {subtitle}
-          </p>
-        </div>
-      </motion.div>
-
-      <div className="grid sm:grid-cols-2 gap-3 relative z-10 max-w-2xl">
-        {options.map((opt, i) => {
-          const Icon = opt.icon
-          return (
-            <motion.button
-              key={opt.label}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.06, ease: [0.22, 1, 0.36, 1] }}
-              whileHover={{ y: -3 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={opt.onClick}
-              disabled={loading}
-              className="text-left p-5 flex flex-col gap-3 disabled:opacity-50 disabled:cursor-wait"
-              style={{ background: '#0a1525', border: `1px solid ${accent}30`, borderLeft: `4px solid ${accent}` }}
-            >
-              <Icon size={20} style={{ color: accent }} />
-              <div>
-                <p className="font-bebas text-white tracking-wider text-xl leading-none mb-1">
-                  {opt.label}
-                </p>
-                <p className="font-barlow text-gray-500 text-xs leading-relaxed">
-                  {opt.desc}
-                </p>
-              </div>
-            </motion.button>
-          )
-        })}
-      </div>
-
-      {loading && (
-        <p className="font-barlow font-bold text-[10px] uppercase tracking-[0.25em] mt-6 relative z-10" style={{ color: accent }}>
-          Sorular yükleniyor…
-        </p>
-      )}
-    </div>
   )
 }
 

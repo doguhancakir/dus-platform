@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
-import { Link, useParams, useNavigate, Navigate } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronLeft, CheckCircle2, BookOpen, FileQuestion, Pencil, NotebookPen, X, List, Shuffle } from 'lucide-react'
+import { ChevronLeft, CheckCircle2, BookOpen, FileQuestion, Pencil, NotebookPen, X, List } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
-import { getBranchById, isBranchVisible } from '../lib/data'
+import { getBranchById } from '../lib/data'
 import { isDue } from '../lib/sm2'
 import QuestionPanel from '../components/QuestionPanel'
 import TopicEditor from '../components/TopicEditor'
@@ -54,8 +54,7 @@ function getChildText(node) {
 
 export default function TopicPage() {
   const { id } = useParams()
-  const navigate = useNavigate()
-  const { user, loading: authLoading } = useAuth()
+  const { user } = useAuth()
   const [topic, setTopic] = useState(null)
   const [branch, setBranch] = useState(null)
   const [isCompleted, setIsCompleted] = useState(false)
@@ -64,7 +63,6 @@ export default function TopicPage() {
   const [showEditor, setShowEditor] = useState(false)
   const [showFlashcards, setShowFlashcards] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [denied, setDenied] = useState(false)
   const bottomRef = useRef(null)
 
   // TOC
@@ -80,7 +78,7 @@ export default function TopicPage() {
   const [noteLoading, setNoteLoading] = useState(false)
   const noteSaveTimer = useRef(null)
 
-  useEffect(() => { loadData() }, [id, user?.id, authLoading])
+  useEffect(() => { loadData() }, [id, user?.id])
 
   useEffect(() => {
     if (topic?.content) setHeadings(extractHeadings(topic.content))
@@ -116,9 +114,6 @@ export default function TopicPage() {
         .from('topics').select('*').eq('id', id).single()
       if (!topicData) { setLoading(false); return }
       const b = getBranchById(topicData.branch_id)
-      // authLoading bitene kadar reddetme — yoksa localStorage'dan kullanıcı
-      // yüklenmeden önceki anlık `user === null` durumu yanlışlıkla yönlendirir.
-      if (!authLoading && !isBranchVisible(b, user)) { setDenied(true); setLoading(false); return }
       setTopic(topicData)
       setBranch(b)
       const { data: questions } = await supabase
@@ -273,8 +268,6 @@ export default function TopicPage() {
   )
 
   // ─── Loading / not found ──────────────────────────────────────────────────
-
-  if (denied) return <Navigate to="/" replace />
 
   if (loading) {
     return (
@@ -620,26 +613,6 @@ export default function TopicPage() {
               {cardStats.dueCount || cardStats.newCount}
             </span>
           )}
-        </motion.button>
-      )}
-
-      {/* ── Shayla'ya özel: Karışık Çöz butonu ── */}
-      {user && branch?.id === 109 && (
-        <motion.button
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          whileHover={{ scale: 1.04 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => navigate('/mixed-quiz', { state: { shaylaPreset: true } })}
-          className="fixed bottom-24 right-6 z-20 font-bebas tracking-[0.1em] text-sm text-white flex items-center gap-2 px-5 py-3"
-          style={{
-            background: '#0ea5e9',
-            clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))',
-            boxShadow: '0 4px 24px rgba(14,165,233,0.4)',
-          }}
-        >
-          <Shuffle size={15} />
-          KARIŞIK ÇÖZ
         </motion.button>
       )}
 
