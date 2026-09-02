@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import { Link, useParams, Navigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ChevronLeft, CheckCircle2, Circle, ChevronRight } from 'lucide-react'
+import { ChevronLeft, CheckCircle2, Circle, ChevronRight, ChevronDown, BarChart3 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { getBranchById } from '../lib/data'
+import { getExamWisdom } from '../lib/examWisdom'
 import { isDue } from '../lib/sm2'
 import Layout from '../components/Layout'
 
@@ -238,6 +239,9 @@ export default function BranchPage() {
           </div>
         </motion.div>
 
+        {/* Sınav ağırlığı / wisdom paneli */}
+        <ExamWisdomPanel branchColor={branch.color} data={getExamWisdom(branch.id)} />
+
         {/* Topics divider */}
         <div className="flex items-center gap-3 mb-3">
           <div className="w-[3px] h-4" style={{ background: branch.color }} />
@@ -385,6 +389,92 @@ function TopicCard({ topic, stats, isCompleted, showProgress, branchColor, index
         />
       </motion.div>
     </Link>
+  )
+}
+
+function ExamWisdomPanel({ branchColor, data }) {
+  const [expanded, setExpanded] = useState(false)
+  if (!data) return null
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+      className="mb-8 relative overflow-hidden"
+      style={{ background: '#0a1525', border: '1px solid #1a2d45', borderLeft: `3px solid ${branchColor}` }}
+    >
+      <button
+        onClick={() => setExpanded(e => !e)}
+        className="w-full text-left p-4 sm:p-5 flex items-start gap-4"
+      >
+        <BarChart3 size={16} className="flex-shrink-0 mt-0.5" style={{ color: branchColor }} />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1.5">
+            <span
+              className="font-barlow font-bold text-[10px] tracking-[0.2em] uppercase"
+              style={{ color: branchColor }}
+            >
+              Sınavda Bu Branş
+            </span>
+            <span
+              className="font-bebas text-sm leading-none"
+              style={{ color: '#5a6d88' }}
+            >
+              {data.total} SORU
+            </span>
+          </div>
+          {data.wisdom && (
+            <p
+              className="text-xs text-gray-500 leading-relaxed"
+              style={{ display: '-webkit-box', WebkitLineClamp: expanded ? 'unset' : 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
+            >
+              {data.wisdom}
+            </p>
+          )}
+          {!data.wisdom && !expanded && (
+            <p className="text-xs text-gray-600">Konulara göre soru dağılımını gör</p>
+          )}
+        </div>
+        <ChevronDown
+          size={14}
+          className="flex-shrink-0 mt-0.5 transition-transform duration-200"
+          style={{ color: '#3a4a5a', transform: expanded ? 'rotate(180deg)' : 'none' }}
+        />
+      </button>
+
+      {expanded && (
+        <div className="px-4 sm:px-5 pb-5" style={{ borderTop: '1px solid #12233a' }}>
+          <div className="space-y-2 pt-4">
+            {data.topics.map(t => {
+              const [min, max] = t.q
+              const qLabel = min === max ? `${min}` : `${min}–${max}`
+              return (
+                <div key={t.name} className="flex items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <span className="text-xs text-gray-400 truncate">{t.name}</span>
+                      <span
+                        className="font-barlow font-bold text-[10px] uppercase tracking-wider flex-shrink-0"
+                        style={{ color: branchColor }}
+                      >
+                        {qLabel} soru
+                      </span>
+                    </div>
+                    <div className="h-[3px] w-full" style={{ background: '#12233a' }}>
+                      <div
+                        className="h-full"
+                        style={{ width: `${t.pct}%`, background: branchColor }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+    </motion.div>
   )
 }
 
