@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, Trash2, Edit3, Save, X, Loader2, Upload, FileText, Image } from 'lucide-react'
+import { Plus, Trash2, Edit3, Save, X, Loader2, Upload, FileText, Image, Copy } from 'lucide-react'
+import { toast } from 'sonner'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { BRANCHES, TEMEL_BILIMLER } from '../lib/data'
@@ -248,12 +249,25 @@ function TopicsTab() {
 }
 
 /* ── QUESTIONS TAB ── */
+function buildQuestionsPlainText(questions) {
+  const letters = ['A', 'B', 'C', 'D', 'E', 'F']
+  return questions.map((q, i) => {
+    const lines = [`${i + 1}. ${q.question_text}`]
+    ;(q.options || []).forEach((opt, oi) => {
+      lines.push(`${letters[oi] ?? oi + 1}) ${opt}${oi === q.correct_answer ? ' ✓' : ''}`)
+    })
+    if (q.explanation) lines.push(`Açıklama: ${q.explanation}`)
+    return lines.join('\n')
+  }).join('\n\n')
+}
+
 function QuestionsTab() {
   const [topics, setTopics] = useState([])
   const [selectedTopic, setSelectedTopic] = useState('')
   const [questions, setQuestions] = useState([])
   const [loading, setLoading] = useState(false)
   const [showForm, setShowForm] = useState(false)
+  const [showTextView, setShowTextView] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [saving, setSaving] = useState(false)
   const [selectedIds, setSelectedIds] = useState(new Set())
@@ -271,6 +285,7 @@ function QuestionsTab() {
   }, [])
 
   useEffect(() => {
+    setShowTextView(false)
     if (selectedTopic) loadQuestions()
   }, [selectedTopic])
 
@@ -345,7 +360,50 @@ function QuestionsTab() {
             Yeni Soru
           </button>
         )}
+        {selectedTopic && questions.length > 0 && (
+          <button className="btn-ghost flex items-center gap-1.5 text-sm"
+            onClick={() => setShowTextView(v => !v)}>
+            <FileText size={15} />
+            {showTextView ? 'Metin Görünümünü Kapat' : 'Tümünü Metin Olarak Gör'}
+          </button>
+        )}
       </div>
+
+      <AnimatePresence>
+        {showTextView && selectedTopic && questions.length > 0 && (
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+            <div className="p-4 space-y-3" style={{ background: '#0d1e35', border: '1px solid #1e3050', borderLeft: '3px solid #0891b2' }}>
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] text-gray-600 uppercase tracking-widest">
+                  {questions.length} soru — tamamını seçip kopyalayabilirsin
+                </p>
+                <button
+                  className="btn-primary flex items-center gap-1.5 text-xs px-3 py-1.5"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(buildQuestionsPlainText(questions))
+                      toast.success('Kopyalandı')
+                    } catch {
+                      toast.error('Kopyalanamadı')
+                    }
+                  }}
+                >
+                  <Copy size={13} />
+                  Tümünü Kopyala
+                </button>
+              </div>
+              <textarea
+                readOnly
+                className="input font-mono text-xs resize-y w-full"
+                style={{ minHeight: 320 }}
+                value={buildQuestionsPlainText(questions)}
+                onFocus={e => e.target.select()}
+              />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {showForm && (
