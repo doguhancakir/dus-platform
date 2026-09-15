@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, Trash2, Edit3, Save, X, Loader2, Upload, FileText, Image, Copy } from 'lucide-react'
+import { Plus, Trash2, Edit3, Save, X, Loader2, Upload, FileText, Image, Copy, Download } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
@@ -374,24 +374,49 @@ function QuestionsTab() {
           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
             <div className="p-4 space-y-3" style={{ background: '#0d1e35', border: '1px solid #1e3050', borderLeft: '3px solid #0891b2' }}>
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-2">
                 <p className="text-[10px] text-gray-600 uppercase tracking-widest">
-                  {questions.length} soru — tamamını seçip kopyalayabilirsin
+                  {questions.length} soru — telefonda kopyalama yarıda kesilirse dosya olarak indir
                 </p>
-                <button
-                  className="btn-primary flex items-center gap-1.5 text-xs px-3 py-1.5"
-                  onClick={async () => {
-                    try {
-                      await navigator.clipboard.writeText(buildQuestionsPlainText(questions))
-                      toast.success('Kopyalandı')
-                    } catch {
-                      toast.error('Kopyalanamadı')
-                    }
-                  }}
-                >
-                  <Copy size={13} />
-                  Tümünü Kopyala
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    className="btn-primary flex items-center gap-1.5 text-xs px-3 py-1.5"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(buildQuestionsPlainText(questions))
+                        toast.success('Kopyalandı')
+                      } catch {
+                        toast.error('Kopyalanamadı')
+                      }
+                    }}
+                  >
+                    <Copy size={13} />
+                    Tümünü Kopyala
+                  </button>
+                  <button
+                    className="btn-ghost flex items-center gap-1.5 text-xs px-3 py-1.5"
+                    onClick={() => {
+                      const topicTitle = topics.find(t => String(t.id) === String(selectedTopic))?.title || 'sorular'
+                      const filename = topicTitle
+                        .toLocaleLowerCase('tr-TR')
+                        .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
+                        .replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
+                        .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'sorular'
+                      const blob = new Blob([buildQuestionsPlainText(questions)], { type: 'text/plain;charset=utf-8' })
+                      const url = URL.createObjectURL(blob)
+                      const a = document.createElement('a')
+                      a.href = url
+                      a.download = `${filename}.txt`
+                      document.body.appendChild(a)
+                      a.click()
+                      document.body.removeChild(a)
+                      setTimeout(() => URL.revokeObjectURL(url), 4000)
+                    }}
+                  >
+                    <Download size={13} />
+                    .txt Olarak İndir
+                  </button>
+                </div>
               </div>
               <textarea
                 readOnly
