@@ -3,13 +3,12 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../lib/supabase'
 import { useStudyTimer, formatTimerDisplay, formatTimerLabel } from '../contexts/StudyTimerContext'
 import { getPhaseInfo, generateWeekTodoList, getWeekMonday } from '../lib/studyPlan'
+import { getDailyGoal, DAILY_GOAL_TEXTS } from '../lib/dailyGoal'
 
 const MONTHS_TR = [
   'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
   'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık',
 ]
-
-const GOAL_TEXT = '50 Soru Çöz'
 
 function toKey(d) {
   const y = d.getFullYear()
@@ -49,6 +48,7 @@ export default function DailyCalendar({ userId, todayAnswered = 0, isAdmin = fal
 
   const selKey = toKey(sel)
   const todayKey = toKey(today)
+  const todayGoal = getDailyGoal(todayKey) // { threshold, text } — bugünün hedefi
 
   // ── loaders ───────────────────────────────────────────────────────────────
 
@@ -79,19 +79,19 @@ export default function DailyCalendar({ userId, todayAnswered = 0, isAdmin = fal
   const loadTodos = useCallback(async () => {
     if (!userId) return
 
-    // For today: ensure "50 Soru Çöz" exists before fetching (sequential, not racy)
+    // For today: ensure the goal todo exists before fetching (sequential, not racy)
     if (selKey === todayKey) {
       const { data: existing } = await supabase
         .from('daily_todos')
         .select('id')
         .eq('user_id', userId)
         .eq('date', todayKey)
-        .eq('text', GOAL_TEXT)
+        .in('text', DAILY_GOAL_TEXTS)
         .maybeSingle()
       if (!existing) {
         await supabase
           .from('daily_todos')
-          .insert({ user_id: userId, date: todayKey, text: GOAL_TEXT, completed: false })
+          .insert({ user_id: userId, date: todayKey, text: todayGoal.text, completed: false })
       }
     }
 
@@ -106,7 +106,7 @@ export default function DailyCalendar({ userId, todayAnswered = 0, isAdmin = fal
 
     // Track goal task ID for auto-complete (needed even when not viewing today)
     if (selKey === todayKey) {
-      const goal = rows.find(t => t.text === GOAL_TEXT)
+      const goal = rows.find(t => DAILY_GOAL_TEXTS.includes(t.text))
       if (goal && !goal.completed) setGoalTaskId(goal.id)
     }
 
@@ -123,7 +123,7 @@ export default function DailyCalendar({ userId, todayAnswered = 0, isAdmin = fal
     } else {
       setStudySecondsDB(null) // bugün → context'ten alınır
     }
-  }, [userId, selKey, todayKey])
+  }, [userId, selKey, todayKey, todayGoal.text])
 
   useEffect(() => { loadStatus() }, [loadStatus])
   useEffect(() => { loadTodos() }, [loadTodos])
@@ -136,14 +136,14 @@ export default function DailyCalendar({ userId, todayAnswered = 0, isAdmin = fal
       .select('id')
       .eq('user_id', userId)
       .eq('date', todayKey)
-      .eq('text', GOAL_TEXT)
+      .in('text', DAILY_GOAL_TEXTS)
       .maybeSingle()
       .then(({ data }) => { if (data?.id) setGoalTaskId(data.id) })
   }, [userId, todayKey, goalTaskId])
 
-  // Auto-complete "50 Soru Çöz" when todayAnswered reaches 50
+  // Auto-complete the daily goal todo when todayAnswered reaches today's threshold
   useEffect(() => {
-    if (!userId || !goalTaskId || todayAnswered < 50) return
+    if (!userId || !goalTaskId || todayAnswered < todayGoal.threshold) return
     supabase
       .from('daily_todos')
       .update({ completed: true })
@@ -161,7 +161,7 @@ export default function DailyCalendar({ userId, todayAnswered = 0, isAdmin = fal
         })
         loadStatus()
       })
-  }, [userId, goalTaskId, todayAnswered]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [userId, goalTaskId, todayAnswered, todayGoal.threshold]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── mutations ─────────────────────────────────────────────────────────────
 
@@ -588,7 +588,7 @@ export default function DailyCalendar({ userId, todayAnswered = 0, isAdmin = fal
       <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
         <AnimatePresence initial={false}>
           {todos.flatMap(todo => {
-            const isGoal = todo.text === GOAL_TEXT
+            const isGoal = DAILY_GOAL_TEXTS.includes(todo.text)
 
             // Çalışma süresi: bugün → live context, geçmiş → DB
             const studySec = selKey === todayKey
