@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase, fetchAllRows } from '../lib/supabase'
 import { BRANCHES, TEMEL_BILIMLER } from '../lib/data'
+import { getDailyGoal } from '../lib/dailyGoal'
 import Layout from '../components/Layout'
 import { SkeletonBranchCard } from '../components/SkeletonCard'
 import ToothViewer from '../components/ToothViewer'
@@ -126,7 +127,9 @@ export default function Dashboard() {
       setTodayAnswered(todayCount || 0)
       setTotalGraduated(graduatedCount || 0)
 
-      // ── Streak: consecutive days with ≥50 reviewed cards ──────────────
+      // ── Streak: consecutive days meeting that day's goal ──────────────
+      // Hedef 18.09.2026'da 50'den 100'e çıktı; geçmiş günler (bugün dahil)
+      // eski hedefle (50) değerlendirilir, sonraki günler 100 ister.
       const reviewHistory = await fetchAllRows(q => q
         .from('user_cards')
         .select('last_review')
@@ -142,20 +145,22 @@ export default function Dashboard() {
         dayCounts[day] = (dayCounts[day] || 0) + 1
       })
 
+      const meetsGoal = (dateKey) => (dayCounts[dateKey] || 0) >= getDailyGoal(dateKey).threshold
+
       const todayStr = new Date().toISOString().split('T')[0]
       const yestStr  = new Date(Date.now() - 86400000).toISOString().split('T')[0]
 
       // Find the most recent qualifying day to start counting from
       let startDateStr = null
-      if ((dayCounts[todayStr] || 0) >= 50) startDateStr = todayStr
-      else if ((dayCounts[yestStr] || 0) >= 50) startDateStr = yestStr
+      if (meetsGoal(todayStr)) startDateStr = todayStr
+      else if (meetsGoal(yestStr)) startDateStr = yestStr
 
       let computedStreak = 0
       if (startDateStr) {
         let d = new Date(startDateStr)
         while (true) {
           const k = d.toISOString().split('T')[0]
-          if ((dayCounts[k] || 0) >= 50) {
+          if (meetsGoal(k)) {
             computedStreak++
             d = new Date(d.getTime() - 86400000)
           } else break
