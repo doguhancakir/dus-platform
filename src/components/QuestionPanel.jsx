@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, ChevronRight, Trophy, Zap, Sparkles, Trash2, Copy } from 'lucide-react'
+import { X, ChevronRight, Trophy, Zap, Sparkles, Trash2, Copy, Flag } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '../contexts/AuthContext'
 import { useStudyTimer } from '../contexts/StudyTimerContext'
@@ -64,7 +64,7 @@ const RATING_CONFIG = [
 
 const DAILY_NEW_LIMIT = 20
 
-export default function QuestionPanel({ topicId, onClose }) {
+export default function QuestionPanel({ topicId, onClose, flaggedOnly = false }) {
   const { user } = useAuth()
   const { triggerQuestion } = useStudyTimer()
   const [questions, setQuestions] = useState([])
@@ -206,11 +206,22 @@ export default function QuestionPanel({ topicId, onClose }) {
   }
 
   function buildQueue(qs, cardsMap) {
+    if (flaggedOnly) {
+      // Sadece bayraklanan sorular — SRS tarihi/günlük limit uygulanmaz
+      const flaggedIds = qs.filter(q => cardsMap[q.id]?.flagged).map(q => q.id)
+      setStats({ newCount: 0, learningCount: 0, reviewCount: flaggedIds.length })
+      setQueue(flaggedIds)
+      setCurrentIndex(0)
+      setFinished(flaggedIds.length === 0)
+      return
+    }
+
     const due = []
     const newOnes = []
 
     qs.forEach(q => {
       const card = cardsMap[q.id]
+      if (card?.flagged) return // bayraklı sorular normal sıraya girmez
       if (!card || card.status === CARD_STATUS.NEW) {
         newOnes.push(q.id)
       } else if (isDue(card)) {
@@ -225,14 +236,14 @@ export default function QuestionPanel({ topicId, onClose }) {
     const todayNew = newOnes.slice(0, DAILY_NEW_LIMIT)
     const fullQueue = [...due, ...todayNew]
 
-    const newCount = qs.filter(q => !cardsMap[q.id] || cardsMap[q.id]?.status === CARD_STATUS.NEW).length
+    const newCount = qs.filter(q => !cardsMap[q.id]?.flagged && (!cardsMap[q.id] || cardsMap[q.id]?.status === CARD_STATUS.NEW)).length
     const learningCount = qs.filter(q => {
       const c = cardsMap[q.id]
-      return c?.status === CARD_STATUS.LEARNING || c?.status === CARD_STATUS.RELEARNING
+      return !c?.flagged && (c?.status === CARD_STATUS.LEARNING || c?.status === CARD_STATUS.RELEARNING)
     }).length
     const reviewCount = qs.filter(q => {
       const c = cardsMap[q.id]
-      return c?.status === CARD_STATUS.REVIEW && isDue(c)
+      return !c?.flagged && c?.status === CARD_STATUS.REVIEW && isDue(c)
     }).length
 
     setStats({ newCount, learningCount, reviewCount })
@@ -336,14 +347,18 @@ export default function QuestionPanel({ topicId, onClose }) {
   }
 
   function computeStats(qs, cardsMap) {
-    const newCount = qs.filter(q => !cardsMap[q.id] || cardsMap[q.id]?.status === CARD_STATUS.NEW).length
+    if (flaggedOnly) {
+      const reviewCount = qs.filter(q => cardsMap[q.id]?.flagged).length
+      return { newCount: 0, learningCount: 0, reviewCount }
+    }
+    const newCount = qs.filter(q => !cardsMap[q.id]?.flagged && (!cardsMap[q.id] || cardsMap[q.id]?.status === CARD_STATUS.NEW)).length
     const learningCount = qs.filter(q => {
       const c = cardsMap[q.id]
-      return c?.status === CARD_STATUS.LEARNING || c?.status === CARD_STATUS.RELEARNING
+      return !c?.flagged && (c?.status === CARD_STATUS.LEARNING || c?.status === CARD_STATUS.RELEARNING)
     }).length
     const reviewCount = qs.filter(q => {
       const c = cardsMap[q.id]
-      return c?.status === CARD_STATUS.REVIEW && isDue(c)
+      return !c?.flagged && c?.status === CARD_STATUS.REVIEW && isDue(c)
     }).length
     return { newCount, learningCount, reviewCount }
   }
@@ -401,11 +416,11 @@ export default function QuestionPanel({ topicId, onClose }) {
 
   if (finished) {
     const allNew = questions.every(q => !cards[q.id] || cards[q.id]?.status === 'new')
-    const hitDailyLimit = allNew && questions.length > DAILY_NEW_LIMIT
+    const hitDailyLimit = !flaggedOnly && allNew && questions.length > DAILY_NEW_LIMIT
     return (
       <BattleScreen onClose={onClose}>
-        <HUDBar stats={stats} currentIndex={queue.length} queueLength={queue.length} onClose={onClose} />
-        <FinishedScreen stats={stats} total={questions.length} hitDailyLimit={hitDailyLimit} onClose={onClose} sessionResult={sessionResult} />
+        <HUDBar stats={stats} currentIndex={queue.length} queueLength={queue.length} onClose={onClose} flaggedOnly={flaggedOnly} />
+        <FinishedScreen stats={stats} total={questions.length} hitDailyLimit={hitDailyLimit} onClose={onClose} sessionResult={sessionResult} flaggedOnly={flaggedOnly} />
       </BattleScreen>
     )
   }
@@ -448,6 +463,44 @@ export default function QuestionPanel({ topicId, onClose }) {
     }
   }
 
+  async function toggleFlag() {
+    if (!currentQuestion) return
+    const wasFlagged = !!currentCard?.flagged
+    const newFlagged = !wasFlagged
+    const existingCard = cards[currentQuestion.id] || newCard(user.id, currentQuestion.id)
+    const updatedCard = { ...existingCard, flagged: newFlagged }
+
+    try {
+      await supabase
+        .from('user_cards')
+        .upsert({ ...updatedCard, user_id: user.id, question_id: currentQuestion.id })
+
+      setCards(prev => ({ ...prev, [currentQuestion.id]: updatedCard }))
+      toast.success(newFlagged ? 'Bayraklandı — normal sıradan çıkarıldı' : 'Bayrak kaldırıldı')
+
+      // Bayraklanınca normal modda, bayrak kaldırılınca da inceleme modunda
+      // soru anlık kuyruktan çıkar (deleteQuestion ile aynı mantık)
+      const shouldRemoveFromQueue = (newFlagged && !flaggedOnly) || (!newFlagged && flaggedOnly)
+      if (shouldRemoveFromQueue) {
+        const newQueue = queue.filter(qId => qId !== currentQuestion.id)
+        if (newQueue.length === 0) {
+          setFinished(true)
+        } else {
+          const nextIdx = Math.min(currentIndex, newQueue.length - 1)
+          setQueue(newQueue)
+          setCurrentIndex(nextIdx)
+          setShowAnswer(false)
+          setSelectedOption(null)
+          setEliminatedOptions(new Set())
+          setShowAI(false)
+        }
+      }
+    } catch (err) {
+      console.error('Flag error:', err)
+      toast.error('İşlem başarısız')
+    }
+  }
+
   return (
     <BattleScreen onClose={onClose} accentColor={accentColor}>
       <HUDBar
@@ -458,6 +511,7 @@ export default function QuestionPanel({ topicId, onClose }) {
         accentColor={accentColor}
         isAdmin={!!user?.is_admin}
         onDeleteQuestion={deleteQuestion}
+        flaggedOnly={flaggedOnly}
       />
 
       {/* ── Progress bar ── */}
@@ -524,14 +578,28 @@ export default function QuestionPanel({ topicId, onClose }) {
                   </div>
                   <CardStatusBadge card={currentCard} />
                 </div>
-                <button
-                  onClick={handleCopyQuestion}
-                  title="Soruyu kopyala (başka bir AI'a sormak için)"
-                  className="flex-shrink-0 p-1.5 text-gray-600 hover:text-gray-300 transition-colors"
-                  style={{ background: '#0a1628', border: '1px solid #1a2d45' }}
-                >
-                  <Copy size={12} />
-                </button>
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <button
+                    onClick={handleCopyQuestion}
+                    title="Soruyu kopyala (başka bir AI'a sormak için)"
+                    className="flex-shrink-0 p-1.5 text-gray-600 hover:text-gray-300 transition-colors"
+                    style={{ background: '#0a1628', border: '1px solid #1a2d45' }}
+                  >
+                    <Copy size={12} />
+                  </button>
+                  <button
+                    onClick={toggleFlag}
+                    title={currentCard?.flagged ? 'Bayrağı kaldır (soru normal sıraya döner)' : 'Soruyu bayrakla (şimdilik sıradan çıkar, sonra tekrar bak)'}
+                    className="flex-shrink-0 p-1.5 transition-colors"
+                    style={
+                      currentCard?.flagged
+                        ? { background: 'rgba(204,0,0,0.18)', border: '1px solid #cc0000', color: '#ff5252' }
+                        : { background: '#0a1628', border: '1px solid #1a2d45', color: '#6a7a90' }
+                    }
+                  >
+                    <Flag size={12} fill={currentCard?.flagged ? '#ff5252' : 'none'} />
+                  </button>
+                </div>
               </div>
 
               <motion.div
@@ -953,7 +1021,7 @@ function BattleScreen({ children, accentColor = '#0891b2' }) {
 }
 
 /* ── HUD Bar ── */
-function HUDBar({ stats, currentIndex, queueLength, onClose, accentColor = '#0891b2', isAdmin = false, onDeleteQuestion }) {
+function HUDBar({ stats, currentIndex, queueLength, onClose, accentColor = '#0891b2', isAdmin = false, onDeleteQuestion, flaggedOnly = false }) {
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   function handleDeleteClick() {
@@ -999,12 +1067,12 @@ function HUDBar({ stats, currentIndex, queueLength, onClose, accentColor = '#089
             transition: 'all 0.4s ease',
           }}
         >
-          <Zap size={9} color={accentColor} strokeWidth={2.5} />
+          {flaggedOnly ? <Flag size={9} color={accentColor} strokeWidth={2.5} /> : <Zap size={9} color={accentColor} strokeWidth={2.5} />}
           <span
             className="font-barlow font-bold text-[10px] tracking-[0.18em] uppercase"
             style={{ color: accentColor, transition: 'color 0.4s' }}
           >
-            SORU MODU
+            {flaggedOnly ? 'BAYRAKLI SORULAR' : 'SORU MODU'}
           </span>
         </div>
       </div>
@@ -1013,9 +1081,9 @@ function HUDBar({ stats, currentIndex, queueLength, onClose, accentColor = '#089
       <div className="flex items-center gap-3">
         {stats && queueLength > 0 && (
           <div className="hidden sm:flex items-center gap-2">
-            <HUDPill color="#4466ff" count={stats.newCount} label="YENİ" />
-            <HUDPill color="#ff9800" count={stats.learningCount} label="ÖĞR" />
-            <HUDPill color="#10b981" count={stats.reviewCount} label="İNC" />
+            {!flaggedOnly && <HUDPill color="#4466ff" count={stats.newCount} label="YENİ" />}
+            {!flaggedOnly && <HUDPill color="#ff9800" count={stats.learningCount} label="ÖĞR" />}
+            <HUDPill color={flaggedOnly ? '#cc0000' : '#10b981'} count={stats.reviewCount} label={flaggedOnly ? 'BAYRAKLI' : 'İNC'} />
             <div
               className="font-bebas text-white tracking-[0.12em] text-base leading-none px-2 py-0.5"
               style={{
@@ -1149,7 +1217,7 @@ function CardStatusBadge({ card }) {
 }
 
 /* ── Finished Screen ── */
-function FinishedScreen({ stats, total, hitDailyLimit, onClose, sessionResult }) {
+function FinishedScreen({ stats, total, hitDailyLimit, onClose, sessionResult, flaggedOnly = false }) {
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -1201,7 +1269,7 @@ function FinishedScreen({ stats, total, hitDailyLimit, onClose, sessionResult })
           transition={{ delay: 0.25 }}
           className="font-barlow font-bold text-gray-600 text-[11px] uppercase tracking-[0.25em] mb-2"
         >
-          Bugünlük seans tamamlandı
+          {flaggedOnly ? 'Bayraklı sorular incelendi' : 'Bugünlük seans tamamlandı'}
         </motion.p>
         {hitDailyLimit && (
           <motion.p
@@ -1248,19 +1316,22 @@ function FinishedScreen({ stats, total, hitDailyLimit, onClose, sessionResult })
           ))}
         </motion.div>
 
-        {/* Kart durumu grid */}
+        {/* Kart durumu grid — normal modda SM2 durumu, bayraklı modda kalan bayrak sayısı */}
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.22, ease: [0.22, 1, 0.36, 1] }}
-          className="grid grid-cols-3 mb-8"
+          className={`grid mb-8 ${flaggedOnly ? 'grid-cols-1' : 'grid-cols-3'}`}
           style={{ gap: '2px' }}
         >
-          {[
-            { label: 'YENİ', value: stats.newCount, color: '#4466ff' },
-            { label: 'ÖĞRENİYOR', value: stats.learningCount, color: '#ff9800' },
-            { label: 'İNCELEME', value: stats.reviewCount, color: '#10b981' },
-          ].map((s, i) => (
+          {(flaggedOnly
+            ? [{ label: 'KALAN BAYRAKLI SORU', value: stats.reviewCount, color: '#cc0000' }]
+            : [
+                { label: 'YENİ', value: stats.newCount, color: '#4466ff' },
+                { label: 'ÖĞRENİYOR', value: stats.learningCount, color: '#ff9800' },
+                { label: 'İNCELEME', value: stats.reviewCount, color: '#10b981' },
+              ]
+          ).map((s, i) => (
             <motion.div
               key={s.label}
               initial={{ opacity: 0, y: 20 }}

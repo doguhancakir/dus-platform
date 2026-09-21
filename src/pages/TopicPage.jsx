@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronLeft, CheckCircle2, BookOpen, FileQuestion, Pencil, NotebookPen, X, List } from 'lucide-react'
+import { ChevronLeft, CheckCircle2, BookOpen, FileQuestion, Pencil, NotebookPen, X, List, Flag } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useAuth } from '../contexts/AuthContext'
@@ -55,11 +55,12 @@ function getChildText(node) {
 export default function TopicPage() {
   const { id } = useParams()
   const { user } = useAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [topic, setTopic] = useState(null)
   const [branch, setBranch] = useState(null)
   const [isCompleted, setIsCompleted] = useState(false)
-  const [cardStats, setCardStats] = useState({ newCount: 0, dueCount: 0, learnedCount: 0, totalCount: 0 })
-  const [showQuestions, setShowQuestions] = useState(false)
+  const [cardStats, setCardStats] = useState({ newCount: 0, dueCount: 0, learnedCount: 0, totalCount: 0, flaggedCount: 0 })
+  const [questionsMode, setQuestionsMode] = useState(null) // null | 'normal' | 'flagged'
   const [showEditor, setShowEditor] = useState(false)
   const [showFlashcards, setShowFlashcards] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -79,6 +80,14 @@ export default function TopicPage() {
   const noteSaveTimer = useRef(null)
 
   useEffect(() => { loadData() }, [id, user?.id])
+
+  // Dashboard'daki "Bayraklı Sorular" linkinden gelindiyse inceleme modunu otomatik aç
+  useEffect(() => {
+    if (searchParams.get('flagged') === '1') {
+      setQuestionsMode('flagged')
+      setSearchParams(prev => { prev.delete('flagged'); return prev }, { replace: true })
+    }
+  }, [searchParams, setSearchParams])
 
   useEffect(() => {
     if (topic?.content) setHeadings(extractHeadings(topic.content))
@@ -126,23 +135,25 @@ export default function TopicPage() {
         setIsCompleted(progress?.completed || false)
         if (qIds.length > 0) {
           const { data: cards } = await supabase
-            .from('user_cards').select('question_id, status, due_date')
+            .from('user_cards').select('question_id, status, due_date, flagged')
             .eq('user_id', user.id).in('question_id', qIds)
           const cardsMap = {}
           cards?.forEach(c => { cardsMap[c.question_id] = c })
-          const newCount = qIds.filter(qId => !cardsMap[qId] || cardsMap[qId].status === 'new').length
-          const dueCount = qIds.filter(qId => {
+          const flaggedCount = qIds.filter(qId => cardsMap[qId]?.flagged).length
+          const activeIds = qIds.filter(qId => !cardsMap[qId]?.flagged)
+          const newCount = activeIds.filter(qId => !cardsMap[qId] || cardsMap[qId].status === 'new').length
+          const dueCount = activeIds.filter(qId => {
             const c = cardsMap[qId]
             return c && c.status !== 'new' && isDue(c)
           }).length
-          const learnedCount = qIds.filter(qId => cardsMap[qId]?.status === 'review').length
-          setCardStats({ newCount, dueCount, learnedCount, totalCount: qIds.length })
+          const learnedCount = activeIds.filter(qId => cardsMap[qId]?.status === 'review').length
+          setCardStats({ newCount, dueCount, learnedCount, totalCount: qIds.length, flaggedCount })
         } else {
-          setCardStats({ newCount: 0, dueCount: 0, learnedCount: 0, totalCount: 0 })
+          setCardStats({ newCount: 0, dueCount: 0, learnedCount: 0, totalCount: 0, flaggedCount: 0 })
         }
       } else {
         setIsCompleted(false)
-        setCardStats({ newCount: 0, dueCount: 0, learnedCount: 0, totalCount: qIds.length })
+        setCardStats({ newCount: 0, dueCount: 0, learnedCount: 0, totalCount: qIds.length, flaggedCount: 0 })
       }
     } catch (err) { console.error(err) }
     setLoading(false)
@@ -330,7 +341,7 @@ export default function TopicPage() {
                 <motion.button
                   whileHover={{ scale: 1.03 }}
                   whileTap={{ scale: 0.96 }}
-                  onClick={() => setShowQuestions(true)}
+                  onClick={() => setQuestionsMode('normal')}
                   className="font-bebas text-sm tracking-[0.1em] text-white px-4 py-1.5 flex items-center gap-2"
                   style={{
                     background: '#0891b2',
@@ -347,6 +358,28 @@ export default function TopicPage() {
                       {cardStats.dueCount || cardStats.newCount}
                     </span>
                   )}
+                </motion.button>
+              )}
+
+              {user && cardStats.flaggedCount > 0 && (
+                <motion.button
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.96 }}
+                  onClick={() => setQuestionsMode('flagged')}
+                  className="font-bebas text-sm tracking-[0.1em] text-white px-4 py-1.5 flex items-center gap-2"
+                  style={{
+                    background: '#cc0000',
+                    clipPath: 'polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px))',
+                  }}
+                >
+                  <Flag size={13} />
+                  BAYRAKLI
+                  <span
+                    className="font-sans text-[10px] font-bold px-1.5 py-0.5 leading-none"
+                    style={{ background: 'rgba(255,255,255,0.25)' }}
+                  >
+                    {cardStats.flaggedCount}
+                  </span>
                 </motion.button>
               )}
 
@@ -594,7 +627,7 @@ export default function TopicPage() {
           animate={{ opacity: 1, scale: 1 }}
           whileHover={{ scale: 1.04 }}
           whileTap={{ scale: 0.95 }}
-          onClick={() => setShowQuestions(true)}
+          onClick={() => setQuestionsMode('normal')}
           className="fixed bottom-8 right-6 z-20 font-bebas tracking-[0.1em] text-sm text-white flex items-center gap-2 px-5 py-3"
           style={{
             background: '#0891b2',
@@ -618,10 +651,11 @@ export default function TopicPage() {
 
       {/* ── Panels ── */}
       <AnimatePresence>
-        {showQuestions && (
+        {questionsMode && (
           <QuestionPanel
             topicId={parseInt(id)}
-            onClose={() => { setShowQuestions(false); loadData() }}
+            flaggedOnly={questionsMode === 'flagged'}
+            onClose={() => { setQuestionsMode(null); loadData() }}
           />
         )}
       </AnimatePresence>

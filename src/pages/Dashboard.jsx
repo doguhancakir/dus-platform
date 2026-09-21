@@ -3,7 +3,8 @@ import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase, fetchAllRows } from '../lib/supabase'
-import { BRANCHES, TEMEL_BILIMLER } from '../lib/data'
+import { BRANCHES, TEMEL_BILIMLER, getBranchById } from '../lib/data'
+import { Flag } from 'lucide-react'
 import { getDailyGoal } from '../lib/dailyGoal'
 import Layout from '../components/Layout'
 import { SkeletonBranchCard } from '../components/SkeletonCard'
@@ -36,6 +37,7 @@ export default function Dashboard() {
   const [branchImages, setBranchImages] = useState({})
   const [showModel, setShowModel] = useState(false)
   const [streak, setStreak] = useState(0)
+  const [flaggedByTopic, setFlaggedByTopic] = useState([])
 
   useEffect(() => {
     loadBranchImages()
@@ -168,6 +170,38 @@ export default function Dashboard() {
       }
       // Need ≥2 consecutive days to "restart" after a break
       setStreak(computedStreak >= 2 ? computedStreak : 0)
+
+      // ── Bayraklı sorular: konuya göre grupla ────────────────────────
+      const flaggedCards = await fetchAllRows(q => q
+        .from('user_cards')
+        .select('question_id')
+        .eq('user_id', user.id)
+        .eq('flagged', true)
+      )
+      if (flaggedCards?.length) {
+        const flaggedQIds = flaggedCards.map(c => c.question_id)
+        const flaggedQs = await fetchAllRows(q => q
+          .from('questions').select('id, topic_id').in('id', flaggedQIds)
+        )
+        const countByTopic = {}
+        flaggedQs?.forEach(q => { countByTopic[q.topic_id] = (countByTopic[q.topic_id] || 0) + 1 })
+        const topicIds = Object.keys(countByTopic).map(Number)
+        const { data: topicRows } = await supabase
+          .from('topics').select('id, title, branch_id').in('id', topicIds)
+        const list = (topicRows || []).map(t => {
+          const b = getBranchById(t.branch_id)
+          return {
+            topicId: t.id,
+            title: t.title,
+            count: countByTopic[t.id] || 0,
+            branchName: b?.name || '',
+            branchColor: b?.color || '#cc0000',
+          }
+        }).sort((a, b) => b.count - a.count)
+        setFlaggedByTopic(list)
+      } else {
+        setFlaggedByTopic([])
+      }
     } catch (err) {
       console.error(err)
     }
@@ -434,6 +468,62 @@ export default function Dashboard() {
               </div>
             </motion.div>
           ))}
+        </motion.div>
+      )}
+
+      {/* ── BAYRAKLI SORULAR ── */}
+      {user && !loading && flaggedByTopic.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.24, ease: [0.22, 1, 0.36, 1] }}
+          className="mx-6 sm:mx-10 mt-6 mb-2"
+          style={{ background: '#0a1017', border: '1px solid rgba(204,0,0,0.25)', borderLeft: '4px solid #cc0000' }}
+        >
+          <div className="flex items-center gap-2 px-5 pt-4 pb-2">
+            <Flag size={13} color="#ff5252" />
+            <span className="font-bebas text-white tracking-widest text-base leading-none">
+              BAYRAKLI SORULAR
+            </span>
+            <span
+              className="font-barlow font-bold text-[10px] px-1.5 py-0.5 leading-none"
+              style={{ background: 'rgba(204,0,0,0.2)', color: '#ff8888' }}
+            >
+              {flaggedByTopic.reduce((s, t) => s + t.count, 0)}
+            </span>
+          </div>
+          <p className="font-barlow font-bold text-gray-600 text-[10px] uppercase tracking-wider px-5 pb-3" style={{ color: '#5a4040' }}>
+            Şimdilik sıradan çıkardığın sorular — hazır olunca inceleyip geri döndür
+          </p>
+          <div className="flex flex-col" style={{ borderTop: '1px solid rgba(204,0,0,0.12)' }}>
+            {flaggedByTopic.map((t, i) => (
+              <Link
+                key={t.topicId}
+                to={`/topic/${t.topicId}?flagged=1`}
+                className="flex items-center justify-between gap-3 px-5 py-2.5 transition-colors"
+                style={{
+                  borderTop: i === 0 ? 'none' : '1px solid rgba(255,255,255,0.03)',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(204,0,0,0.05)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+              >
+                <div className="min-w-0">
+                  <span className="text-sm leading-snug" style={{ color: '#c8ccd8' }}>{t.title}</span>
+                  {t.branchName && (
+                    <span className="block font-barlow font-bold text-[9px] uppercase tracking-wider" style={{ color: t.branchColor }}>
+                      {t.branchName}
+                    </span>
+                  )}
+                </div>
+                <span
+                  className="font-bebas text-base flex-shrink-0 px-2 py-0.5"
+                  style={{ color: '#ff8888', background: 'rgba(204,0,0,0.1)' }}
+                >
+                  {t.count}
+                </span>
+              </Link>
+            ))}
+          </div>
         </motion.div>
       )}
 
