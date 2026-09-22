@@ -3,7 +3,7 @@ import { Link, useParams, Navigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { ChevronLeft, CheckCircle2, Circle, ChevronRight, ChevronDown, BarChart3 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
-import { supabase } from '../lib/supabase'
+import { supabase, fetchAllRows } from '../lib/supabase'
 import { getBranchById } from '../lib/data'
 import { getExamWisdom } from '../lib/examWisdom'
 import { isDue } from '../lib/sm2'
@@ -53,10 +53,11 @@ export default function BranchPage() {
       if (!topicsData?.length) { setLoading(false); return }
 
       const topicIds = topicsData.map(t => t.id)
-      const { data: questions } = await supabase
+      const questions = await fetchAllRows(q => q
         .from('questions')
         .select('id, topic_id')
         .in('topic_id', topicIds)
+      )
 
       if (user) {
         const { data: progress } = await supabase
@@ -71,11 +72,12 @@ export default function BranchPage() {
         const qIds = questions?.map(q => q.id) || []
         let cardsMap = {}
         if (qIds.length > 0) {
-          const { data: cards } = await supabase
+          const cards = await fetchAllRows(q => q
             .from('user_cards')
             .select('question_id, status, due_date')
             .eq('user_id', user.id)
             .in('question_id', qIds)
+          )
           cards?.forEach(c => { cardsMap[c.question_id] = c })
         }
 
