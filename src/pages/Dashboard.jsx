@@ -7,7 +7,6 @@ import { BRANCHES, TEMEL_BILIMLER, getBranchById } from '../lib/data'
 import { Flag } from 'lucide-react'
 import { getDailyGoal } from '../lib/dailyGoal'
 import Layout from '../components/Layout'
-import { SkeletonBranchCard } from '../components/SkeletonCard'
 import ToothViewer from '../components/ToothViewer'
 import DailyCalendar from '../components/DailyCalendar'
 
@@ -670,14 +669,12 @@ export default function Dashboard() {
             </h2>
           </div>
           <div className="flex-1 h-px" style={{ background: 'linear-gradient(to right, #1e3555, transparent)' }} />
-          {!loading && (
-            <span
-              className="font-barlow font-bold text-[10px] tracking-[0.15em] uppercase flex-shrink-0"
-              style={{ color: '#2a3a50' }}
-            >
-              {BRANCHES.length} BRANŞ
-            </span>
-          )}
+          <span
+            className="font-barlow font-bold text-[10px] tracking-[0.15em] uppercase flex-shrink-0"
+            style={{ color: '#2a3a50' }}
+          >
+            {BRANCHES.length} BRANŞ
+          </span>
         </div>
 
         <motion.div
@@ -687,26 +684,23 @@ export default function Dashboard() {
           className="flex flex-col"
           style={{ gap: '2px' }}
         >
-          {loading
-            ? BRANCHES.map((_, i) => <SkeletonBranchCard key={i} />)
-            : BRANCHES.map((branch) => {
-                const stats = branchStats[branch.id]
-                return (
-                  <motion.div key={branch.id} variants={cardVariants}>
-                    <BranchCard
-                      branch={branch}
-                      stats={stats}
-                      loading={false}
-                      showProgress={!!user}
-                      isHovered={hoveredId === branch.id}
-                      isDimmed={hoveredId !== null && hoveredId !== branch.id}
-                      onHover={setHoveredId}
-                      imageUrl={branchImages[branch.id]}
-                    />
-                  </motion.div>
-                )
-              })
-          }
+          {BRANCHES.map((branch) => {
+            const stats = branchStats[branch.id]
+            return (
+              <motion.div key={branch.id} variants={cardVariants}>
+                <BranchCard
+                  branch={branch}
+                  stats={stats}
+                  loading={false}
+                  showProgress={!!user}
+                  isHovered={hoveredId === branch.id}
+                  isDimmed={hoveredId !== null && hoveredId !== branch.id}
+                  onHover={setHoveredId}
+                  imageUrl={branchImages[branch.id]}
+                />
+              </motion.div>
+            )
+          })}
         </motion.div>
 
         {/* ── TEMEL BİLİMLER ── */}
@@ -737,26 +731,23 @@ export default function Dashboard() {
             className="flex flex-col"
             style={{ gap: '2px' }}
           >
-            {loading
-              ? TEMEL_BILIMLER.map((_, i) => <SkeletonBranchCard key={i} />)
-              : TEMEL_BILIMLER.map((branch) => {
-                  const stats = branchStats[branch.id]
-                  return (
-                    <motion.div key={branch.id} variants={cardVariants}>
-                      <BranchCard
-                        branch={branch}
-                        stats={stats}
-                        loading={false}
-                        showProgress={!!user}
-                        isHovered={hoveredId === branch.id}
-                        isDimmed={hoveredId !== null && hoveredId !== branch.id}
-                        onHover={setHoveredId}
-                        imageUrl={branchImages[branch.id]}
-                      />
-                    </motion.div>
-                  )
-                })
-            }
+            {TEMEL_BILIMLER.map((branch) => {
+              const stats = branchStats[branch.id]
+              return (
+                <motion.div key={branch.id} variants={cardVariants}>
+                  <BranchCard
+                    branch={branch}
+                    stats={stats}
+                    loading={false}
+                    showProgress={!!user}
+                    isHovered={hoveredId === branch.id}
+                    isDimmed={hoveredId !== null && hoveredId !== branch.id}
+                    onHover={setHoveredId}
+                    imageUrl={branchImages[branch.id]}
+                  />
+                </motion.div>
+              )
+            })}
           </motion.div>
         </div>
       </div>
