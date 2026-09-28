@@ -27,10 +27,9 @@ export default function StudyTimerWidget() {
         alignItems: 'center',
         gap: 8,
         padding: '6px 12px 6px 10px',
-        background: running ? 'rgba(4, 12, 26, 0.97)' : 'rgba(4, 8, 18, 0.88)',
+        background: running ? 'rgba(4, 12, 26, 0.99)' : 'rgba(4, 8, 18, 0.94)',
         border:     running ? '1px solid rgba(8,145,178,0.35)' : '1px solid #111e30',
         borderLeft: running ? '3px solid #0891b2'               : '3px solid #1a2d45',
-        backdropFilter: 'blur(10px)',
         transition: 'all 0.4s ease',
         clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%)',
       }}

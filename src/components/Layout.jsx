@@ -24,9 +24,8 @@ export default function Layout({ children }) {
       <nav
         className="fixed top-0 left-0 right-0 z-40 h-16 flex items-center"
         style={{
-          background: 'rgba(8, 18, 36, 0.96)',
+          background: 'rgba(8, 18, 36, 0.98)',
           borderBottom: '1px solid #1a2d45',
-          backdropFilter: 'blur(20px)',
         }}
       >
         {/* Left teal accent bar */}

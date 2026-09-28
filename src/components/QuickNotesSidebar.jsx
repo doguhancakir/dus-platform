@@ -118,9 +118,8 @@ export default function QuickNotesSidebar() {
         style={{
           flex: 1,
           minWidth: 0,
-          background: 'rgba(4,10,20,0.97)',
+          background: 'rgba(4,10,20,0.99)',
           borderRight: '1px solid #0d2a40',
-          backdropFilter: 'blur(10px)',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
