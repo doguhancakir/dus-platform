@@ -89,7 +89,10 @@ export default function BranchPage() {
             const c = cardsMap[q.id]
             return c && c.status !== 'new' && isDue(c)
           }).length
-          const learnedCount = topicQs.filter(q => cardsMap[q.id]?.status === 'review').length
+          const learnedCount = topicQs.filter(q => {
+            const c = cardsMap[q.id]
+            return c?.status === 'review' && !isDue(c)
+          }).length
           stats[topic.id] = { totalCount: topicQs.length, newCount, dueCount, learnedCount }
         })
         setTopicStats(stats)

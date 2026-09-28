@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../lib/supabase'
 import { useStudyTimer, formatTimerDisplay, formatTimerLabel } from '../contexts/StudyTimerContext'
-import { getPhaseInfo, generateWeekTodoList, getWeekMonday } from '../lib/studyPlan'
+import { getPhaseInfo } from '../lib/studyPlan'
 import { getDailyGoal, DAILY_GOAL_TEXTS } from '../lib/dailyGoal'
 
 const MONTHS_TR = [
@@ -37,8 +37,6 @@ export default function DailyCalendar({ userId, todayAnswered = 0, isAdmin = fal
   const [hoveredId, setHoveredId] = useState(null)
   const [goalTaskId, setGoalTaskId] = useState(null)
   const [studySecondsDB, setStudySecondsDB] = useState(null) // geçmiş günler için DB'den
-  const [generating, setGenerating] = useState(false)
-  const [genDone, setGenDone] = useState(false)
   const inputRef = useRef(null)
 
   const phaseInfo = getPhaseInfo(sel)
@@ -198,33 +196,6 @@ export default function DailyCalendar({ userId, todayAnswered = 0, isAdmin = fal
     await supabase.from('daily_todos').delete().eq('id', id)
     setTodos(p => p.filter(t => t.id !== id))
     loadStatus()
-  }
-
-  async function generateWeekTodos() {
-    if (!userId || generating) return
-    setGenerating(true)
-    setGenDone(false)
-    try {
-      const monday = getWeekMonday(new Date())
-      const weekData = generateWeekTodoList(monday)
-      for (const { date, texts } of weekData) {
-        const { data: existing } = await supabase
-          .from('daily_todos').select('text').eq('user_id', userId).eq('date', date)
-        const existingSet = new Set(existing?.map(t => t.text) || [])
-        const toInsert = texts.filter(text => !existingSet.has(text))
-        if (toInsert.length > 0) {
-          await supabase.from('daily_todos').insert(
-            toInsert.map(text => ({ user_id: userId, date, text, completed: false }))
-          )
-        }
-      }
-      setGenDone(true)
-      setTimeout(() => setGenDone(false), 3000)
-      loadTodos()
-      loadStatus()
-    } finally {
-      setGenerating(false)
-    }
   }
 
   // ── navigation ────────────────────────────────────────────────────────────
@@ -408,9 +379,9 @@ export default function DailyCalendar({ userId, todayAnswered = 0, isAdmin = fal
         </div>
       </div>
 
-      {/* ── Faz rozeti + oluştur butonu (sadece admin) ── */}
+      {/* ── Faz rozeti (sadece admin) ── */}
       {isAdmin && phaseInfo && (
-        <div className="flex items-center justify-between flex-shrink-0 mb-2">
+        <div className="flex items-center flex-shrink-0 mb-2">
           <div style={{
             display: 'flex', alignItems: 'center', gap: 6,
             background: 'rgba(8,145,178,0.07)',
@@ -425,22 +396,6 @@ export default function DailyCalendar({ userId, todayAnswered = 0, isAdmin = fal
               {`HAFTA ${phaseInfo.weekNum} / ${phaseInfo.totalWeeks}`}
             </span>
           </div>
-          <button
-            onClick={generateWeekTodos}
-            disabled={generating}
-            style={{
-              fontFamily: 'Barlow, sans-serif', fontWeight: 700,
-              fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase',
-              padding: '3px 8px',
-              background: genDone ? 'rgba(16,185,129,0.1)' : 'rgba(8,145,178,0.07)',
-              border: `1px solid ${genDone ? 'rgba(16,185,129,0.4)' : 'rgba(8,145,178,0.2)'}`,
-              color: genDone ? '#10b981' : generating ? '#1e4a5e' : '#0891b2',
-              cursor: generating ? 'default' : 'pointer',
-              transition: 'all 0.2s',
-            }}
-          >
-            {genDone ? '✓ Oluşturuldu' : generating ? 'Oluşturuluyor…' : '📋 Bu Haftayı Oluştur'}
-          </button>
         </div>
       )}
 

@@ -146,7 +146,10 @@ export default function TopicPage() {
             const c = cardsMap[qId]
             return c && c.status !== 'new' && isDue(c)
           }).length
-          const learnedCount = activeIds.filter(qId => cardsMap[qId]?.status === 'review').length
+          const learnedCount = activeIds.filter(qId => {
+            const c = cardsMap[qId]
+            return c?.status === 'review' && !isDue(c)
+          }).length
           setCardStats({ newCount, dueCount, learnedCount, totalCount: qIds.length, flaggedCount })
         } else {
           setCardStats({ newCount: 0, dueCount: 0, learnedCount: 0, totalCount: 0, flaggedCount: 0 })
@@ -355,7 +358,7 @@ export default function TopicPage() {
                       className="font-sans text-[10px] font-bold px-1.5 py-0.5 leading-none"
                       style={{ background: 'rgba(255,255,255,0.2)' }}
                     >
-                      {cardStats.dueCount || cardStats.newCount}
+                      {cardStats.dueCount + cardStats.newCount}
                     </span>
                   )}
                 </motion.button>
@@ -643,7 +646,7 @@ export default function TopicPage() {
               className="font-sans text-[10px] font-bold px-1.5 py-0.5 leading-none"
               style={{ background: 'rgba(255,255,255,0.25)' }}
             >
-              {cardStats.dueCount || cardStats.newCount}
+              {cardStats.dueCount + cardStats.newCount}
             </span>
           )}
         </motion.button>
