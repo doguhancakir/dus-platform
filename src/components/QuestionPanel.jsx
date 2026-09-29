@@ -452,9 +452,18 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
     explanation:         currentQuestion.explanation ?? '',
   } : null
 
+  // copyContext — kopyalama için orijinal (karıştırılmamış) şık sırası
+  const copyContext = currentQuestion ? {
+    questionText:        currentQuestion.question_text,
+    options:             currentQuestion.options || [],
+    correctOptionText:   currentQuestion.options?.[currentQuestion.correct_answer] ?? '',
+    selectedOptionText:  selectedOption !== null ? options[selectedOption] ?? '' : null,
+    explanation:         currentQuestion.explanation ?? '',
+  } : null
+
   async function handleCopyQuestion() {
-    if (!aiContext) return
-    const text = buildQuestionCopyText(aiContext, showAnswer)
+    if (!copyContext) return
+    const text = buildQuestionCopyText(copyContext, showAnswer)
     try {
       await navigator.clipboard.writeText(text)
       toast.success('Soru kopyalandı')
