@@ -318,6 +318,13 @@ export default function BranchPage() {
 }
 
 function TopicCard({ topic, stats, isCompleted, showProgress, branchColor, index }) {
+  const isMastered = showProgress && stats.totalCount > 0
+    && stats.newCount === 0 && stats.dueCount === 0 && stats.learnedCount > 0
+
+  const baseBg = isMastered ? 'rgba(16,185,129,0.09)' : '#0a1525'
+  const hoverBg = isMastered ? 'rgba(16,185,129,0.15)' : '#0d1a2e'
+  const baseBorder = isMastered ? '#10b981' : 'transparent'
+
   return (
     <Link to={`/topic/${topic.id}`}>
       <motion.div
@@ -325,20 +332,28 @@ function TopicCard({ topic, stats, isCompleted, showProgress, branchColor, index
         whileTap={{ scale: 0.99 }}
         className="relative overflow-hidden cursor-pointer flex items-center gap-4 group"
         style={{
-          background: '#0a1525',
-          borderLeft: '3px solid transparent',
+          background: baseBg,
+          borderLeft: `3px solid ${baseBorder}`,
           padding: '1rem 1.25rem',
           transition: 'background 0.15s ease, border-left-color 0.15s ease',
         }}
         onMouseEnter={e => {
-          e.currentTarget.style.borderLeftColor = branchColor
-          e.currentTarget.style.background = '#0d1a2e'
+          e.currentTarget.style.borderLeftColor = isMastered ? '#10b981' : branchColor
+          e.currentTarget.style.background = hoverBg
         }}
         onMouseLeave={e => {
-          e.currentTarget.style.borderLeftColor = 'transparent'
-          e.currentTarget.style.background = '#0a1525'
+          e.currentTarget.style.borderLeftColor = baseBorder
+          e.currentTarget.style.background = baseBg
         }}
       >
+        {/* Mastered glow */}
+        {isMastered && (
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{ boxShadow: 'inset 0 0 24px rgba(16,185,129,0.1)' }}
+          />
+        )}
+
         {/* Completion state */}
         {showProgress && (
           <div className="flex-shrink-0">
@@ -359,7 +374,7 @@ function TopicCard({ topic, stats, isCompleted, showProgress, branchColor, index
         </div>
 
         {/* Content */}
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 relative z-10">
           <h3
             className="text-sm font-semibold leading-snug"
             style={{ color: isCompleted && showProgress ? '#3a4a5a' : '#d8dce8' }}
@@ -377,7 +392,9 @@ function TopicCard({ topic, stats, isCompleted, showProgress, branchColor, index
                 <span style={{ color: branchColor }}>{stats.dueCount} bekliyor</span>
               )}
               {showProgress && stats.learnedCount > 0 && (
-                <span style={{ color: '#10b981' }}>{stats.learnedCount} öğrenildi</span>
+                <span style={{ color: '#10b981' }}>
+                  {stats.learnedCount} öğrenildi{isMastered ? ' ✓' : ''}
+                </span>
               )}
               {(!showProgress || (stats.newCount === 0 && stats.dueCount === 0 && stats.learnedCount === 0)) && (
                 <span style={{ color: '#1e3040' }}>{stats.totalCount} soru</span>
@@ -389,7 +406,7 @@ function TopicCard({ topic, stats, isCompleted, showProgress, branchColor, index
         {/* Arrow */}
         <ChevronRight
           size={13}
-          className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-150"
+          className="relative z-10 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-150"
           style={{ color: branchColor }}
         />
       </motion.div>
