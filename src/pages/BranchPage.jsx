@@ -74,7 +74,7 @@ export default function BranchPage() {
         if (qIds.length > 0) {
           const cards = await fetchAllRows(q => q
             .from('user_cards')
-            .select('question_id, status, due_date')
+            .select('question_id, status, due_date, flagged')
             .eq('user_id', user.id)
             .in('question_id', qIds)
           )
@@ -83,7 +83,8 @@ export default function BranchPage() {
 
         const stats = {}
         topicsData.forEach(topic => {
-          const topicQs = questions?.filter(q => q.topic_id === topic.id) || []
+          const topicQs = (questions?.filter(q => q.topic_id === topic.id) || [])
+            .filter(q => !cardsMap[q.id]?.flagged)
           const newCount = topicQs.filter(q => !cardsMap[q.id] || cardsMap[q.id].status === 'new').length
           const dueCount = topicQs.filter(q => {
             const c = cardsMap[q.id]
@@ -93,7 +94,8 @@ export default function BranchPage() {
             const c = cardsMap[q.id]
             return c?.status === 'review' && !isDue(c)
           }).length
-          stats[topic.id] = { totalCount: topicQs.length, newCount, dueCount, learnedCount }
+          const totalCount = (questions?.filter(q => q.topic_id === topic.id) || []).length
+          stats[topic.id] = { totalCount, newCount, dueCount, learnedCount }
         })
         setTopicStats(stats)
       } else {
