@@ -234,7 +234,7 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
     })
 
     const todayNew = newOnes.slice(0, DAILY_NEW_LIMIT)
-    const fullQueue = [...due, ...todayNew]
+    const fullQueue = [...todayNew, ...due]
 
     const newCount = qs.filter(q => !cardsMap[q.id]?.flagged && (!cardsMap[q.id] || cardsMap[q.id]?.status === CARD_STATUS.NEW)).length
     const learningCount = qs.filter(q => {
