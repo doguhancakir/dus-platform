@@ -526,53 +526,6 @@ export default function Dashboard() {
         </motion.div>
       )}
 
-      {/* ── CTA BANNER (not logged in) ── */}
-      {!user && (
-        <motion.div
-          initial={{ opacity: 0, x: -30 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.22, ease: [0.22, 1, 0.36, 1] }}
-          className="mx-6 sm:mx-10 mt-8 mb-2 relative overflow-hidden"
-          style={{
-            background: '#080f1e',
-            borderLeft: '4px solid #0891b2',
-            border: '1px solid #1a2d45',
-            borderLeftWidth: 4,
-            borderLeftColor: '#0891b2',
-          }}
-        >
-          <div
-            className="absolute right-0 top-0 bottom-0 pointer-events-none"
-            style={{
-              width: '30%',
-              background: 'linear-gradient(to left, rgba(8,145,178,0.05), transparent)',
-              clipPath: 'polygon(20% 0, 100% 0, 100% 100%, 0 100%)',
-            }}
-          />
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-5 gap-4 relative z-10">
-            <div>
-              <p className="font-bebas text-lg sm:text-xl text-white tracking-widest">
-                HESAP OLUŞTUR, İLERLEMENİ TAKİP ET
-              </p>
-              <p className="font-barlow font-bold text-gray-600 text-[11px] mt-1 uppercase tracking-wider">
-                Konuları işaretle, tekrar kartlarını yönet
-              </p>
-            </div>
-            <Link
-              to="/register"
-              className="flex-shrink-0 font-barlow font-bold tracking-[0.15em] text-xs text-white uppercase px-6 py-3 transition-all"
-              style={{
-                background: '#0891b2',
-                clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = '#0779a0'; e.currentTarget.style.boxShadow = '0 0 24px rgba(8,145,178,0.4)' }}
-              onMouseLeave={e => { e.currentTarget.style.background = '#0891b2'; e.currentTarget.style.boxShadow = 'none' }}
-            >
-              KAYIT OL
-            </Link>
-          </div>
-        </motion.div>
-      )}
 
       {/* ── MIXED QUIZ CTA ── */}
       <motion.div

@@ -46,42 +46,13 @@ export function AuthProvider({ children }) {
     return userObj
   }
 
-  async function register(nickname, password) {
-    // Nick kullanımda mı?
-    const { data: existing } = await supabase
-      .from('users')
-      .select('id')
-      .eq('nickname', nickname.trim())
-      .maybeSingle()
-
-    if (existing) throw new Error('Bu kullanıcı adı zaten alınmış')
-
-    const hash = await bcrypt.hash(password, 10)
-    const { data, error } = await supabase
-      .from('users')
-      .insert({ nickname: nickname.trim(), password_hash: hash })
-      .select()
-      .single()
-
-    if (error) throw new Error(error.message)
-
-    const userObj = {
-      id: data.id,
-      nickname: data.nickname,
-      is_admin: data.is_admin,
-    }
-    setUser(userObj)
-    localStorage.setItem('dus_user', JSON.stringify(userObj))
-    return userObj
-  }
-
   function logout() {
     setUser(null)
     localStorage.removeItem('dus_user')
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, logout }}>
       {children}
     </AuthContext.Provider>
   )
