@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Eye, EyeOff, Loader2 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
@@ -247,22 +247,6 @@ export default function Login() {
               {loading ? 'GİRİŞ YAPILIYOR...' : 'GİRİŞ YAP'}
             </motion.button>
           </form>
-
-          <p
-            className="text-center font-barlow font-bold text-[11px] uppercase tracking-[0.2em] mt-6"
-            style={{ color: '#2a3a50' }}
-          >
-            Hesabın yok mu?{' '}
-            <Link
-              to="/register"
-              className="transition-colors"
-              style={{ color: '#0891b2' }}
-              onMouseEnter={e => e.currentTarget.style.color = '#67d9f0'}
-              onMouseLeave={e => e.currentTarget.style.color = '#0891b2'}
-            >
-              Kayıt Ol
-            </Link>
-          </p>
         </motion.div>
       </div>
     </div>

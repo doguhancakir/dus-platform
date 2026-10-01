@@ -8,7 +8,6 @@ import BranchPage from './pages/BranchPage'
 import TopicPage from './pages/TopicPage'
 import AdminPage from './pages/AdminPage'
 import Login from './pages/Login'
-import Register from './pages/Register'
 import MixedQuizPage from './pages/MixedQuizPage'
 import NotesPage from './pages/NotesPage'
 import StudyTimerWidget from './components/StudyTimerWidget'
@@ -82,16 +81,27 @@ function AppRoutes() {
       <Route path="/login" element={
         <PublicRoute><Login /></PublicRoute>
       } />
-      <Route path="/register" element={
-        <PublicRoute><Register /></PublicRoute>
+      <Route path="/" element={
+        <ProtectedRoute><Dashboard /></ProtectedRoute>
       } />
-      <Route path="/" element={<Dashboard />} />
-      <Route path="/branch/:id" element={<BranchPage />} />
-      <Route path="/topic/:id" element={<TopicPage />} />
-      <Route path="/mixed-quiz" element={<MixedQuizPage />} />
-      <Route path="/notes" element={<NotesPage />} />
-      <Route path="/notes/:branchId" element={<NotesPage />} />
-      <Route path="/notes/:branchId/:canvasId" element={<NotesPage />} />
+      <Route path="/branch/:id" element={
+        <ProtectedRoute><BranchPage /></ProtectedRoute>
+      } />
+      <Route path="/topic/:id" element={
+        <ProtectedRoute><TopicPage /></ProtectedRoute>
+      } />
+      <Route path="/mixed-quiz" element={
+        <ProtectedRoute><MixedQuizPage /></ProtectedRoute>
+      } />
+      <Route path="/notes" element={
+        <ProtectedRoute><NotesPage /></ProtectedRoute>
+      } />
+      <Route path="/notes/:branchId" element={
+        <ProtectedRoute><NotesPage /></ProtectedRoute>
+      } />
+      <Route path="/notes/:branchId/:canvasId" element={
+        <ProtectedRoute><NotesPage /></ProtectedRoute>
+      } />
       <Route path="/admin" element={
         <ProtectedRoute><AdminPage /></ProtectedRoute>
       } />

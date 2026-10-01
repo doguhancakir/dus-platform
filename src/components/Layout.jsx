@@ -69,55 +69,32 @@ export default function Layout({ children }) {
         <div className="hidden md:flex items-center gap-1 ml-auto pr-6 relative z-10">
           <NavLink to="/" label="ANA SAYFA" active={isActive('/')} />
 
-          {user ? (
-            <>
-              {user.is_admin && (
-                <NavLink to="/admin" label="ADMİN" active={isActive('/admin')} />
-              )}
-              <div
-                className="flex items-center gap-3 ml-4 pl-4"
-                style={{ borderLeft: '1px solid #1e3555' }}
-              >
-                <div className="flex flex-col items-end">
-                  <span
-                    className="font-barlow font-bold text-[#0891b2] text-[11px] tracking-[0.18em] uppercase leading-none"
-                  >
-                    {user.nickname}
-                  </span>
-                  <span className="text-gray-700 text-[9px] tracking-[0.15em] uppercase mt-0.5">
-                    Öğrenci
-                  </span>
-                </div>
-                <button
-                  onClick={handleLogout}
-                  className="text-gray-600 hover:text-[#0891b2] transition-colors p-1.5"
-                  title="Çıkış Yap"
-                  style={{ border: '1px solid #1e3555' }}
-                >
-                  <LogOut size={13} />
-                </button>
-              </div>
-            </>
-          ) : (
-            <Link
-              to="/login"
-              className="ml-4 font-barlow font-bold text-sm tracking-[0.15em] uppercase px-5 py-2 text-white transition-all"
-              style={{
-                background: '#0891b2',
-                clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))',
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.background = '#0779a0'
-                e.currentTarget.style.boxShadow = '0 0 20px rgba(8,145,178,0.4)'
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.background = '#0891b2'
-                e.currentTarget.style.boxShadow = 'none'
-              }}
-            >
-              GİRİŞ YAP
-            </Link>
+          {user.is_admin && (
+            <NavLink to="/admin" label="ADMİN" active={isActive('/admin')} />
           )}
+          <div
+            className="flex items-center gap-3 ml-4 pl-4"
+            style={{ borderLeft: '1px solid #1e3555' }}
+          >
+            <div className="flex flex-col items-end">
+              <span
+                className="font-barlow font-bold text-[#0891b2] text-[11px] tracking-[0.18em] uppercase leading-none"
+              >
+                {user.nickname}
+              </span>
+              <span className="text-gray-700 text-[9px] tracking-[0.15em] uppercase mt-0.5">
+                Öğrenci
+              </span>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="text-gray-600 hover:text-[#0891b2] transition-colors p-1.5"
+              title="Çıkış Yap"
+              style={{ border: '1px solid #1e3555' }}
+            >
+              <LogOut size={13} />
+            </button>
+          </div>
         </div>
 
         {/* ── Mobile Hamburger ── */}
@@ -204,69 +181,46 @@ export default function Layout({ children }) {
                   delay={0}
                   onClick={() => setMenuOpen(false)}
                 />
-                {user ? (
-                  <>
-                    {user.is_admin && (
-                      <MobileMenuItem
-                        to="/admin"
-                        label="ADMİN PANELİ"
-                        active={isActive('/admin')}
-                        delay={0.05}
-                        onClick={() => setMenuOpen(false)}
-                      />
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <MobileMenuItem
-                      to="/login"
-                      label="GİRİŞ YAP"
-                      active={isActive('/login')}
-                      delay={0.05}
-                      onClick={() => setMenuOpen(false)}
-                    />
-                    <MobileMenuItem
-                      to="/register"
-                      label="KAYIT OL"
-                      active={isActive('/register')}
-                      delay={0.1}
-                      onClick={() => setMenuOpen(false)}
-                    />
-                  </>
+                {user.is_admin && (
+                  <MobileMenuItem
+                    to="/admin"
+                    label="ADMİN PANELİ"
+                    active={isActive('/admin')}
+                    delay={0.05}
+                    onClick={() => setMenuOpen(false)}
+                  />
                 )}
               </div>
 
-              {user && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.18, duration: 0.3 }}
-                  className="pt-8 relative"
-                  style={{ borderTop: '1px solid #1a2d45' }}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.18, duration: 0.3 }}
+                className="pt-8 relative"
+                style={{ borderTop: '1px solid #1a2d45' }}
+              >
+                <span
+                  className="font-barlow font-bold text-[10px] tracking-[0.22em] uppercase text-gray-700 block mb-3"
                 >
+                  Giriş yapıldı
+                </span>
+                <div className="flex items-center justify-between">
                   <span
-                    className="font-barlow font-bold text-[10px] tracking-[0.22em] uppercase text-gray-700 block mb-3"
+                    className="font-bebas text-white tracking-wider"
+                    style={{ fontSize: '2.6rem', transform: 'skewX(-4deg)', display: 'inline-block' }}
                   >
-                    Giriş yapıldı
+                    {user.nickname.toUpperCase()}
                   </span>
-                  <div className="flex items-center justify-between">
-                    <span
-                      className="font-bebas text-white tracking-wider"
-                      style={{ fontSize: '2.6rem', transform: 'skewX(-4deg)', display: 'inline-block' }}
-                    >
-                      {user.nickname.toUpperCase()}
-                    </span>
-                    <button
-                      onClick={handleLogout}
-                      className="flex items-center gap-2 font-barlow font-bold text-[11px] tracking-[0.15em] uppercase text-gray-600 hover:text-[#0891b2] transition-colors px-3 py-2"
-                      style={{ border: '1px solid #1e3555' }}
-                    >
-                      <LogOut size={14} />
-                      ÇIKIŞ
-                    </button>
-                  </div>
-                </motion.div>
-              )}
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center gap-2 font-barlow font-bold text-[11px] tracking-[0.15em] uppercase text-gray-600 hover:text-[#0891b2] transition-colors px-3 py-2"
+                    style={{ border: '1px solid #1e3555' }}
+                  >
+                    <LogOut size={14} />
+                    ÇIKIŞ
+                  </button>
+                </div>
+              </motion.div>
             </div>
           </motion.div>
         )}
