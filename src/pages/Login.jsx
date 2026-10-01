@@ -81,38 +81,7 @@ export default function Login() {
               DAVY'S{' '}
               <span style={{ color: '#0891b2' }}>DENTAL</span>
             </h1>
-            <p
-              className="font-barlow font-bold text-[11px] tracking-[0.25em] uppercase mt-2"
-              style={{ color: '#2a3a50' }}
-            >
-              DUS Hazırlık Platformu
-            </p>
           </motion.div>
-        </div>
-
-        {/* Bottom feature list */}
-        <div className="p-10 pb-16 relative z-10">
-          {[
-            { icon: '◈', text: 'SM-2 Algoritması ile akıllı tekrar' },
-            { icon: '◈', text: 'Tüm branşlar tek platformda' },
-            { icon: '◈', text: 'Kişisel ilerleme takibi' },
-          ].map((item, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.3 + i * 0.08, ease: [0.22, 1, 0.36, 1] }}
-              className="flex items-start gap-3 mb-4"
-            >
-              <span className="text-[#0891b2] text-sm flex-shrink-0 mt-0.5">{item.icon}</span>
-              <span
-                className="font-barlow font-bold text-[12px] tracking-wider uppercase"
-                style={{ color: '#3a5070' }}
-              >
-                {item.text}
-              </span>
-            </motion.div>
-          ))}
         </div>
       </div>
 
@@ -148,12 +117,6 @@ export default function Login() {
             >
               DAVY'S <span style={{ color: '#0891b2' }}>DENTAL</span>
             </h1>
-            <p
-              className="font-barlow font-bold text-[10px] uppercase tracking-[0.25em] mt-1"
-              style={{ color: '#2a3a50' }}
-            >
-              DUS Hazırlık Platformu
-            </p>
           </div>
 
           {/* Form header */}

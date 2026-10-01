@@ -257,25 +257,6 @@ export default function Dashboard() {
               transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
               className="relative z-10"
             >
-              {/* Eyebrow */}
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.15, duration: 0.3 }}
-                className="mb-3"
-              >
-                <span
-                  className="font-barlow font-bold text-[10px] tracking-[0.3em] uppercase px-2.5 py-1"
-                  style={{
-                    color: '#0891b2',
-                    background: 'rgba(8,145,178,0.1)',
-                    border: '1px solid rgba(8,145,178,0.2)',
-                  }}
-                >
-                  DUS Hazırlık Platformu
-                </span>
-              </motion.div>
-
               <h1
                 className="font-bebas text-white leading-[0.86] tracking-wider"
                 style={{
