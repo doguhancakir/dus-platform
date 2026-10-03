@@ -30,6 +30,7 @@ export default function Dashboard() {
   const { user } = useAuth()
   const [branchStats, setBranchStats] = useState({})
   const [todayAnswered, setTodayAnswered] = useState(0)
+  const [todayNewAnswered, setTodayNewAnswered] = useState(0)
   const [totalGraduated, setTotalGraduated] = useState(0)
   const [loading, setLoading] = useState(!!user)
   const [hoveredId, setHoveredId] = useState(null)
@@ -118,6 +119,15 @@ export default function Dashboard() {
         .eq('user_id', user.id)
         .gte('last_review', todayStart.toISOString())
 
+      // created_at sadece bir sorunun hayatında İLK kez cevaplandığı anda set edilir
+      // (upsert var olan satırı güncellerken created_at'e dokunmaz), bu yüzden
+      // "bugün yeni çözülen" sayısı budur.
+      const { count: todayNewCount } = await supabase
+        .from('user_cards')
+        .select('question_id', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .gte('created_at', todayStart.toISOString())
+
       const { count: graduatedCount } = await supabase
         .from('user_cards')
         .select('question_id', { count: 'exact', head: true })
@@ -126,11 +136,12 @@ export default function Dashboard() {
 
       setBranchStats(stats)
       setTodayAnswered(todayCount || 0)
+      setTodayNewAnswered(todayNewCount || 0)
       setTotalGraduated(graduatedCount || 0)
 
       // ── Streak: consecutive days meeting that day's goal ──────────────
-      // Hedef 18.09.2026'da 50'den 100'e çıktı; geçmiş günler (bugün dahil)
-      // eski hedefle (50) değerlendirilir, sonraki günler 100 ister.
+      // Hedef 18.09.2026'da 50'den 100'e, 04.10.2026'da 100'den 200'e (+100'ü yeni
+      // soru şartıyla) çıktı; geçmiş günler kendi dönemlerinin hedefiyle değerlendirilir.
       const reviewHistory = await fetchAllRows(q => q
         .from('user_cards')
         .select('last_review')
@@ -139,6 +150,22 @@ export default function Dashboard() {
         .gte('last_review', new Date(Date.now() - 90 * 86400000).toISOString())
       )
 
+      // created_at kolonu henüz eklenmediyse (migration çalıştırılmadan önce) bu
+      // sorgu hata verir — geri kalan istatistikleri (streak, bayraklı sorular)
+      // bozmasın diye ayrı try/catch içinde, hatada boş diziyle devam ediyoruz.
+      let newHistory = []
+      try {
+        newHistory = await fetchAllRows(q => q
+          .from('user_cards')
+          .select('created_at')
+          .eq('user_id', user.id)
+          .not('created_at', 'is', null)
+          .gte('created_at', new Date(Date.now() - 90 * 86400000).toISOString())
+        )
+      } catch {
+        // created_at kolonu yoksa sessizce yeni-soru şartını atla
+      }
+
       const dayCounts = {}
       reviewHistory?.forEach(c => {
         if (!c.last_review) return
@@ -146,7 +173,19 @@ export default function Dashboard() {
         dayCounts[day] = (dayCounts[day] || 0) + 1
       })
 
-      const meetsGoal = (dateKey) => (dayCounts[dateKey] || 0) >= getDailyGoal(dateKey).threshold
+      const newDayCounts = {}
+      newHistory?.forEach(c => {
+        if (!c.created_at) return
+        const day = c.created_at.split('T')[0]
+        newDayCounts[day] = (newDayCounts[day] || 0) + 1
+      })
+
+      const meetsGoal = (dateKey) => {
+        const goal = getDailyGoal(dateKey)
+        if ((dayCounts[dateKey] || 0) < goal.threshold) return false
+        if (goal.newThreshold && (newDayCounts[dateKey] || 0) < goal.newThreshold) return false
+        return true
+      }
 
       const todayStr = new Date().toISOString().split('T')[0]
       const yestStr  = new Date(Date.now() - 86400000).toISOString().split('T')[0]
@@ -395,7 +434,7 @@ export default function Dashboard() {
               </div>
               {/* Calendar widget */}
               <div className="relative z-10 flex-1 flex flex-col">
-                <DailyCalendar userId={user.id} todayAnswered={todayAnswered} isAdmin={!!user.is_admin} />
+                <DailyCalendar userId={user.id} todayAnswered={todayAnswered} todayNewAnswered={todayNewAnswered} isAdmin={!!user.is_admin} />
               </div>
             </motion.div>
           )}

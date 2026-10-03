@@ -23,7 +23,7 @@ function getToday() {
   return d
 }
 
-export default function DailyCalendar({ userId, todayAnswered = 0, isAdmin = false }) {
+export default function DailyCalendar({ userId, todayAnswered = 0, todayNewAnswered = 0, isAdmin = false }) {
   const today = getToday()
   const maxFuture = new Date(today); maxFuture.setDate(maxFuture.getDate() + 7)
   const [sel, setSel] = useState(getToday())
@@ -139,9 +139,11 @@ export default function DailyCalendar({ userId, todayAnswered = 0, isAdmin = fal
       .then(({ data }) => { if (data?.id) setGoalTaskId(data.id) })
   }, [userId, todayKey, goalTaskId])
 
-  // Auto-complete the daily goal todo when todayAnswered reaches today's threshold
+  // Auto-complete the daily goal todo when today's totals reach today's thresholds
   useEffect(() => {
-    if (!userId || !goalTaskId || todayAnswered < todayGoal.threshold) return
+    if (!userId || !goalTaskId) return
+    if (todayAnswered < todayGoal.threshold) return
+    if (todayGoal.newThreshold && todayNewAnswered < todayGoal.newThreshold) return
     supabase
       .from('daily_todos')
       .update({ completed: true })
@@ -159,7 +161,7 @@ export default function DailyCalendar({ userId, todayAnswered = 0, isAdmin = fal
         })
         loadStatus()
       })
-  }, [userId, goalTaskId, todayAnswered, todayGoal.threshold]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [userId, goalTaskId, todayAnswered, todayNewAnswered, todayGoal.threshold, todayGoal.newThreshold]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── mutations ─────────────────────────────────────────────────────────────
 
@@ -641,10 +643,43 @@ export default function DailyCalendar({ userId, todayAnswered = 0, isAdmin = fal
             </motion.div>
             )
 
-            // Goal satırının hemen altına çalışma süresi
+            // Goal satırının hemen altına yeni/toplam ilerleme + çalışma süresi
+            const extraRows = []
+
+            if (isGoal && selKey === todayKey && todayGoal.newThreshold > 0) {
+              extraRows.push(
+                <motion.div
+                  key="goal-progress-row"
+                  layout
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '5px 6px 5px 6px',
+                    borderLeft: '2px solid rgba(240,192,64,0.2)',
+                    background: 'rgba(240,192,64,0.02)',
+                  }}
+                >
+                  <span style={{ fontSize: 10, color: 'rgba(240,192,64,0.5)' }}>◈</span>
+                  <span
+                    style={{
+                      fontFamily: 'Barlow, sans-serif',
+                      fontWeight: 700,
+                      fontSize: 11,
+                      letterSpacing: '0.06em',
+                      color: 'rgba(240,192,64,0.55)',
+                    }}
+                  >
+                    {`${Math.min(todayAnswered, todayGoal.threshold)}/${todayGoal.threshold} soru · ${Math.min(todayNewAnswered, todayGoal.newThreshold)}/${todayGoal.newThreshold} yeni`}
+                  </span>
+                </motion.div>
+              )
+            }
+
             if (isGoal && studyLabel) {
-              return [
-                todoEl,
+              extraRows.push(
                 <motion.div
                   key="study-time-row"
                   layout
@@ -685,11 +720,11 @@ export default function DailyCalendar({ userId, todayAnswered = 0, isAdmin = fal
                       {formatTimerDisplay(timerSeconds)}
                     </span>
                   )}
-                </motion.div>,
-              ]
+                </motion.div>
+              )
             }
 
-            return [todoEl]
+            return [todoEl, ...extraRows]
           })}
         </AnimatePresence>
 
