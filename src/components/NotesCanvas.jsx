@@ -8,7 +8,7 @@
  */
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Bold, Italic, Underline, Trash2, Type, Image as ImageIcon, ArrowLeft } from 'lucide-react'
+import { Bold, Italic, Underline, Trash2, Type, Image as ImageIcon, ArrowLeft, History } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 const CANVAS_MIN   = 3000
@@ -321,6 +321,9 @@ export default function NotesCanvas({ canvasId, branchId, branchName, userId, on
   const [loading, setLoading]           = useState(true)
   const [canvasName, setCanvasName]     = useState('')
   const [selBox, setSelBox]             = useState(null) // rubber-band seçim kutusu
+  const [showSnapshots, setShowSnapshots] = useState(false)
+  const [snapshots, setSnapshots]       = useState([])
+  const [snapshotsLoading, setSnapshotsLoading] = useState(false)
 
   const canvasRef          = useRef(null)
   const scrollRef          = useRef(null)
@@ -631,14 +634,66 @@ export default function NotesCanvas({ canvasId, branchId, branchName, userId, on
     setEditingId(null)
   }
 
-  function removeSelected() {
+  async function removeSelected() {
     const ids = selectedIdsRef.current
+    if (ids.size === 0) return
+    if (ids.size > 1 && !window.confirm(`${ids.size} öğeyi silmek istediğine emin misin? Geri alınamaz.`)) return
+
+    // Toplu silmeden önce mevcut hali yedekle — kazara "hepsini sil" gibi
+    // geri dönüşü olmayan kayıpları önlemek için güvenlik ağı.
+    if (canvasId && elementsRef.current.length > 0) {
+      try {
+        await supabase.from('note_canvas_snapshots').insert({
+          canvas_id: canvasId,
+          elements: elementsRef.current,
+          canvas_height: heightRef.current,
+        })
+      } catch (e) { console.error('Snapshot save error:', e) }
+    }
+
     const newEls = elementsRef.current.filter(e => !ids.has(e.id))
     setElements(newEls)
     pushHistory(newEls)
     scheduleSave(newEls, heightRef.current)
     setSelectedIds(new Set())
     setEditingId(null)
+  }
+
+  // ── Yedekler (snapshot geçmişi) ────────────────────────────────────
+  async function loadSnapshots() {
+    if (!canvasId) return
+    setSnapshotsLoading(true)
+    try {
+      const { data } = await supabase
+        .from('note_canvas_snapshots')
+        .select('id, elements, canvas_height, created_at')
+        .eq('canvas_id', canvasId)
+        .order('created_at', { ascending: false })
+        .limit(15)
+      setSnapshots(data || [])
+    } catch (e) { console.error('Snapshot load error:', e) }
+    setSnapshotsLoading(false)
+  }
+
+  function toggleSnapshots() {
+    setShowSnapshots(v => {
+      const next = !v
+      if (next) loadSnapshots()
+      return next
+    })
+  }
+
+  function restoreSnapshot(snap) {
+    const count = snap.elements?.length ?? 0
+    if (!window.confirm(`Bu yedeği (${count} öğe) geri yüklersen şu anki içeriğin üzerine yazılır. Emin misin?`)) return
+    const restored = snap.elements || []
+    const h = Math.max(snap.canvas_height || CANVAS_MIN, CANVAS_MIN)
+    setElements(restored)
+    setCanvasHeight(h)
+    heightRef.current = h
+    pushHistory(restored)
+    scheduleSave(restored, h)
+    setShowSnapshots(false)
   }
 
   function updateEl(id, changes) {
@@ -793,6 +848,7 @@ export default function NotesCanvas({ canvasId, branchId, branchName, userId, on
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <ActionBtn icon={<Type size={11} />} label="Metin" onClick={addTextAtView} />
           <ActionBtn icon={<ImageIcon size={11} />} label="Görsel" onClick={() => fileInputRef.current?.click()} />
+          <ActionBtn icon={<History size={11} />} label="Yedekler" onClick={toggleSnapshots} />
           <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFileUpload} />
           <span style={{ fontSize: 9, letterSpacing: '0.1em', color: saving ? '#0891b2' : '#0d1e30', fontWeight: 700, textTransform: 'uppercase', marginLeft: 8, minWidth: 90, textAlign: 'right' }}>
             {saving ? 'KAYDEDİLİYOR…' : savedAt ? `✓ ${savedAt.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}` : ''}
@@ -894,6 +950,66 @@ export default function NotesCanvas({ canvasId, branchId, branchName, userId, on
                     <Trash2 size={10} /> HEPSİNİ SİL
                   </button>
                 </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Yedekler paneli */}
+        <AnimatePresence>
+          {showSnapshots && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.15 }}
+              style={{
+                position: 'absolute', top: 0, right: 12, zIndex: 200,
+                width: 320, maxHeight: '70vh', overflowY: 'auto',
+                background: '#050c18', border: '1px solid #0d1e30',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: '1px solid #0d1e30' }}>
+                <span style={{ fontFamily: 'Barlow', fontWeight: 700, fontSize: 11, letterSpacing: '0.12em', color: '#0891b2', textTransform: 'uppercase' }}>
+                  Yedekler
+                </span>
+                <button onClick={() => setShowSnapshots(false)} style={{ color: '#1a3050', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 14 }}>✕</button>
+              </div>
+              <div style={{ padding: '6px 0' }}>
+                {snapshotsLoading ? (
+                  <p style={{ padding: '14px', fontFamily: 'Barlow', fontSize: 11, color: '#1a3050' }}>Yükleniyor…</p>
+                ) : snapshots.length === 0 ? (
+                  <p style={{ padding: '14px', fontFamily: 'Barlow', fontSize: 11, color: '#1a3050', lineHeight: 1.6 }}>
+                    Henüz yedek yok. Toplu silme işlemlerinden önce otomatik olarak buraya bir yedek alınır.
+                  </p>
+                ) : (
+                  snapshots.map(snap => (
+                    <div
+                      key={snap.id}
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '8px 14px', borderBottom: '1px solid #0a1420' }}
+                    >
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontFamily: 'Barlow', fontWeight: 700, fontSize: 11, color: '#8aa4c0' }}>
+                          {new Date(snap.created_at).toLocaleString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                        <div style={{ fontFamily: 'Barlow', fontWeight: 600, fontSize: 10, color: '#1a3050', letterSpacing: '0.06em' }}>
+                          {snap.elements?.length ?? 0} öğe
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => restoreSnapshot(snap)}
+                        style={{
+                          flexShrink: 0, display: 'flex', alignItems: 'center', gap: 4,
+                          color: '#0891b2', background: 'rgba(8,145,178,0.1)', border: '1px solid rgba(8,145,178,0.3)',
+                          padding: '4px 9px', cursor: 'pointer', fontFamily: 'Barlow', fontWeight: 700, fontSize: 10, letterSpacing: '0.08em',
+                        }}
+                      >
+                        GERİ GETİR
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </motion.div>
           )}
         </AnimatePresence>
 
