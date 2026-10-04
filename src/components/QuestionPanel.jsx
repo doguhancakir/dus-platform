@@ -177,10 +177,11 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
   async function loadData() {
     setLoading(true)
     try {
+      const topicIds = Array.isArray(topicId) ? topicId : [topicId]
       const { data: qs } = await supabase
         .from('questions')
         .select('*')
-        .eq('topic_id', topicId)
+        .in('topic_id', topicIds)
         .order('id')
 
       if (!qs || qs.length === 0) { setLoading(false); return }
