@@ -8,7 +8,7 @@
  */
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Bold, Italic, Underline, Trash2, Type, Image as ImageIcon, ArrowLeft, History } from 'lucide-react'
+import { Bold, Italic, Underline, Trash2, Type, Image as ImageIcon, ArrowLeft, History, Save, RefreshCw } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 const CANVAS_MIN   = 3000
@@ -317,13 +317,15 @@ export default function NotesCanvas({ canvasId, branchId, branchName, userId, on
   const [editingId, setEditingId]       = useState(null)
   const [canvasHeight, setCanvasHeight] = useState(CANVAS_MIN)
   const [saving, setSaving]             = useState(false)
-  const [savedAt, setSavedAt]           = useState(null)
   const [loading, setLoading]           = useState(true)
+  const [loadError, setLoadError]       = useState(false)
   const [canvasName, setCanvasName]     = useState('')
   const [selBox, setSelBox]             = useState(null) // rubber-band seçim kutusu
   const [showSnapshots, setShowSnapshots] = useState(false)
   const [snapshots, setSnapshots]       = useState([])
   const [snapshotsLoading, setSnapshotsLoading] = useState(false)
+  const [manualSaving, setManualSaving] = useState(false)
+  const [lastSaveInfo, setLastSaveInfo] = useState(null) // { at: Date, manual: boolean }
 
   const canvasRef          = useRef(null)
   const scrollRef          = useRef(null)
@@ -340,6 +342,7 @@ export default function NotesCanvas({ canvasId, branchId, branchName, userId, on
   const historyIdxRef      = useRef(0)
   const textHistTimerRef   = useRef(null)
   const editingDomRef      = useRef(null)  // düzenlenen contentEditable DOM node'u
+  const loadedRef          = useRef(false) // gerçek veri başarıyla yüklenene kadar false — kayıt bunu bekler
 
   // Keep refs in sync
   useEffect(() => { elementsRef.current = elements }, [elements])
@@ -347,27 +350,42 @@ export default function NotesCanvas({ canvasId, branchId, branchName, userId, on
   useEffect(() => { heightRef.current = canvasHeight }, [canvasHeight])
 
   // ── Load ──────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (!canvasId) return
+  // ÖNEMLİ: gerçek veri gelene kadar loadedRef false kalır ve hiçbir kayıt
+  // tetiklenemez (bkz. scheduleSave). Aksi halde mobilde yükleme yavaşken
+  // yapılan bir scroll/tıklama, henüz boş olan state'i kalıcı olarak
+  // kaydedip gerçek içeriğin üzerine yazabiliyordu — gerçekte yaşanan veri
+  // kaybının sebebi buydu.
+  async function loadCanvas() {
     setLoading(true)
-    supabase
+    setLoadError(false)
+    loadedRef.current = false
+    const { data, error } = await supabase
       .from('note_canvases')
       .select('elements, canvas_height, name')
       .eq('id', canvasId)
       .maybeSingle()
-      .then(({ data }) => {
-        const loaded = data?.elements?.length ? data.elements : []
-        setElements(loaded)
-        setCanvasName(data?.name ?? '')
-        historyRef.current = [loaded.map(el => ({ ...el }))]
-        historyIdxRef.current = 0
-        if (data?.canvas_height) {
-          const h = Math.max(data.canvas_height, CANVAS_MIN)
-          setCanvasHeight(h)
-          heightRef.current = h
-        }
-        setLoading(false)
-      })
+
+    if (error || !data) {
+      console.error('NotesCanvas load error:', error)
+      setLoadError(true)
+      setLoading(false)
+      return
+    }
+    const loaded = data.elements?.length ? data.elements : []
+    setElements(loaded)
+    setCanvasName(data.name ?? '')
+    historyRef.current = [loaded.map(el => ({ ...el }))]
+    historyIdxRef.current = 0
+    const h = Math.max(data.canvas_height || CANVAS_MIN, CANVAS_MIN)
+    setCanvasHeight(h)
+    heightRef.current = h
+    loadedRef.current = true
+    setLoading(false)
+  }
+
+  useEffect(() => {
+    if (!canvasId) return
+    loadCanvas()
   }, [canvasId])
 
   // ── History (undo) ────────────────────────────────────────────────
@@ -417,6 +435,8 @@ export default function NotesCanvas({ canvasId, branchId, branchName, userId, on
 
   // ── Save ──────────────────────────────────────────────────────────
   function scheduleSave(els, h) {
+    // Gerçek veri henüz yüklenmediyse hiçbir kayıt planlanmaz — bkz. loadCanvas yorumu
+    if (!loadedRef.current) return
     clearTimeout(saveTimerRef.current)
     saveTimerRef.current = setTimeout(() => doSave(els, h), SAVE_DELAY)
   }
@@ -429,7 +449,7 @@ export default function NotesCanvas({ canvasId, branchId, branchName, userId, on
         { id: canvasId, user_id: userId, branch_id: branchId, elements: els, canvas_height: h, updated_at: new Date().toISOString() },
         { onConflict: 'id' }
       )
-      setSavedAt(new Date())
+      setLastSaveInfo({ at: new Date(), manual: false })
     } catch (e) { console.error('NotesCanvas save error:', e) }
     setSaving(false)
   }
@@ -444,6 +464,7 @@ export default function NotesCanvas({ canvasId, branchId, branchName, userId, on
     const el = scrollRef.current
     if (!el) return
     const onScroll = () => {
+      if (!loadedRef.current) return
       if (el.scrollHeight - el.scrollTop - el.clientHeight < 500) {
         const newH = heightRef.current + CANVAS_GROW
         setCanvasHeight(newH)
@@ -634,6 +655,15 @@ export default function NotesCanvas({ canvasId, branchId, branchName, userId, on
     setEditingId(null)
   }
 
+  async function takeSnapshot() {
+    if (!canvasId || elementsRef.current.length === 0) return
+    await supabase.from('note_canvas_snapshots').insert({
+      canvas_id: canvasId,
+      elements: elementsRef.current,
+      canvas_height: heightRef.current,
+    })
+  }
+
   async function removeSelected() {
     const ids = selectedIdsRef.current
     if (ids.size === 0) return
@@ -641,15 +671,7 @@ export default function NotesCanvas({ canvasId, branchId, branchName, userId, on
 
     // Toplu silmeden önce mevcut hali yedekle — kazara "hepsini sil" gibi
     // geri dönüşü olmayan kayıpları önlemek için güvenlik ağı.
-    if (canvasId && elementsRef.current.length > 0) {
-      try {
-        await supabase.from('note_canvas_snapshots').insert({
-          canvas_id: canvasId,
-          elements: elementsRef.current,
-          canvas_height: heightRef.current,
-        })
-      } catch (e) { console.error('Snapshot save error:', e) }
-    }
+    try { await takeSnapshot() } catch (e) { console.error('Snapshot save error:', e) }
 
     const newEls = elementsRef.current.filter(e => !ids.has(e.id))
     setElements(newEls)
@@ -657,6 +679,19 @@ export default function NotesCanvas({ canvasId, branchId, branchName, userId, on
     scheduleSave(newEls, heightRef.current)
     setSelectedIds(new Set())
     setEditingId(null)
+  }
+
+  // ── Manuel yedek alma ────────────────────────────────────────────────
+  async function takeManualSnapshot() {
+    if (!canvasId || manualSaving) return
+    setManualSaving(true)
+    try {
+      await takeSnapshot()
+      setLastSaveInfo({ at: new Date(), manual: true })
+    } catch (e) {
+      console.error('Manual snapshot error:', e)
+    }
+    setManualSaving(false)
   }
 
   // ── Yedekler (snapshot geçmişi) ────────────────────────────────────
@@ -848,10 +883,15 @@ export default function NotesCanvas({ canvasId, branchId, branchName, userId, on
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <ActionBtn icon={<Type size={11} />} label="Metin" onClick={addTextAtView} />
           <ActionBtn icon={<ImageIcon size={11} />} label="Görsel" onClick={() => fileInputRef.current?.click()} />
+          <ActionBtn icon={<Save size={11} />} label={manualSaving ? 'YEDEKLENİYOR…' : 'YEDEK AL'} onClick={takeManualSnapshot} />
           <ActionBtn icon={<History size={11} />} label="Yedekler" onClick={toggleSnapshots} />
           <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFileUpload} />
-          <span style={{ fontSize: 9, letterSpacing: '0.1em', color: saving ? '#0891b2' : '#0d1e30', fontWeight: 700, textTransform: 'uppercase', marginLeft: 8, minWidth: 90, textAlign: 'right' }}>
-            {saving ? 'KAYDEDİLİYOR…' : savedAt ? `✓ ${savedAt.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}` : ''}
+          <span style={{ fontSize: 9, letterSpacing: '0.1em', color: saving ? '#0891b2' : lastSaveInfo?.manual ? '#10b981' : '#0d1e30', fontWeight: 700, textTransform: 'uppercase', marginLeft: 8, minWidth: 90, textAlign: 'right' }}>
+            {saving
+              ? 'KAYDEDİLİYOR…'
+              : lastSaveInfo
+                ? `✓ ${lastSaveInfo.manual ? 'Yedek alındı ' : ''}${lastSaveInfo.at.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}`
+                : ''}
           </span>
         </div>
       </div>
@@ -877,8 +917,24 @@ export default function NotesCanvas({ canvasId, branchId, branchName, userId, on
             }}
           />
 
+          {/* Yükleme hatası — yanıltıcı "boş canvas" göstermek yerine açıkça uyar */}
+          {loadError && (
+            <div style={{ position: 'absolute', top: 80, left: '50%', transform: 'translateX(-50%)', textAlign: 'center', zIndex: 2 }}>
+              <p style={{ fontFamily: '"Bebas Neue", sans-serif', fontSize: 22, letterSpacing: '0.15em', color: '#ef4444' }}>YÜKLENEMEDİ</p>
+              <p style={{ fontFamily: 'Barlow', fontWeight: 600, fontSize: 10, color: '#8a4a4a', letterSpacing: '0.1em', marginTop: 6, maxWidth: 280, lineHeight: 1.6 }}>
+                Not içeriği sunucudan alınamadı — bağlantı sorunu olabilir. İçeriğin üzerine boş olarak kaydedilmemesi için düzenleme kapalı, önce tekrar dene.
+              </p>
+              <button
+                onClick={loadCanvas}
+                style={{ marginTop: 14, display: 'inline-flex', alignItems: 'center', gap: 6, color: '#0891b2', background: 'rgba(8,145,178,0.1)', border: '1px solid rgba(8,145,178,0.3)', padding: '6px 14px', cursor: 'pointer', fontFamily: 'Barlow', fontWeight: 700, fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase' }}
+              >
+                <RefreshCw size={12} /> Tekrar Dene
+              </button>
+            </div>
+          )}
+
           {/* Empty state hint */}
-          {!loading && elements.length === 0 && (
+          {!loading && !loadError && elements.length === 0 && (
             <div style={{ position: 'absolute', top: 80, left: '50%', transform: 'translateX(-50%)', textAlign: 'center', pointerEvents: 'none', zIndex: 1 }}>
               <p style={{ fontFamily: '"Bebas Neue", sans-serif', fontSize: 22, letterSpacing: '0.15em', color: '#0d1e2e' }}>ÇİFT TIKLA → METİN EKLE</p>
               <p style={{ fontFamily: 'Barlow', fontWeight: 600, fontSize: 10, color: '#0a1820', letterSpacing: '0.14em', marginTop: 8, textTransform: 'uppercase' }}>CTRL + V → GÖRSEL YAPIŞTIR</p>
