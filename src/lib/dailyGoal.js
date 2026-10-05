@@ -7,6 +7,12 @@
 export const DAILY_GOAL_CHANGE_DATE = '2026-09-19'
 export const DAILY_GOAL_CHANGE_DATE_2 = '2026-10-04'
 
+// 06.10.2026'dan itibaren "TEKRAR" (Again) ile cevaplanan sorular bugünkü/toplam
+// sayaçlara ve günlük hedefe sayılmıyor — sadece Zor/İyi/Kolay sayılıyor.
+// Bu tarihten ÖNCEKİ günler eski davranışla (her değerlendirme sayılır)
+// değerlendirilmeye devam eder, geçmiş streak'ler bozulmaz.
+export const AGAIN_EXCLUDED_FROM_DATE = '2026-10-06'
+
 export const DAILY_GOAL_TEXTS = ['50 Soru Çöz', '100 Soru Çöz', '200 Soru Çöz']
 
 export function getDailyGoal(dateKey) {

@@ -273,7 +273,19 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
     }))
 
     const existingCard = cards[currentQId] || newCard(user.id, currentQId)
-    const updatedCard = processCard(existingCard, rating)
+    const processed = processCard(existingCard, rating)
+
+    // "TEKRAR" (Again) ile cevaplanan sorular bugünkü/yeni sayaçlara ve günlük
+    // hedefe sayılmaz — sadece Zor/İyi/Kolay sayılır. created_at bir sorunun
+    // hayatında ilk "sayılan" (again olmayan) cevapta set edilir; counted_review_at
+    // ise en son "sayılan" cevabın zamanıdır (again basılınca güncellenmez).
+    const isAgain = rating === RATINGS.AGAIN
+    const nowIso = new Date().toISOString()
+    const updatedCard = {
+      ...processed,
+      created_at: isAgain ? (existingCard.created_at ?? null) : (existingCard.created_at ?? nowIso),
+      counted_review_at: isAgain ? (existingCard.counted_review_at ?? null) : nowIso,
+    }
 
     try {
       await supabase

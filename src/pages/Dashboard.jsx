@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { supabase, fetchAllRows } from '../lib/supabase'
 import { BRANCHES, TEMEL_BILIMLER, getBranchById } from '../lib/data'
 import { Flag } from 'lucide-react'
-import { getDailyGoal } from '../lib/dailyGoal'
+import { getDailyGoal, AGAIN_EXCLUDED_FROM_DATE } from '../lib/dailyGoal'
 import Layout from '../components/Layout'
 import ToothViewer from '../components/ToothViewer'
 import DailyCalendar from '../components/DailyCalendar'
@@ -113,11 +113,16 @@ export default function Dashboard() {
 
       const todayStart = new Date()
       todayStart.setHours(0, 0, 0, 0)
+      const todayDateKey = todayStart.toISOString().split('T')[0]
+      // 06.10.2026'dan itibaren "bugün çözülen" sadece Zor/İyi/Kolay ile cevaplanan
+      // (counted_review_at) sayılır; öncesinde eski davranış (last_review, her
+      // değerlendirme) devam eder — bkz. AGAIN_EXCLUDED_FROM_DATE.
+      const useCountedField = todayDateKey >= AGAIN_EXCLUDED_FROM_DATE
       const { count: todayCount } = await supabase
         .from('user_cards')
         .select('question_id', { count: 'exact', head: true })
         .eq('user_id', user.id)
-        .gte('last_review', todayStart.toISOString())
+        .gte(useCountedField ? 'counted_review_at' : 'last_review', todayStart.toISOString())
 
       // created_at sadece bir sorunun hayatında İLK kez cevaplandığı anda set edilir
       // (upsert var olan satırı güncellerken created_at'e dokunmaz), bu yüzden
@@ -150,9 +155,10 @@ export default function Dashboard() {
         .gte('last_review', new Date(Date.now() - 90 * 86400000).toISOString())
       )
 
-      // created_at kolonu henüz eklenmediyse (migration çalıştırılmadan önce) bu
-      // sorgu hata verir — geri kalan istatistikleri (streak, bayraklı sorular)
-      // bozmasın diye ayrı try/catch içinde, hatada boş diziyle devam ediyoruz.
+      // created_at / counted_review_at kolonları henüz eklenmediyse (migration
+      // çalıştırılmadan önce) bu sorgular hata verir — geri kalan istatistikleri
+      // (streak, bayraklı sorular) bozmasın diye ayrı try/catch içinde, hatada
+      // boş diziyle devam ediyoruz.
       let newHistory = []
       try {
         newHistory = await fetchAllRows(q => q
@@ -166,12 +172,38 @@ export default function Dashboard() {
         // created_at kolonu yoksa sessizce yeni-soru şartını atla
       }
 
+      let countedHistory = []
+      try {
+        countedHistory = await fetchAllRows(q => q
+          .from('user_cards')
+          .select('counted_review_at')
+          .eq('user_id', user.id)
+          .not('counted_review_at', 'is', null)
+          .gte('counted_review_at', new Date(Date.now() - 90 * 86400000).toISOString())
+        )
+      } catch {
+        // counted_review_at kolonu yoksa sessizce AGAIN_EXCLUDED_FROM_DATE'ten
+        // sonraki günler de eski last_review sayımına düşer (aşağıda totalCountFor)
+      }
+
       const dayCounts = {}
       reviewHistory?.forEach(c => {
         if (!c.last_review) return
         const day = c.last_review.split('T')[0]
         dayCounts[day] = (dayCounts[day] || 0) + 1
       })
+
+      const countedDayCounts = {}
+      countedHistory?.forEach(c => {
+        if (!c.counted_review_at) return
+        const day = c.counted_review_at.split('T')[0]
+        countedDayCounts[day] = (countedDayCounts[day] || 0) + 1
+      })
+
+      // Bir günün toplam-soru sayısı: AGAIN_EXCLUDED_FROM_DATE'ten önce last_review
+      // (her değerlendirme), o tarihten itibaren counted_review_at (sadece Zor/İyi/Kolay).
+      const totalCountFor = (dateKey) =>
+        dateKey >= AGAIN_EXCLUDED_FROM_DATE ? (countedDayCounts[dateKey] || 0) : (dayCounts[dateKey] || 0)
 
       const newDayCounts = {}
       newHistory?.forEach(c => {
@@ -182,7 +214,7 @@ export default function Dashboard() {
 
       const meetsGoal = (dateKey) => {
         const goal = getDailyGoal(dateKey)
-        if ((dayCounts[dateKey] || 0) < goal.threshold) return false
+        if (totalCountFor(dateKey) < goal.threshold) return false
         if (goal.newThreshold && (newDayCounts[dateKey] || 0) < goal.newThreshold) return false
         return true
       }
