@@ -288,9 +288,24 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
     }
 
     try {
-      await supabase
-        .from('user_cards')
-        .upsert({ ...updatedCard, user_id: user.id, question_id: currentQId })
+      const payload = { ...updatedCard, user_id: user.id, question_id: currentQId }
+      let { error } = await supabase.from('user_cards').upsert(payload)
+
+      if (error) {
+        // created_at/counted_review_at migration'ı henüz çalışmamışsa (kolon yok)
+        // asıl SRS kaydı sessizce kaybolmasın diye o alanlar olmadan tekrar dene.
+        console.error('Save error, retrying without new columns:', error)
+        const { created_at: _createdAt, counted_review_at: _countedReviewAt, ...fallbackPayload } = payload
+        const retry = await supabase.from('user_cards').upsert(fallbackPayload)
+        error = retry.error
+      }
+
+      if (error) {
+        console.error('Save error:', error)
+        toast.error('Cevap kaydedilemedi — bağlantını kontrol et ve tekrar dene')
+        setAnswering(false)
+        return
+      }
 
       const newCardsMap = { ...cards, [currentQId]: updatedCard }
       setCards(newCardsMap)
@@ -319,6 +334,9 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
       }
     } catch (err) {
       console.error('Save error:', err)
+      toast.error('Cevap kaydedilemedi — bağlantını kontrol et ve tekrar dene')
+      setAnswering(false)
+      return
     }
     // Timer: soru cevaplanınca başla/devam et
     triggerQuestion()
