@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../lib/supabase'
 import { useStudyTimer, formatTimerDisplay, formatTimerLabel } from '../contexts/StudyTimerContext'
 import { getPhaseInfo } from '../lib/studyPlan'
-import { getDailyGoal, DAILY_GOAL_TEXTS } from '../lib/dailyGoal'
+import { toast } from 'sonner'
+import { getDailyGoal, isGoalTodoText } from '../lib/dailyGoal'
 
 const MONTHS_TR = [
   'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
@@ -23,7 +24,10 @@ function getToday() {
   return d
 }
 
-export default function DailyCalendar({ userId, todayAnswered = 0, todayNewAnswered = 0, isAdmin = false }) {
+export default function DailyCalendar({
+  userId, todayAnswered = 0, todayNewAnswered = 0, isAdmin = false,
+  goalHistory = null, goalsAvailable = false, onGoalChange,
+}) {
   const today = getToday()
   const maxFuture = new Date(today); maxFuture.setDate(maxFuture.getDate() + 7)
   const [sel, setSel] = useState(getToday())
@@ -37,6 +41,10 @@ export default function DailyCalendar({ userId, todayAnswered = 0, todayNewAnswe
   const [hoveredId, setHoveredId] = useState(null)
   const [goalTaskId, setGoalTaskId] = useState(null)
   const [studySecondsDB, setStudySecondsDB] = useState(null) // geçmiş günler için DB'den
+  const [goalEditOpen, setGoalEditOpen] = useState(false)
+  const [goalTotalInput, setGoalTotalInput] = useState('')
+  const [goalNewInput, setGoalNewInput] = useState('')
+  const [goalSaving, setGoalSaving] = useState(false)
   const inputRef = useRef(null)
 
   const phaseInfo = getPhaseInfo(sel)
@@ -46,7 +54,8 @@ export default function DailyCalendar({ userId, todayAnswered = 0, todayNewAnswe
 
   const selKey = toKey(sel)
   const todayKey = toKey(today)
-  const todayGoal = getDailyGoal(todayKey) // { threshold, text } — bugünün hedefi
+  const goalReady = goalHistory !== null
+  const todayGoal = getDailyGoal(todayKey, goalHistory || []) // { threshold, newThreshold, text } — bugünün hedefi
 
   // ── loaders ───────────────────────────────────────────────────────────────
 
@@ -77,19 +86,23 @@ export default function DailyCalendar({ userId, todayAnswered = 0, todayNewAnswe
   const loadTodos = useCallback(async () => {
     if (!userId) return
 
-    // For today: ensure the goal todo exists before fetching (sequential, not racy)
-    if (selKey === todayKey) {
-      const { data: existing } = await supabase
+    // For today: ensure the goal todo exists before fetching (sequential, not racy).
+    // Kişisel hedef yüklenene kadar bekle ki yanlış hedef metniyle görev açılmasın.
+    if (selKey === todayKey && goalReady) {
+      const { data: todayRows } = await supabase
         .from('daily_todos')
-        .select('id')
+        .select('id, text')
         .eq('user_id', userId)
         .eq('date', todayKey)
-        .in('text', DAILY_GOAL_TEXTS)
-        .maybeSingle()
+        .like('text', '% Soru Çöz')
+      const existing = (todayRows || []).find(t => isGoalTodoText(t.text))
       if (!existing) {
         await supabase
           .from('daily_todos')
           .insert({ user_id: userId, date: todayKey, text: todayGoal.text, completed: false })
+      } else if (existing.text !== todayGoal.text) {
+        // Hedef bugün değiştirildi → görev metnini güncelle
+        await supabase.from('daily_todos').update({ text: todayGoal.text }).eq('id', existing.id)
       }
     }
 
@@ -104,7 +117,7 @@ export default function DailyCalendar({ userId, todayAnswered = 0, todayNewAnswe
 
     // Track goal task ID for auto-complete (needed even when not viewing today)
     if (selKey === todayKey) {
-      const goal = rows.find(t => DAILY_GOAL_TEXTS.includes(t.text))
+      const goal = rows.find(t => isGoalTodoText(t.text))
       if (goal && !goal.completed) setGoalTaskId(goal.id)
     }
 
@@ -121,7 +134,7 @@ export default function DailyCalendar({ userId, todayAnswered = 0, todayNewAnswe
     } else {
       setStudySecondsDB(null) // bugün → context'ten alınır
     }
-  }, [userId, selKey, todayKey, todayGoal.text])
+  }, [userId, selKey, todayKey, todayGoal.text, goalReady])
 
   useEffect(() => { loadStatus() }, [loadStatus])
   useEffect(() => { loadTodos() }, [loadTodos])
@@ -131,12 +144,14 @@ export default function DailyCalendar({ userId, todayAnswered = 0, todayNewAnswe
     if (!userId || goalTaskId) return
     supabase
       .from('daily_todos')
-      .select('id')
+      .select('id, text, completed')
       .eq('user_id', userId)
       .eq('date', todayKey)
-      .in('text', DAILY_GOAL_TEXTS)
-      .maybeSingle()
-      .then(({ data }) => { if (data?.id) setGoalTaskId(data.id) })
+      .like('text', '% Soru Çöz')
+      .then(({ data }) => {
+        const goal = (data || []).find(t => isGoalTodoText(t.text))
+        if (goal && !goal.completed) setGoalTaskId(goal.id)
+      })
   }, [userId, todayKey, goalTaskId])
 
   // Auto-complete the daily goal todo when today's totals reach today's thresholds
@@ -162,6 +177,54 @@ export default function DailyCalendar({ userId, todayAnswered = 0, todayNewAnswe
         loadStatus()
       })
   }, [userId, goalTaskId, todayAnswered, todayNewAnswered, todayGoal.threshold, todayGoal.newThreshold]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── kişisel günlük hedef ──────────────────────────────────────────────────
+
+  function openGoalEdit() {
+    setGoalTotalInput(String(todayGoal.threshold))
+    setGoalNewInput(String(todayGoal.newThreshold || 0))
+    setGoalEditOpen(true)
+  }
+
+  async function saveGoal() {
+    const total = parseInt(goalTotalInput, 10)
+    const fresh = parseInt(goalNewInput || '0', 10)
+    if (!Number.isFinite(total) || total < 1) { toast.error('Toplam hedef en az 1 olmalı'); return }
+    if (!Number.isFinite(fresh) || fresh < 0) { toast.error('Yeni soru hedefi 0 veya daha büyük olmalı'); return }
+    if (fresh > total) { toast.error('Yeni soru hedefi toplamdan büyük olamaz'); return }
+    setGoalSaving(true)
+    const { error } = await supabase.from('user_goal_settings').upsert({
+      user_id: userId,
+      effective_date: todayKey,
+      total_goal: total,
+      new_goal: fresh,
+      updated_at: new Date().toISOString(),
+    })
+    if (error) {
+      setGoalSaving(false)
+      toast.error('Hedef kaydedilemedi')
+      return
+    }
+    // Bugünün hedef görevini yeni hedefe göre güncelle (metin + tamamlanma)
+    const met = todayAnswered >= total && todayNewAnswered >= fresh
+    const { data: todayRows } = await supabase
+      .from('daily_todos')
+      .select('id, text')
+      .eq('user_id', userId)
+      .eq('date', todayKey)
+      .like('text', '% Soru Çöz')
+    const goal = (todayRows || []).find(t => isGoalTodoText(t.text))
+    if (goal) {
+      await supabase.from('daily_todos').update({ text: `${total} Soru Çöz`, completed: met }).eq('id', goal.id)
+      setGoalTaskId(met ? null : goal.id)
+    }
+    await onGoalChange?.()
+    setGoalSaving(false)
+    setGoalEditOpen(false)
+    toast.success(`Günlük hedef: ${total} soru${fresh ? ` (${fresh} yeni)` : ''} — bugünden itibaren`)
+    loadTodos()
+    loadStatus()
+  }
 
   // ── mutations ─────────────────────────────────────────────────────────────
 
@@ -545,7 +608,7 @@ export default function DailyCalendar({ userId, todayAnswered = 0, todayNewAnswe
       <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
         <AnimatePresence initial={false}>
           {todos.flatMap(todo => {
-            const isGoal = DAILY_GOAL_TEXTS.includes(todo.text)
+            const isGoal = isGoalTodoText(todo.text)
 
             // Çalışma süresi: bugün → live context, geçmiş → DB
             const studySec = selKey === todayKey
@@ -646,7 +709,7 @@ export default function DailyCalendar({ userId, todayAnswered = 0, todayNewAnswe
             // Goal satırının hemen altına yeni/toplam ilerleme + çalışma süresi
             const extraRows = []
 
-            if (isGoal && selKey === todayKey && todayGoal.newThreshold > 0) {
+            if (isGoal && selKey === todayKey) {
               extraRows.push(
                 <motion.div
                   key="goal-progress-row"
@@ -672,10 +735,88 @@ export default function DailyCalendar({ userId, todayAnswered = 0, todayNewAnswe
                       color: 'rgba(240,192,64,0.55)',
                     }}
                   >
-                    {`${Math.min(todayAnswered, todayGoal.threshold)}/${todayGoal.threshold} soru · ${Math.min(todayNewAnswered, todayGoal.newThreshold)}/${todayGoal.newThreshold} yeni`}
+                    {todayGoal.newThreshold > 0
+                      ? `${Math.min(todayAnswered, todayGoal.threshold)}/${todayGoal.threshold} soru · ${Math.min(todayNewAnswered, todayGoal.newThreshold)}/${todayGoal.newThreshold} yeni`
+                      : `${Math.min(todayAnswered, todayGoal.threshold)}/${todayGoal.threshold} soru`}
                   </span>
+                  {goalsAvailable && !goalEditOpen && (
+                    <button
+                      onClick={openGoalEdit}
+                      title="Günlük hedefini değiştir"
+                      style={{
+                        marginLeft: 'auto',
+                        fontFamily: 'Barlow, sans-serif', fontWeight: 700,
+                        fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase',
+                        color: 'rgba(240,192,64,0.7)',
+                        border: '1px solid rgba(240,192,64,0.3)',
+                        padding: '2px 8px', cursor: 'pointer',
+                      }}
+                    >
+                      Hedefi Değiştir
+                    </button>
+                  )}
                 </motion.div>
               )
+              if (goalEditOpen) {
+                const numStyle = {
+                  width: 64, padding: '4px 6px',
+                  background: '#0a1628', border: '1px solid rgba(240,192,64,0.35)',
+                  color: '#f0c040', fontFamily: 'Barlow, sans-serif', fontWeight: 700, fontSize: 14,
+                  outline: 'none',
+                }
+                const lblStyle = {
+                  fontFamily: 'Barlow, sans-serif', fontWeight: 700, fontSize: 10,
+                  letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(240,192,64,0.6)',
+                }
+                extraRows.push(
+                  <motion.div
+                    key="goal-edit-row"
+                    layout
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    style={{
+                      display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8,
+                      padding: '8px 6px',
+                      borderLeft: '2px solid rgba(240,192,64,0.35)',
+                      background: 'rgba(240,192,64,0.05)',
+                    }}
+                  >
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={lblStyle}>Toplam</span>
+                      <input type="number" min={1} inputMode="numeric" style={numStyle}
+                        value={goalTotalInput} onChange={e => setGoalTotalInput(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') saveGoal() }} />
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={lblStyle}>Yeni</span>
+                      <input type="number" min={0} inputMode="numeric" style={numStyle}
+                        value={goalNewInput} onChange={e => setGoalNewInput(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') saveGoal() }} />
+                    </label>
+                    <button
+                      onClick={saveGoal}
+                      disabled={goalSaving}
+                      style={{
+                        fontFamily: 'Barlow, sans-serif', fontWeight: 700, fontSize: 11,
+                        letterSpacing: '0.1em', textTransform: 'uppercase',
+                        background: '#f0c040', color: '#0a1628', padding: '5px 12px',
+                        cursor: 'pointer', opacity: goalSaving ? 0.5 : 1,
+                      }}
+                    >
+                      {goalSaving ? '…' : 'Kaydet'}
+                    </button>
+                    <button
+                      onClick={() => setGoalEditOpen(false)}
+                      style={{ ...lblStyle, cursor: 'pointer', padding: '5px 4px' }}
+                    >
+                      İptal
+                    </button>
+                    <span style={{ ...lblStyle, flexBasis: '100%', color: 'rgba(240,192,64,0.4)', textTransform: 'none', letterSpacing: '0.02em' }}>
+                      Bugünden itibaren geçerli, geçmiş günler ve seri etkilenmez. Yeni = hiç çözmediğin soru (0 olabilir).
+                    </span>
+                  </motion.div>
+                )
+              }
             }
 
             if (isGoal && studyLabel) {

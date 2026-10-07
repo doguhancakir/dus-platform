@@ -6,7 +6,7 @@ import { supabase, fetchAllRows } from '../lib/supabase'
 import { BRANCHES, TEMEL_BILIMLER } from '../lib/data'
 import { computeTopicStats } from '../lib/topicStats'
 import { Flag } from 'lucide-react'
-import { getDailyGoal, AGAIN_EXCLUDED_FROM_DATE } from '../lib/dailyGoal'
+import { getDailyGoal, loadGoalHistory, AGAIN_EXCLUDED_FROM_DATE } from '../lib/dailyGoal'
 import Layout from '../components/Layout'
 import DailyCalendar from '../components/DailyCalendar'
 
@@ -37,17 +37,26 @@ export default function Dashboard() {
   const [branchImages, setBranchImages] = useState({})
   const [streak, setStreak] = useState(0)
   const [flaggedTotal, setFlaggedTotal] = useState(0)
+  const [goalHistory, setGoalHistory] = useState(null) // null = henüz yüklenmedi
+  const [goalsAvailable, setGoalsAvailable] = useState(false)
 
   useEffect(() => {
     loadBranchImages()
     if (user) {
       setLoading(true)
+      refreshGoalHistory()
       loadStats()
     } else {
       setLoading(false)
       setBranchStats({})
     }
   }, [user?.id])
+
+  async function refreshGoalHistory() {
+    const { history, available } = await loadGoalHistory(supabase, user.id)
+    setGoalHistory(history)
+    setGoalsAvailable(available)
+  }
 
   async function loadBranchImages() {
     try {
@@ -235,8 +244,9 @@ export default function Dashboard() {
         newDayCounts[day] = (newDayCounts[day] || 0) + 1
       })
 
+      const { history: goalHist } = await loadGoalHistory(supabase, user.id)
       const meetsGoal = (dateKey) => {
-        const goal = getDailyGoal(dateKey)
+        const goal = getDailyGoal(dateKey, goalHist)
         if (totalCountFor(dateKey) < goal.threshold) return false
         if (goal.newThreshold && (newDayCounts[dateKey] || 0) < goal.newThreshold) return false
         return true
@@ -460,7 +470,15 @@ export default function Dashboard() {
               </div>
               {/* Calendar widget */}
               <div className="relative z-10 flex-1 flex flex-col">
-                <DailyCalendar userId={user.id} todayAnswered={todayAnswered} todayNewAnswered={todayNewAnswered} isAdmin={!!user.is_admin} />
+                <DailyCalendar
+                  userId={user.id}
+                  todayAnswered={todayAnswered}
+                  todayNewAnswered={todayNewAnswered}
+                  isAdmin={!!user.is_admin}
+                  goalHistory={goalHistory}
+                  goalsAvailable={goalsAvailable}
+                  onGoalChange={refreshGoalHistory}
+                />
               </div>
             </motion.div>
           )}
