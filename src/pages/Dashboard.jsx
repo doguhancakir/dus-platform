@@ -118,11 +118,33 @@ export default function Dashboard() {
       // (counted_review_at) sayılır; öncesinde eski davranış (last_review, her
       // değerlendirme) devam eder — bkz. AGAIN_EXCLUDED_FROM_DATE.
       const useCountedField = todayDateKey >= AGAIN_EXCLUDED_FROM_DATE
-      const { count: todayCount } = await supabase
-        .from('user_cards')
-        .select('question_id', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .gte(useCountedField ? 'counted_review_at' : 'last_review', todayStart.toISOString())
+      let todayCount = 0
+      if (useCountedField) {
+        const res = await supabase
+          .from('user_cards')
+          .select('question_id', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .gte('counted_review_at', todayStart.toISOString())
+        if (res.error) {
+          // counted_review_at kolonu henüz eklenmediyse (migration çalıştırılmadan
+          // önce) sayı sıfırda donup kalmasın — eski last_review sayımına düş.
+          const fallback = await supabase
+            .from('user_cards')
+            .select('question_id', { count: 'exact', head: true })
+            .eq('user_id', user.id)
+            .gte('last_review', todayStart.toISOString())
+          todayCount = fallback.count || 0
+        } else {
+          todayCount = res.count || 0
+        }
+      } else {
+        const res = await supabase
+          .from('user_cards')
+          .select('question_id', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .gte('last_review', todayStart.toISOString())
+        todayCount = res.count || 0
+      }
 
       // created_at sadece bir sorunun hayatında İLK kez cevaplandığı anda set edilir
       // (upsert var olan satırı güncellerken created_at'e dokunmaz), bu yüzden
@@ -173,6 +195,7 @@ export default function Dashboard() {
       }
 
       let countedHistory = []
+      let countedHistoryOk = true
       try {
         countedHistory = await fetchAllRows(q => q
           .from('user_cards')
@@ -182,8 +205,9 @@ export default function Dashboard() {
           .gte('counted_review_at', new Date(Date.now() - 90 * 86400000).toISOString())
         )
       } catch {
-        // counted_review_at kolonu yoksa sessizce AGAIN_EXCLUDED_FROM_DATE'ten
-        // sonraki günler de eski last_review sayımına düşer (aşağıda totalCountFor)
+        // counted_review_at kolonu henüz eklenmediyse AGAIN_EXCLUDED_FROM_DATE'ten
+        // sonraki günler de (aşağıda totalCountFor) eski last_review sayımına düşer
+        countedHistoryOk = false
       }
 
       const dayCounts = {}
@@ -201,9 +225,13 @@ export default function Dashboard() {
       })
 
       // Bir günün toplam-soru sayısı: AGAIN_EXCLUDED_FROM_DATE'ten önce last_review
-      // (her değerlendirme), o tarihten itibaren counted_review_at (sadece Zor/İyi/Kolay).
+      // (her değerlendirme), o tarihten itibaren counted_review_at (sadece Zor/İyi/Kolay)
+      // — ama counted_review_at kolonu henüz yoksa (migration çalışmadıysa) sayı
+      // sıfırda donup kalmasın, eski last_review sayımına düş.
       const totalCountFor = (dateKey) =>
-        dateKey >= AGAIN_EXCLUDED_FROM_DATE ? (countedDayCounts[dateKey] || 0) : (dayCounts[dateKey] || 0)
+        (dateKey >= AGAIN_EXCLUDED_FROM_DATE && countedHistoryOk)
+          ? (countedDayCounts[dateKey] || 0)
+          : (dayCounts[dateKey] || 0)
 
       const newDayCounts = {}
       newHistory?.forEach(c => {
