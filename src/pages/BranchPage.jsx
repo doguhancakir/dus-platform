@@ -183,14 +183,14 @@ export default function BranchPage() {
             {user && !loading ? (
               <div className="mt-4">
                 <div
-                  className="flex items-center flex-wrap gap-x-4 gap-y-1 font-barlow font-bold text-xs uppercase tracking-wider mb-3"
-                  style={{ color: '#4a6080' }}
+                  className="flex items-center flex-wrap gap-x-2 gap-y-1 text-[14px] mb-3"
+                  style={{ color: '#6b7a8f' }}
                 >
-                  <span><span style={{ color: '#10b981' }}>{masteredCount}</span>/{topics.length} konu bitti</span>
-                  {totalNew > 0 && <span style={{ color: '#6680ff' }}>{totalNew} yeni</span>}
-                  {totalDue > 0 && <span style={{ color: branch.color }}>{totalDue} bekliyor</span>}
+                  <span><span style={{ color: '#c8d0dc' }}>{masteredCount}/{topics.length}</span> konu tamamlandı</span>
+                  {totalDue > 0 && <><span style={{ color: '#2e3b4d' }}>·</span><span><span style={{ color: '#c8d0dc' }}>{totalDue}</span> tekrar</span></>}
+                  {totalNew > 0 && <><span style={{ color: '#2e3b4d' }}>·</span><span>{totalNew} yeni</span></>}
                 </div>
-                <div className="h-[3px] w-72 max-w-full" style={{ background: '#1a2d45' }}>
+                <div className="h-[3px] w-72 max-w-full rounded-full overflow-hidden" style={{ background: '#16212f' }}>
                   <motion.div
                     className="h-full"
                     style={{ background: '#10b981' }}
@@ -257,8 +257,8 @@ export default function BranchPage() {
             variants={containerVariants}
             initial="hidden"
             animate="show"
-            className="flex flex-col"
-            style={{ gap: '3px' }}
+            className="flex flex-col rounded-lg overflow-hidden divide-y divide-[#152234]"
+            style={{ background: "#0b1626", border: "1px solid #18263a" }}
           >
             {topics.map((topic, idx) => (
               <motion.div key={topic.id} variants={itemVariants}>
@@ -331,98 +331,119 @@ function TopicCard({ topic, stats, showProgress, branchColor, index, bulkMode, i
   const pending = (stats.dueCount || 0) + (stats.newCount || 0)
   const hasPending = pending > 0
   const disabledInBulk = bulkMode && !hasPending
-
-  const bg = bulkMode && isSelected ? `${branchColor}18` : isMastered ? 'rgba(16,185,129,0.10)' : '#0a1525'
-  const borderColor = bulkMode && isSelected ? branchColor : isMastered ? '#10b981' : '#14253a'
+  const total = stats.totalCount || 0
+  const learned = stats.learnedCount || 0
+  const learnedPct = total > 0 ? Math.round((learned / total) * 100) : 0
 
   function handleCardClick() {
     if (bulkMode) onToggleBulk(topic.id)
-    else if (stats.totalCount > 0) onSolve()
+    else if (total > 0) onSolve()
   }
+
+  // Alt satır: sade, küçük harf, tek renk; sadece "tekrar" vurgulu
+  const meta = []
+  if (showProgress && total > 0) {
+    if (isMastered) meta.push(<span key="m" style={{ color: '#4fae8c' }}>tamamlandı</span>)
+    else {
+      if (stats.dueCount > 0) meta.push(<span key="d" style={{ color: '#c8d0dc' }}>{stats.dueCount} tekrar</span>)
+      if (stats.newCount > 0) meta.push(<span key="n">{stats.newCount} yeni</span>)
+    }
+  }
+  if (total > 0 && !showProgress) meta.push(<span key="t">{total} soru</span>)
 
   return (
     <div
       onClick={handleCardClick}
-      className="relative overflow-hidden flex flex-col sm:flex-row sm:items-center gap-3 transition-colors"
+      className="group relative flex items-center gap-3 sm:gap-4 px-3 sm:px-4 py-3.5 transition-colors"
       style={{
-        background: bg,
-        borderLeft: `3px solid ${borderColor}`,
-        padding: '0.9rem 1.1rem',
+        background: bulkMode && isSelected ? `${branchColor}14` : 'transparent',
         opacity: disabledInBulk ? 0.35 : 1,
         cursor: disabledInBulk ? 'not-allowed' : 'pointer',
-        boxShadow: isMastered && !bulkMode ? 'inset 0 0 24px rgba(16,185,129,0.08)' : 'none',
       }}
+      onMouseEnter={e => { if (!bulkMode) e.currentTarget.style.background = 'rgba(255,255,255,0.025)' }}
+      onMouseLeave={e => { e.currentTarget.style.background = bulkMode && isSelected ? `${branchColor}14` : 'transparent' }}
     >
-      <div className="flex items-center gap-3 flex-1 min-w-0">
+      {/* Sol: numara / tamamlandı / toplu seçim kutusu */}
+      <div className="flex-shrink-0 w-7 flex items-center justify-center">
         {bulkMode ? (
           <div
-            className="flex-shrink-0 flex items-center justify-center"
+            className="flex items-center justify-center"
             style={{
-              width: 18, height: 18,
-              border: `2px solid ${isSelected ? branchColor : '#2a4060'}`,
+              width: 18, height: 18, borderRadius: 4,
+              border: `2px solid ${isSelected ? branchColor : '#2a3a50'}`,
               background: isSelected ? branchColor : 'transparent',
             }}
           >
             {isSelected && <Check size={11} strokeWidth={3} style={{ color: '#000' }} />}
           </div>
-        ) : (
-          <div className="flex-shrink-0 font-barlow font-bold text-xs tracking-wider w-6 text-center" style={{ color: isMastered ? '#10b981' : '#2a4060' }}>
-            {isMastered ? '✓' : String(index + 1).padStart(2, '0')}
+        ) : isMastered ? (
+          <div className="flex items-center justify-center" style={{ width: 22, height: 22, borderRadius: '50%', background: 'rgba(16,185,129,0.15)' }}>
+            <Check size={13} strokeWidth={3} style={{ color: '#34d399' }} />
           </div>
+        ) : (
+          <span className="text-sm tabular-nums" style={{ color: '#3a4a60' }}>{index + 1}</span>
         )}
-
-        <div className="flex-1 min-w-0">
-          <h3 className="text-[15px] font-semibold leading-snug" style={{ color: isMastered ? '#a7f3d0' : '#d8dce8' }}>
-            {topic.title}
-          </h3>
-          {stats.totalCount > 0 && (
-            <div className="flex items-center flex-wrap gap-x-3 gap-y-0.5 mt-1 font-barlow font-bold text-[11px] uppercase tracking-wider">
-              {showProgress && stats.newCount > 0 && <span style={{ color: '#6680ff' }}>{stats.newCount} yeni</span>}
-              {showProgress && stats.dueCount > 0 && <span style={{ color: branchColor }}>{stats.dueCount} bekliyor</span>}
-              {showProgress && stats.learnedCount > 0 && (
-                <span style={{ color: '#10b981' }}>{stats.learnedCount} öğrenildi</span>
-              )}
-              <span style={{ color: '#2a4060' }}>{stats.totalCount} soru</span>
-            </div>
-          )}
-        </div>
       </div>
 
-      {!bulkMode && stats.totalCount > 0 && (
-        <div className="flex items-center gap-1.5 flex-shrink-0 sm:ml-2" onClick={e => e.stopPropagation()}>
-          <button
-            onClick={onSolve}
-            className="flex items-center gap-1.5 font-barlow font-bold text-[11px] uppercase tracking-wider px-3 py-2 transition-colors"
-            style={{
-              color: hasPending ? '#fff' : '#6a8aaa',
-              background: hasPending ? branchColor : 'transparent',
-              border: `1px solid ${hasPending ? branchColor : '#1e3555'}`,
-            }}
-            title="Bu konunun sorularını çöz"
-          >
-            <Play size={11} fill={hasPending ? '#fff' : 'none'} />
-            Çöz{hasPending ? ` · ${pending}` : ''}
-          </button>
-          <button
-            onClick={onShowText}
-            className="flex items-center gap-1.5 font-barlow font-bold text-[11px] uppercase tracking-wider px-3 py-2 transition-colors"
-            style={{ color: '#8aa4c0', background: 'transparent', border: '1px solid #1e3555' }}
-            title="Tüm soruları metin olarak gör / kopyala"
-          >
-            <FileText size={12} />
-            Metin
-          </button>
+      {/* Orta: başlık + ilerleme */}
+      <div className="flex-1 min-w-0">
+        <h3 className="text-[16px] leading-snug font-medium truncate" style={{ color: isMastered ? '#9fdcc4' : '#e1e5ec' }}>
+          {topic.title}
+        </h3>
+        {meta.length > 0 && (
+          <div className="flex items-center flex-wrap gap-x-1.5 mt-1 text-[13px]" style={{ color: '#6b7a8f' }}>
+            {meta.map((m, i) => (
+              <span key={i} className="flex items-center gap-1.5 whitespace-nowrap">
+                {i > 0 && <span style={{ color: '#2e3b4d' }}>·</span>}
+                {m}
+              </span>
+            ))}
+          </div>
+        )}
+        {showProgress && total > 0 && (
+          <div className="flex items-center gap-2.5 mt-2" title={`${learned}/${total} öğrenildi`}>
+            <div className="flex-1 h-[3px] rounded-full overflow-hidden" style={{ background: '#16212f', maxWidth: 220 }}>
+              <div className="h-full rounded-full" style={{ width: `${learnedPct}%`, background: isMastered ? '#34d399' : `${branchColor}aa` }} />
+            </div>
+            <span className="text-[12px] tabular-nums whitespace-nowrap" style={{ color: '#4f5e72' }}>{learned}/{total}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Sağ: aksiyonlar */}
+      {!bulkMode && total > 0 && (
+        <div className="flex items-center gap-1 flex-shrink-0" onClick={e => e.stopPropagation()}>
           {stats.flaggedCount > 0 && (
             <Link
               to={`/flagged?topic=${topic.id}`}
-              className="flex items-center gap-1 font-barlow font-bold text-[11px] uppercase tracking-wider px-2.5 py-2"
-              style={{ color: '#ff8888', background: 'rgba(204,0,0,0.08)', border: '1px solid rgba(204,0,0,0.35)' }}
+              className="flex items-center gap-1 h-9 px-2.5 rounded-md text-[13px] transition-colors hover:bg-white/5"
+              style={{ color: '#e07a7a' }}
               title="Bu konunun bayraklı soruları"
             >
-              <Flag size={11} fill="#ff8888" />
+              <Flag size={14} />
               {stats.flaggedCount}
             </Link>
           )}
+          <button
+            onClick={onShowText}
+            className="flex items-center justify-center w-9 h-9 rounded-md transition-colors hover:bg-white/5"
+            style={{ color: '#7d8ca0' }}
+            title="Soruları metin olarak gör / kopyala"
+            aria-label="Metin"
+          >
+            <FileText size={17} />
+          </button>
+          <button
+            onClick={onSolve}
+            className="flex items-center justify-center gap-1.5 h-9 min-w-[76px] px-3 rounded-md text-[14px] font-medium tabular-nums transition-colors"
+            style={hasPending
+              ? { color: '#fff', background: `${branchColor}33`, border: `1px solid ${branchColor}66` }
+              : { color: '#7d8ca0', border: '1px solid #223044' }}
+            title="Bu konunun sorularını çöz"
+          >
+            <Play size={13} fill="currentColor" />
+            {hasPending ? pending : 'Çöz'}
+          </button>
         </div>
       )}
     </div>
