@@ -30,7 +30,19 @@ const DEFAULT_EASE = 2.5
  * @param {number} rating - RATINGS enum değeri
  * @returns {Object} - Güncellenmiş kart verisi
  */
+// Hiçbir kart 30 günden uzun aralıkla planlanmaz
+const MAX_INTERVAL_DAYS = 30
+
 export function processCard(card, rating) {
+  const result = scheduleCard(card, rating)
+  if ((result.interval || 0) > MAX_INTERVAL_DAYS) {
+    result.interval = MAX_INTERVAL_DAYS
+    result.due_date = addDays(new Date(), MAX_INTERVAL_DAYS).toISOString()
+  }
+  return result
+}
+
+function scheduleCard(card, rating) {
   const now = new Date()
   const updated = { ...card, last_review: now.toISOString() }
 
@@ -241,6 +253,7 @@ export function getEstimatedTime(card, rating) {
 }
 
 function formatDays(days) {
+  days = Math.min(days, MAX_INTERVAL_DAYS)
   if (days < 30) return `${days}gün`
   if (days < 365) return `${Math.round(days / 30)}ay`
   return `${Math.round(days / 365)}yıl`

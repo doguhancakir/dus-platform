@@ -1,12 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, ChevronRight, Trophy, Zap, Sparkles, Trash2, Copy, Flag } from 'lucide-react'
+import { X, ChevronRight, Trophy, Zap, Trash2, Copy, Flag } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '../contexts/AuthContext'
 import { useStudyTimer } from '../contexts/StudyTimerContext'
 import { supabase } from '../lib/supabase'
 import { processCard, newCard, getEstimatedTime, RATINGS, CARD_STATUS, isDue } from '../lib/sm2'
-import AskAI from './AskAI'
 
 const OPTION_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F']
 
@@ -79,7 +78,6 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
   const [sessionResult, setSessionResult] = useState({ correct: 0, wrong: 0, skipped: 0 })
   const [finished, setFinished] = useState(false)
   const [answering, setAnswering] = useState(false)
-  const [showAI,    setShowAI]    = useState(false)
   // Shuffled options — re-randomized on every card appearance
   const [shuffledDisplay, setShuffledDisplay] = useState(null) // { forIndex, options, correctIndex }
   // Double-click tracking
@@ -119,7 +117,7 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
     const DOUBLE_TAP_MS = 400
 
     const handler = (e) => {
-      if (answering || showAI) return
+      if (answering) return
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return
 
       // Space → cevabı göster (boş bırak)
@@ -166,7 +164,7 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [showAnswer, shuffledDisplay, answering, showAI, handleRating])
+  }, [showAnswer, shuffledDisplay, answering, handleRating])
 
   // Re-shuffle every time a new card position is shown (same question = new shuffle)
   useEffect(() => {
@@ -330,7 +328,6 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
         setShowAnswer(false)
         setSelectedOption(null)
         setEliminatedOptions(new Set())
-        setShowAI(false)
       }
     } catch (err) {
       console.error('Save error:', err)
@@ -370,7 +367,6 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
         setShowAnswer(false)
         setSelectedOption(null)
         setEliminatedOptions(new Set())
-        setShowAI(false)
       }
     } catch (err) {
       console.error('Delete error:', err)
@@ -474,15 +470,6 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
     ? '#ff1744'
     : '#0891b2'
 
-  // questionContext — AI'a gönderilecek soru bilgileri
-  const aiContext = currentQuestion ? {
-    questionText:        currentQuestion.question_text,
-    options:             options,
-    correctOptionText:   options[correctIndex] ?? '',
-    selectedOptionText:  selectedOption !== null ? options[selectedOption] ?? '' : null,
-    explanation:         currentQuestion.explanation ?? '',
-  } : null
-
   // copyContext — kopyalama için orijinal (karıştırılmamış) şık sırası
   const copyContext = currentQuestion ? {
     questionText:        currentQuestion.question_text,
@@ -532,7 +519,6 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
           setShowAnswer(false)
           setSelectedOption(null)
           setEliminatedOptions(new Set())
-          setShowAI(false)
         }
       }
     } catch (err) {
@@ -582,7 +568,7 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
             animate={{ opacity: 1, x: 0, skewX: 0 }}
             exit={{ opacity: 0, x: -40, skewX: -3 }}
             transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-            className="max-w-2xl mx-auto w-full px-5 sm:px-8 pt-6 pb-4 relative"
+            className="max-w-3xl mx-auto w-full px-4 sm:px-8 pt-5 pb-8 relative"
           >
             {/* Watermark */}
             <div
@@ -665,7 +651,7 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
                   animate={{ transform: ['translateX(-100%) skewX(-20deg)', 'translateX(300%) skewX(-20deg)'] }}
                   transition={{ duration: 0.6, ease: 'easeOut' }}
                 />
-                <p className="text-gray-100 text-base sm:text-lg leading-relaxed font-medium relative z-10">
+                <p className="text-gray-100 text-lg sm:text-xl leading-relaxed font-medium relative z-10 whitespace-pre-line">
                   {currentQuestion.question_text}
                 </p>
               </motion.div>
@@ -740,7 +726,7 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
                         style={{
                           background: bg,
                           borderLeft: `3px solid ${borderLeft}`,
-                          padding: '0.75rem 1rem',
+                          padding: '0.9rem 1.1rem',
                           opacity: isEliminated ? 0.28 : 1,
                           transition: 'background 0.25s ease, border-color 0.25s ease, opacity 0.2s ease',
                         }}
@@ -775,7 +761,7 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
 
                         {/* Letter */}
                         <span
-                          className="font-barlow font-bold text-[11px] mt-0.5 w-5 flex-shrink-0 tracking-wider"
+                          className="font-barlow font-bold text-[13px] mt-0.5 w-6 flex-shrink-0 tracking-wider"
                           style={{ color: labelColor, transition: 'color 0.25s ease' }}
                         >
                           {String.fromCharCode(65 + i)}.
@@ -783,7 +769,7 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
 
                         {/* Text */}
                         <span
-                          className="text-sm leading-relaxed flex-1"
+                          className="text-base sm:text-[17px] leading-relaxed flex-1"
                           style={{
                             color: textColor,
                             textDecoration: isEliminated ? 'line-through' : 'none',
@@ -823,7 +809,7 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
                         <motion.button
                           whileTap={{ scale: 0.9 }}
                           onClick={() => toggleElimination(i)}
-                          className="w-8 flex-shrink-0 flex items-center justify-center text-[10px] font-bold transition-all duration-150"
+                          className="w-10 flex-shrink-0 flex items-center justify-center text-xs font-bold transition-all duration-150"
                           style={{
                             background: isEliminated ? 'rgba(8,145,178,0.15)' : 'rgba(255,255,255,0.02)',
                             border: `1px solid ${isEliminated ? 'rgba(8,145,178,0.5)' : '#1a2d45'}`,
@@ -838,6 +824,68 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
                 })}
               </div>
             )}
+
+            {/* ── Cevabı göster / değerlendirme — şıkların hemen altında, kaydırmaya gerek yok ── */}
+            <div className="relative z-10 mb-5">
+              {!showAnswer ? (
+                <motion.button
+                  key="reveal"
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => { setShowAnswer(true); setEliminatedOptions(new Set()) }}
+                  className="w-full flex items-center justify-center gap-3 py-3.5 px-8 font-bebas tracking-[0.2em] text-lg text-white relative overflow-hidden"
+                  style={{
+                    background: 'linear-gradient(105deg, #0779a0, #0891b2)',
+                    clipPath: 'polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px))',
+                    boxShadow: '0 4px 24px rgba(8,145,178,0.3)',
+                  }}
+                >
+                  CEVABI GÖSTER
+                  <span style={{ fontFamily: 'Barlow, sans-serif', fontSize: 10, opacity: 0.55, letterSpacing: '0.1em' }}>[BOŞLUK]</span>
+                  <ChevronRight size={20} strokeWidth={2.5} />
+                </motion.button>
+              ) : (
+                <div className="grid grid-cols-4 gap-[4px]">
+                  {RATING_CONFIG.map((cfg, idx) => (
+                    <motion.button
+                      key={cfg.rating}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => handleRating(cfg.rating)}
+                      disabled={answering}
+                      className="flex flex-col items-center gap-1.5 py-3.5 px-2 transition-all duration-150 cursor-pointer disabled:opacity-50 relative overflow-hidden"
+                      style={{
+                        background: cfg.bg,
+                        border: `1px solid ${cfg.border}40`,
+                        borderTop: `2px solid ${cfg.border}`,
+                        clipPath: 'polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px))',
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontFamily: 'Barlow, sans-serif', fontWeight: 700,
+                          fontSize: 9, letterSpacing: '0.05em',
+                          color: cfg.textColor, opacity: 0.4,
+                          lineHeight: 1, marginBottom: -2,
+                        }}
+                      >
+                        [{idx + 1}]
+                      </span>
+                      <span
+                        className="font-bebas text-base tracking-[0.12em] leading-none"
+                        style={{ color: cfg.textColor }}
+                      >
+                        {cfg.label}
+                      </span>
+                      <span
+                        className="font-barlow font-bold text-[10px] uppercase tracking-wider leading-none"
+                        style={{ color: cfg.textColor, opacity: 0.6 }}
+                      >
+                        {currentCard ? getEstimatedTime(currentCard, cfg.rating) : '—'}
+                      </span>
+                    </motion.button>
+                  ))}
+                </div>
+              )}
+            </div>
 
             {/* ── Explanation ── */}
             <AnimatePresence>
@@ -862,7 +910,7 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
                   >
                     Açıklama
                   </p>
-                  <p className="text-gray-400 text-sm leading-relaxed">{currentQuestion.explanation}</p>
+                  <p className="text-gray-300 text-base leading-relaxed whitespace-pre-line">{currentQuestion.explanation}</p>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -871,145 +919,6 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
         </AnimatePresence>
       </div>
 
-      {/* ── AI Panel ── */}
-      <AnimatePresence>
-        {showAI && aiContext && (
-          <AskAI
-            questionContext={aiContext}
-            sessionKey={`${currentQuestion?.id ?? ''}-${currentIndex}`}
-            onClose={() => setShowAI(false)}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* ── Bottom command strip ── */}
-      <div
-        className="flex-shrink-0 relative"
-        style={{
-          borderTop: `1px solid ${accentColor}25`,
-          background: '#060d1a',
-          transition: 'border-color 0.4s ease',
-        }}
-      >
-        {/* Top accent line */}
-        <motion.div
-          className="absolute top-0 left-0 h-[2px]"
-          animate={{ width: showAnswer ? '100%' : '0%', background: accentColor }}
-          transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-        />
-
-        <div className="p-4 sm:p-5">
-
-          {/* ── AI'a Sor — rating butonlarının üstünde sabit ── */}
-          {showAnswer && (
-            <div className="mb-3 flex justify-end">
-              <button
-                onClick={() => setShowAI(true)}
-                className="flex items-center gap-2 px-3 py-1.5 font-barlow font-bold text-[11px] tracking-wider uppercase"
-                style={{
-                  background: 'rgba(8,145,178,0.08)',
-                  border: '1px solid rgba(8,145,178,0.3)',
-                  borderLeft: '3px solid #0891b2',
-                  color: '#0891b2',
-                  cursor: 'pointer',
-                  transition: 'background 0.15s, border-color 0.15s',
-                }}
-                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(8,145,178,0.18)' }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(8,145,178,0.08)' }}
-              >
-                <Sparkles size={12} />
-                AI'a Sor
-              </button>
-            </div>
-          )}
-
-          <AnimatePresence mode="wait">
-            {!showAnswer ? (
-              /* ── REVEAL BUTTON ── */
-              <motion.button
-                key="reveal"
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 16 }}
-                transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-                whileHover={{ scale: 1.015, y: -2 }}
-                whileTap={{ scale: 0.97 }}
-                onClick={() => { setShowAnswer(true); setEliminatedOptions(new Set()) }}
-                className="w-full max-w-lg mx-auto flex items-center justify-center gap-3 py-4 px-8 font-bebas tracking-[0.2em] text-lg text-white block relative overflow-hidden"
-                style={{
-                  background: `linear-gradient(105deg, #0779a0, #0891b2)`,
-                  clipPath: 'polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px))',
-                  boxShadow: '0 4px 32px rgba(8,145,178,0.35)',
-                }}
-              >
-                {/* Diagonal sweep on hover */}
-                <motion.div
-                  className="absolute inset-0 pointer-events-none"
-                  initial={{ x: '-100%', skewX: '-20deg' }}
-                  whileHover={{ x: '200%' }}
-                  transition={{ duration: 0.5, ease: 'easeOut' }}
-                  style={{ background: 'rgba(255,255,255,0.1)', width: '60%' }}
-                />
-                CEVABI GÖSTER
-                <ChevronRight size={20} strokeWidth={2.5} />
-              </motion.button>
-            ) : (
-              /* ── RATING COMMANDS ── */
-              <motion.div
-                key="ratings"
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 16 }}
-                transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-                className="grid grid-cols-4 gap-[3px] max-w-2xl mx-auto"
-              >
-                {RATING_CONFIG.map((cfg, idx) => (
-                  <motion.button
-                    key={cfg.rating}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: idx * 0.05, duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-                    whileHover={{ y: -3, scale: 1.04 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => handleRating(cfg.rating)}
-                    disabled={answering}
-                    className="flex flex-col items-center gap-1.5 py-3 px-2 transition-all duration-150 cursor-pointer disabled:opacity-50 relative overflow-hidden"
-                    style={{
-                      background: cfg.bg,
-                      border: `1px solid ${cfg.border}40`,
-                      borderTop: `2px solid ${cfg.border}`,
-                      clipPath: 'polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px))',
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontFamily: 'Barlow, sans-serif', fontWeight: 700,
-                        fontSize: 8, letterSpacing: '0.05em',
-                        color: cfg.textColor, opacity: 0.35,
-                        lineHeight: 1, marginBottom: -2,
-                      }}
-                    >
-                      [{idx + 1}]
-                    </span>
-                    <span
-                      className="font-bebas text-sm tracking-[0.12em] leading-none"
-                      style={{ color: cfg.textColor }}
-                    >
-                      {cfg.label}
-                    </span>
-                    <span
-                      className="font-barlow font-bold text-[9px] uppercase tracking-wider leading-none"
-                      style={{ color: cfg.textColor, opacity: 0.55 }}
-                    >
-                      {currentCard ? getEstimatedTime(currentCard, cfg.rating) : '—'}
-                    </span>
-                  </motion.button>
-                ))}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      </div>
     </BattleScreen>
   )
 }
