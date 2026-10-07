@@ -1,15 +1,15 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { StudyTimerProvider } from './contexts/StudyTimerContext'
 import { Toaster, toast } from 'sonner'
 import { useEffect, useState } from 'react'
 import Dashboard from './pages/Dashboard'
 import BranchPage from './pages/BranchPage'
-import TopicPage from './pages/TopicPage'
 import AdminPage from './pages/AdminPage'
 import Login from './pages/Login'
-import MixedQuizPage from './pages/MixedQuizPage'
 import NotesPage from './pages/NotesPage'
+import FlaggedPage from './pages/FlaggedPage'
+import { supabase } from './lib/supabase'
 import StudyTimerWidget from './components/StudyTimerWidget'
 import QuickNotesSidebar from './components/QuickNotesSidebar'
 
@@ -75,6 +75,20 @@ function PublicRoute({ children }) {
   return children
 }
 
+// Konu sayfası şimdilik kapalı (TopicPage silinmedi) — eski linkler konunun branşına gider
+function TopicRedirect() {
+  const { id } = useParams()
+  const [branchId, setBranchId] = useState(null)
+  const [failed, setFailed] = useState(false)
+  useEffect(() => {
+    supabase.from('topics').select('branch_id').eq('id', id).maybeSingle()
+      .then(({ data }) => data?.branch_id ? setBranchId(data.branch_id) : setFailed(true))
+  }, [id])
+  if (failed) return <Navigate to="/" replace />
+  if (!branchId) return null
+  return <Navigate to={`/branch/${branchId}`} replace />
+}
+
 function AppRoutes() {
   return (
     <Routes>
@@ -88,10 +102,10 @@ function AppRoutes() {
         <ProtectedRoute><BranchPage /></ProtectedRoute>
       } />
       <Route path="/topic/:id" element={
-        <ProtectedRoute><TopicPage /></ProtectedRoute>
+        <ProtectedRoute><TopicRedirect /></ProtectedRoute>
       } />
-      <Route path="/mixed-quiz" element={
-        <ProtectedRoute><MixedQuizPage /></ProtectedRoute>
+      <Route path="/flagged" element={
+        <ProtectedRoute><FlaggedPage /></ProtectedRoute>
       } />
       <Route path="/notes" element={
         <ProtectedRoute><NotesPage /></ProtectedRoute>

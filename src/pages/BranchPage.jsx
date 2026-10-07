@@ -1,28 +1,24 @@
 import { useState, useEffect } from 'react'
 import { Link, useParams, Navigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronLeft, CheckCircle2, Circle, ChevronRight, ChevronDown, BarChart3, Layers, Check, Zap, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ChevronDown, BarChart3, Layers, Check, Zap, X, Play, FileText, Flag } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase, fetchAllRows } from '../lib/supabase'
 import { getBranchById } from '../lib/data'
 import { getExamWisdom } from '../lib/examWisdom'
-import { isDue } from '../lib/sm2'
+import { computeTopicStats } from '../lib/topicStats'
 import Layout from '../components/Layout'
 import QuestionPanel from '../components/QuestionPanel'
+import QuestionsTextModal from '../components/QuestionsTextModal'
 
 const containerVariants = {
   hidden: {},
-  show: { transition: { staggerChildren: 0.055, delayChildren: 0.08 } },
+  show: { transition: { staggerChildren: 0.04, delayChildren: 0.06 } },
 }
 
 const itemVariants = {
-  hidden: { opacity: 0, x: -40, skewX: -3 },
-  show: {
-    opacity: 1,
-    x: 0,
-    skewX: 0,
-    transition: { duration: 0.32, ease: [0.22, 1, 0.36, 1] },
-  },
+  hidden: { opacity: 0, x: -30 },
+  show: { opacity: 1, x: 0, transition: { duration: 0.28, ease: [0.22, 1, 0.36, 1] } },
 }
 
 export default function BranchPage() {
@@ -31,14 +27,16 @@ export default function BranchPage() {
   const branch = getBranchById(id)
 
   const [topics, setTopics] = useState([])
-  const [completedIds, setCompletedIds] = useState(new Set())
   const [topicStats, setTopicStats] = useState({})
   const [loading, setLoading] = useState(true)
+
+  // Çözüm paneli: tek konu (sayı) ya da toplu çöz (dizi)
+  const [panelTopicIds, setPanelTopicIds] = useState(null)
+  const [textTopic, setTextTopic] = useState(null)
 
   // ── Toplu çöz ──────────────────────────────────────────────────────────────
   const [bulkMode, setBulkMode] = useState(false)
   const [selectedBulk, setSelectedBulk] = useState(new Set())
-  const [bulkTopicIds, setBulkTopicIds] = useState(null) // array → QuestionPanel açık
 
   useEffect(() => {
     loadData()
@@ -71,11 +69,11 @@ export default function BranchPage() {
 
   function startBulkSolve() {
     if (selectedBulk.size === 0) return
-    setBulkTopicIds([...selectedBulk])
+    setPanelTopicIds([...selectedBulk])
   }
 
-  function closeBulkSolve() {
-    setBulkTopicIds(null)
+  function closePanel() {
+    setPanelTopicIds(null)
     setBulkMode(false)
     setSelectedBulk(new Set())
     loadData()
@@ -105,102 +103,55 @@ export default function BranchPage() {
         .in('topic_id', topicIds)
       )
 
-      if (user) {
-        const { data: progress } = await supabase
-          .from('user_topic_progress')
-          .select('topic_id')
+      const cardsMap = {}
+      const qIds = questions?.map(q => q.id) || []
+      if (user && qIds.length > 0) {
+        const cards = await fetchAllRows(q => q
+          .from('user_cards')
+          .select('question_id, status, due_date, flagged')
           .eq('user_id', user.id)
-          .eq('completed', true)
-          .in('topic_id', topicIds)
-
-        setCompletedIds(new Set(progress?.map(p => p.topic_id) || []))
-
-        const qIds = questions?.map(q => q.id) || []
-        let cardsMap = {}
-        if (qIds.length > 0) {
-          const cards = await fetchAllRows(q => q
-            .from('user_cards')
-            .select('question_id, status, due_date, flagged')
-            .eq('user_id', user.id)
-            .in('question_id', qIds)
-          )
-          cards?.forEach(c => { cardsMap[c.question_id] = c })
-        }
-
-        const stats = {}
-        topicsData.forEach(topic => {
-          const topicQs = (questions?.filter(q => q.topic_id === topic.id) || [])
-            .filter(q => !cardsMap[q.id]?.flagged)
-          const newCount = topicQs.filter(q => !cardsMap[q.id] || cardsMap[q.id].status === 'new').length
-          const dueCount = topicQs.filter(q => {
-            const c = cardsMap[q.id]
-            return c && c.status !== 'new' && isDue(c)
-          }).length
-          const learnedCount = topicQs.filter(q => {
-            const c = cardsMap[q.id]
-            return c?.status === 'review' && !isDue(c)
-          }).length
-          const totalCount = (questions?.filter(q => q.topic_id === topic.id) || []).length
-          stats[topic.id] = { totalCount, newCount, dueCount, learnedCount }
-        })
-        setTopicStats(stats)
-      } else {
-        const stats = {}
-        topicsData.forEach(topic => {
-          const topicQs = questions?.filter(q => q.topic_id === topic.id) || []
-          stats[topic.id] = { totalCount: topicQs.length, newCount: 0, dueCount: 0, learnedCount: 0 }
-        })
-        setTopicStats(stats)
+          .in('question_id', qIds)
+        )
+        cards?.forEach(c => { cardsMap[c.question_id] = c })
       }
+
+      const stats = {}
+      topicsData.forEach(topic => {
+        const ids = (questions || []).filter(q => q.topic_id === topic.id).map(q => q.id)
+        stats[topic.id] = computeTopicStats(ids, cardsMap)
+      })
+      setTopicStats(stats)
     } catch (err) {
       console.error(err)
     }
     setLoading(false)
   }
 
-  if (!branch) {
-    return (
-      <Layout>
-        <div className="flex items-center justify-center h-64">
-          <p
-            className="font-barlow font-bold text-[11px] uppercase tracking-[0.2em]"
-            style={{ color: '#2a3a50' }}
-          >
-            Branş bulunamadı.
-          </p>
-        </div>
-      </Layout>
-    )
-  }
-
-  const completedCount = topics.filter(t => completedIds.has(t.id)).length
-  const progress = topics.length > 0 ? Math.round((completedCount / topics.length) * 100) : 0
+  const masteredCount = topics.filter(t => topicStats[t.id]?.isMastered).length
+  const progress = topics.length > 0 ? Math.round((masteredCount / topics.length) * 100) : 0
   const totalDue = Object.values(topicStats).reduce((s, t) => s + t.dueCount, 0)
+  const totalNew = Object.values(topicStats).reduce((s, t) => s + t.newCount, 0)
 
   return (
     <Layout>
-      <div className="max-w-3xl mx-auto px-6 sm:px-10 pt-8 pb-24">
+      <div className="max-w-4xl mx-auto px-4 sm:px-10 pt-8 pb-28">
 
         {/* Back link */}
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.3 }}
-          className="mb-8"
+          className="mb-6"
         >
           <Link
             to="/"
-            className="inline-flex items-center gap-2 transition-colors group"
-            style={{ color: '#2a3a50' }}
+            className="inline-flex items-center gap-2 transition-colors"
+            style={{ color: '#3a5070' }}
             onMouseEnter={e => e.currentTarget.style.color = '#0891b2'}
-            onMouseLeave={e => e.currentTarget.style.color = '#2a3a50'}
+            onMouseLeave={e => e.currentTarget.style.color = '#3a5070'}
           >
-            <ChevronLeft size={13} />
-            <span
-              className="font-barlow font-bold text-[11px] uppercase tracking-[0.2em]"
-            >
-              Genel Bakış
-            </span>
+            <ChevronLeft size={14} />
+            <span className="font-barlow font-bold text-xs uppercase tracking-[0.2em]">Genel Bakış</span>
           </Link>
         </motion.div>
 
@@ -211,12 +162,7 @@ export default function BranchPage() {
           transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
           className="mb-8 relative overflow-hidden"
         >
-          {/* Branch color accent */}
-          <div
-            className="absolute left-0 top-0 bottom-0 w-[4px]"
-            style={{ background: branch.color }}
-          />
-          {/* Background diagonal */}
+          <div className="absolute left-0 top-0 bottom-0 w-[4px]" style={{ background: branch.color }} />
           <div
             className="absolute right-0 top-0 bottom-0 pointer-events-none"
             style={{
@@ -227,67 +173,33 @@ export default function BranchPage() {
           />
 
           <div className="pl-6 pr-4 py-5 relative z-10">
-            {/* Branch eyebrow */}
-            <div className="mb-2">
-              <span
-                className="font-barlow font-bold text-[10px] tracking-[0.22em] uppercase px-2 py-0.5"
-                style={{
-                  color: branch.color,
-                  background: `${branch.color}12`,
-                  border: `1px solid ${branch.color}25`,
-                }}
-              >
-                Klinik Bilim
-              </span>
-            </div>
-
             <h1
               className="font-bebas text-white tracking-wider leading-none"
-              style={{
-                fontSize: 'clamp(32px, 6vw, 68px)',
-                transform: 'skewX(-3deg)',
-                display: 'inline-block',
-              }}
+              style={{ fontSize: 'clamp(32px, 6vw, 68px)', transform: 'skewX(-3deg)', display: 'inline-block' }}
             >
               {branch.name.toUpperCase()}
             </h1>
 
             {user && !loading ? (
               <div className="mt-4">
-                {/* Stats row */}
                 <div
-                  className="flex items-center gap-4 font-barlow font-bold text-[10px] uppercase tracking-wider mb-3"
-                  style={{ color: '#3a5070' }}
+                  className="flex items-center flex-wrap gap-x-4 gap-y-1 font-barlow font-bold text-xs uppercase tracking-wider mb-3"
+                  style={{ color: '#4a6080' }}
                 >
-                  <span>{completedCount}/{topics.length} konu</span>
-                  {totalDue > 0 && (
-                    <span style={{ color: branch.color }}>{totalDue} kart bekliyor</span>
-                  )}
-                  <span
-                    className="font-bebas text-lg leading-none"
-                    style={{ color: branch.color }}
-                  >
-                    {progress}%
-                  </span>
+                  <span><span style={{ color: '#10b981' }}>{masteredCount}</span>/{topics.length} konu bitti</span>
+                  {totalNew > 0 && <span style={{ color: '#6680ff' }}>{totalNew} yeni</span>}
+                  {totalDue > 0 && <span style={{ color: branch.color }}>{totalDue} bekliyor</span>}
                 </div>
-                {/* Progress bar */}
-                <div className="h-[2px] w-64 max-w-full" style={{ background: '#1a2d45' }}>
+                <div className="h-[3px] w-72 max-w-full" style={{ background: '#1a2d45' }}>
                   <motion.div
                     className="h-full"
-                    style={{ background: branch.color }}
+                    style={{ background: '#10b981' }}
                     initial={{ width: 0 }}
                     animate={{ width: `${progress}%` }}
                     transition={{ duration: 0.9, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
                   />
                 </div>
               </div>
-            ) : !loading ? (
-              <p
-                className="font-barlow font-bold text-[10px] uppercase tracking-[0.2em] mt-2"
-                style={{ color: '#2a3a50' }}
-              >
-                {topics.length} konu
-              </p>
             ) : null}
           </div>
         </motion.div>
@@ -296,12 +208,9 @@ export default function BranchPage() {
         <ExamWisdomPanel branchColor={branch.color} data={getExamWisdom(branch.id)} />
 
         {/* Topics divider */}
-        <div className="flex items-center gap-3 mb-3">
+        <div className="flex items-center gap-3 mb-3 flex-wrap">
           <div className="w-[3px] h-4" style={{ background: branch.color }} />
-          <span
-            className="font-barlow font-bold text-[11px] uppercase tracking-[0.2em]"
-            style={{ color: '#2a3a50' }}
-          >
+          <span className="font-barlow font-bold text-xs uppercase tracking-[0.2em]" style={{ color: '#4a6080' }}>
             Konular
           </span>
           <div className="flex-1 h-px" style={{ background: '#1a2d45' }} />
@@ -310,7 +219,7 @@ export default function BranchPage() {
               {bulkMode && (
                 <button
                   onClick={selectAllBulkTopics}
-                  className="font-barlow font-bold text-[10px] uppercase tracking-wider px-2 py-1 transition-colors"
+                  className="font-barlow font-bold text-[11px] uppercase tracking-wider px-2.5 py-1.5 transition-colors"
                   style={{ color: branch.color, background: `${branch.color}0e`, border: `1px solid ${branch.color}40` }}
                 >
                   Tümünü Seç
@@ -318,25 +227,17 @@ export default function BranchPage() {
               )}
               <button
                 onClick={toggleBulkMode}
-                className="flex items-center gap-1.5 font-barlow font-bold text-[10px] uppercase tracking-wider px-2.5 py-1 transition-colors"
+                className="flex items-center gap-1.5 font-barlow font-bold text-[11px] uppercase tracking-wider px-3 py-1.5 transition-colors"
                 style={bulkMode ? {
                   color: '#fff', background: branch.color, border: `1px solid ${branch.color}`,
                 } : {
-                  color: '#3a5070', background: 'transparent', border: '1px solid #1e3555',
+                  color: '#6a8aaa', background: 'transparent', border: '1px solid #1e3555',
                 }}
               >
-                {bulkMode ? <X size={11} /> : <Layers size={11} />}
+                {bulkMode ? <X size={12} /> : <Layers size={12} />}
                 {bulkMode ? 'VAZGEÇ' : 'TOPLU ÇÖZ'}
               </button>
             </>
-          )}
-          {!loading && !bulkMode && (
-            <span
-              className="font-barlow font-bold text-[10px] uppercase tracking-wider"
-              style={{ color: '#1a2d45' }}
-            >
-              {topics.length}
-            </span>
           )}
         </div>
 
@@ -344,16 +245,8 @@ export default function BranchPage() {
         {loading ? (
           <div className="space-y-[2px]">
             {[1, 2, 3, 4, 5].map(i => (
-              <div
-                key={i}
-                className="relative overflow-hidden"
-                style={{ height: 72, background: '#0a1525' }}
-              >
+              <div key={i} className="relative overflow-hidden" style={{ height: 76, background: '#0a1525' }}>
                 <div className="shimmer absolute inset-0" style={{ animationDelay: `${i * 0.08}s` }} />
-                <div
-                  className="absolute left-0 top-0 bottom-0 w-[3px]"
-                  style={{ background: '#1a2d45' }}
-                />
               </div>
             ))}
           </div>
@@ -365,27 +258,24 @@ export default function BranchPage() {
             initial="hidden"
             animate="show"
             className="flex flex-col"
-            style={{ gap: '2px' }}
+            style={{ gap: '3px' }}
           >
-            {topics.map((topic, idx) => {
-              const stats = topicStats[topic.id] || {}
-              const isCompleted = completedIds.has(topic.id)
-              return (
-                <motion.div key={topic.id} variants={itemVariants}>
-                  <TopicCard
-                    topic={topic}
-                    stats={stats}
-                    isCompleted={isCompleted}
-                    showProgress={!!user}
-                    branchColor={branch.color}
-                    index={idx}
-                    bulkMode={bulkMode}
-                    isSelected={selectedBulk.has(topic.id)}
-                    onToggleBulk={toggleBulkTopic}
-                  />
-                </motion.div>
-              )
-            })}
+            {topics.map((topic, idx) => (
+              <motion.div key={topic.id} variants={itemVariants}>
+                <TopicCard
+                  topic={topic}
+                  stats={topicStats[topic.id] || {}}
+                  showProgress={!!user}
+                  branchColor={branch.color}
+                  index={idx}
+                  bulkMode={bulkMode}
+                  isSelected={selectedBulk.has(topic.id)}
+                  onToggleBulk={toggleBulkTopic}
+                  onSolve={() => setPanelTopicIds(topic.id)}
+                  onShowText={() => setTextTopic(topic)}
+                />
+              </motion.div>
+            ))}
           </motion.div>
         )}
       </div>
@@ -402,10 +292,9 @@ export default function BranchPage() {
             style={{ background: 'linear-gradient(to top, #06101e 55%, transparent)', zIndex: 50 }}
           >
             <motion.button
-              whileHover={{ y: -3, boxShadow: `0 12px 48px ${branch.color}45` }}
               whileTap={{ scale: 0.97 }}
               onClick={startBulkSolve}
-              className="w-full max-w-md flex items-center justify-center gap-3 py-4 font-bebas tracking-[0.22em] text-xl text-white transition-all duration-200 relative overflow-hidden"
+              className="w-full max-w-md flex items-center justify-center gap-3 py-4 font-bebas tracking-[0.22em] text-xl text-white relative overflow-hidden"
               style={{
                 background: branch.color,
                 clipPath: 'polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px))',
@@ -413,10 +302,7 @@ export default function BranchPage() {
             >
               <Zap size={16} strokeWidth={2.5} />
               BAŞLA
-              <span
-                className="font-barlow font-bold text-[12px] uppercase tracking-wider ml-1"
-                style={{ opacity: 0.75 }}
-              >
+              <span className="font-barlow font-bold text-[12px] uppercase tracking-wider ml-1" style={{ opacity: 0.75 }}>
                 {selectedBulk.size} konu · {bulkSelectedQuestionCount} soru
               </span>
               <ChevronRight size={18} />
@@ -425,136 +311,122 @@ export default function BranchPage() {
         )}
       </AnimatePresence>
 
-      {/* ── Toplu çöz paneli ── */}
       <AnimatePresence>
-        {bulkTopicIds && (
-          <QuestionPanel
-            topicId={bulkTopicIds}
-            onClose={closeBulkSolve}
-          />
+        {panelTopicIds && (
+          <QuestionPanel topicId={panelTopicIds} onClose={closePanel} />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {textTopic && (
+          <QuestionsTextModal topic={textTopic} onClose={() => setTextTopic(null)} />
         )}
       </AnimatePresence>
     </Layout>
   )
 }
 
-function TopicCard({ topic, stats, isCompleted, showProgress, branchColor, index, bulkMode = false, isSelected = false, onToggleBulk }) {
-  const isMastered = showProgress && stats.totalCount > 0
-    && stats.newCount === 0 && stats.dueCount === 0 && stats.learnedCount > 0
-  const hasPending = (stats.dueCount || 0) + (stats.newCount || 0) > 0
+function TopicCard({ topic, stats, showProgress, branchColor, index, bulkMode, isSelected, onToggleBulk, onSolve, onShowText }) {
+  const isMastered = showProgress && stats.isMastered
+  const pending = (stats.dueCount || 0) + (stats.newCount || 0)
+  const hasPending = pending > 0
+  const disabledInBulk = bulkMode && !hasPending
 
-  const baseBg = bulkMode && isSelected ? `${branchColor}14` : isMastered ? 'rgba(16,185,129,0.09)' : '#0a1525'
-  const hoverBg = isMastered ? 'rgba(16,185,129,0.15)' : '#0d1a2e'
-  const baseBorder = bulkMode && isSelected ? branchColor : isMastered ? '#10b981' : 'transparent'
+  const bg = bulkMode && isSelected ? `${branchColor}18` : isMastered ? 'rgba(16,185,129,0.10)' : '#0a1525'
+  const borderColor = bulkMode && isSelected ? branchColor : isMastered ? '#10b981' : '#14253a'
 
-  const cardInner = (
-    <motion.div
-      whileHover={!bulkMode || hasPending ? { x: 6 } : {}}
-      whileTap={!bulkMode || hasPending ? { scale: 0.99 } : {}}
-      className="relative overflow-hidden flex items-center gap-4 group"
+  function handleCardClick() {
+    if (bulkMode) onToggleBulk(topic.id)
+    else if (stats.totalCount > 0) onSolve()
+  }
+
+  return (
+    <div
+      onClick={handleCardClick}
+      className="relative overflow-hidden flex flex-col sm:flex-row sm:items-center gap-3 transition-colors"
       style={{
-        background: baseBg,
-        borderLeft: `3px solid ${baseBorder}`,
-        padding: '1rem 1.25rem',
-        opacity: bulkMode && !hasPending ? 0.35 : 1,
-        cursor: bulkMode && !hasPending ? 'not-allowed' : 'pointer',
-        transition: 'background 0.15s ease, border-left-color 0.15s ease',
+        background: bg,
+        borderLeft: `3px solid ${borderColor}`,
+        padding: '0.9rem 1.1rem',
+        opacity: disabledInBulk ? 0.35 : 1,
+        cursor: disabledInBulk ? 'not-allowed' : 'pointer',
+        boxShadow: isMastered && !bulkMode ? 'inset 0 0 24px rgba(16,185,129,0.08)' : 'none',
       }}
-      onMouseEnter={e => {
-        if (bulkMode && isSelected) return
-        e.currentTarget.style.borderLeftColor = isMastered ? '#10b981' : branchColor
-        e.currentTarget.style.background = hoverBg
-      }}
-      onMouseLeave={e => {
-        if (bulkMode && isSelected) return
-        e.currentTarget.style.borderLeftColor = baseBorder
-        e.currentTarget.style.background = baseBg
-      }}
-      onClick={bulkMode ? () => onToggleBulk(topic.id) : undefined}
     >
-      {/* Mastered glow */}
-      {isMastered && !bulkMode && (
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{ boxShadow: 'inset 0 0 24px rgba(16,185,129,0.1)' }}
-        />
-      )}
+      <div className="flex items-center gap-3 flex-1 min-w-0">
+        {bulkMode ? (
+          <div
+            className="flex-shrink-0 flex items-center justify-center"
+            style={{
+              width: 18, height: 18,
+              border: `2px solid ${isSelected ? branchColor : '#2a4060'}`,
+              background: isSelected ? branchColor : 'transparent',
+            }}
+          >
+            {isSelected && <Check size={11} strokeWidth={3} style={{ color: '#000' }} />}
+          </div>
+        ) : (
+          <div className="flex-shrink-0 font-barlow font-bold text-xs tracking-wider w-6 text-center" style={{ color: isMastered ? '#10b981' : '#2a4060' }}>
+            {isMastered ? '✓' : String(index + 1).padStart(2, '0')}
+          </div>
+        )}
 
-      {/* Bulk checkbox / Completion state */}
-      {bulkMode ? (
-        <div
-          className="flex-shrink-0 flex items-center justify-center transition-all duration-150"
-          style={{
-            width: 15,
-            height: 15,
-            border: `2px solid ${isSelected ? branchColor : '#1e3555'}`,
-            background: isSelected ? branchColor : 'transparent',
-            clipPath: 'polygon(0 0, calc(100% - 3px) 0, 100% 3px, 100% 100%, 3px 100%, 0 calc(100% - 3px))',
-          }}
-        >
-          {isSelected && <Check size={9} strokeWidth={3} style={{ color: '#000' }} />}
+        <div className="flex-1 min-w-0">
+          <h3 className="text-[15px] font-semibold leading-snug" style={{ color: isMastered ? '#a7f3d0' : '#d8dce8' }}>
+            {topic.title}
+          </h3>
+          {stats.totalCount > 0 && (
+            <div className="flex items-center flex-wrap gap-x-3 gap-y-0.5 mt-1 font-barlow font-bold text-[11px] uppercase tracking-wider">
+              {showProgress && stats.newCount > 0 && <span style={{ color: '#6680ff' }}>{stats.newCount} yeni</span>}
+              {showProgress && stats.dueCount > 0 && <span style={{ color: branchColor }}>{stats.dueCount} bekliyor</span>}
+              {showProgress && stats.learnedCount > 0 && (
+                <span style={{ color: '#10b981' }}>{stats.learnedCount} öğrenildi</span>
+              )}
+              <span style={{ color: '#2a4060' }}>{stats.totalCount} soru</span>
+            </div>
+          )}
         </div>
-      ) : showProgress && (
-        <div className="flex-shrink-0">
-          {isCompleted ? (
-            <CheckCircle2 size={16} color={branchColor} />
-          ) : (
-            <Circle size={16} color="#1e3040" />
+      </div>
+
+      {!bulkMode && stats.totalCount > 0 && (
+        <div className="flex items-center gap-1.5 flex-shrink-0 sm:ml-2" onClick={e => e.stopPropagation()}>
+          <button
+            onClick={onSolve}
+            className="flex items-center gap-1.5 font-barlow font-bold text-[11px] uppercase tracking-wider px-3 py-2 transition-colors"
+            style={{
+              color: hasPending ? '#fff' : '#6a8aaa',
+              background: hasPending ? branchColor : 'transparent',
+              border: `1px solid ${hasPending ? branchColor : '#1e3555'}`,
+            }}
+            title="Bu konunun sorularını çöz"
+          >
+            <Play size={11} fill={hasPending ? '#fff' : 'none'} />
+            Çöz{hasPending ? ` · ${pending}` : ''}
+          </button>
+          <button
+            onClick={onShowText}
+            className="flex items-center gap-1.5 font-barlow font-bold text-[11px] uppercase tracking-wider px-3 py-2 transition-colors"
+            style={{ color: '#8aa4c0', background: 'transparent', border: '1px solid #1e3555' }}
+            title="Tüm soruları metin olarak gör / kopyala"
+          >
+            <FileText size={12} />
+            Metin
+          </button>
+          {stats.flaggedCount > 0 && (
+            <Link
+              to={`/flagged?topic=${topic.id}`}
+              className="flex items-center gap-1 font-barlow font-bold text-[11px] uppercase tracking-wider px-2.5 py-2"
+              style={{ color: '#ff8888', background: 'rgba(204,0,0,0.08)', border: '1px solid rgba(204,0,0,0.35)' }}
+              title="Bu konunun bayraklı soruları"
+            >
+              <Flag size={11} fill="#ff8888" />
+              {stats.flaggedCount}
+            </Link>
           )}
         </div>
       )}
-
-      {/* Index number */}
-      <div
-        className="flex-shrink-0 font-barlow font-bold text-[11px] tracking-wider w-6 text-center"
-        style={{ color: '#1e3040' }}
-      >
-        {String(index + 1).padStart(2, '0')}
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 min-w-0 relative z-10">
-        <h3
-          className="text-sm font-semibold leading-snug"
-          style={{ color: isCompleted && showProgress ? '#3a4a5a' : '#d8dce8' }}
-        >
-          {topic.title}
-        </h3>
-        {stats.totalCount > 0 && (
-          <div
-            className="flex items-center gap-3 mt-1 font-barlow font-bold text-[10px] uppercase tracking-wider"
-          >
-            {showProgress && stats.newCount > 0 && (
-              <span style={{ color: '#4466ff' }}>{stats.newCount} yeni</span>
-            )}
-            {showProgress && stats.dueCount > 0 && (
-              <span style={{ color: branchColor }}>{stats.dueCount} bekliyor</span>
-            )}
-            {showProgress && stats.learnedCount > 0 && (
-              <span style={{ color: '#10b981' }}>
-                {stats.learnedCount} öğrenildi{isMastered ? ' ✓' : ''}
-              </span>
-            )}
-            {(!showProgress || (stats.newCount === 0 && stats.dueCount === 0 && stats.learnedCount === 0)) && (
-              <span style={{ color: '#1e3040' }}>{stats.totalCount} soru</span>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Arrow */}
-      {!bulkMode && (
-        <ChevronRight
-          size={13}
-          className="relative z-10 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-150"
-          style={{ color: branchColor }}
-        />
-      )}
-    </motion.div>
+    </div>
   )
-
-  if (bulkMode) return cardInner
-  return <Link to={`/topic/${topic.id}`}>{cardInner}</Link>
 }
 
 function ExamWisdomPanel({ branchColor, data }) {

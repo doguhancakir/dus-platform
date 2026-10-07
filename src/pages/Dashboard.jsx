@@ -3,11 +3,11 @@ import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase, fetchAllRows } from '../lib/supabase'
-import { BRANCHES, TEMEL_BILIMLER, getBranchById } from '../lib/data'
+import { BRANCHES, TEMEL_BILIMLER } from '../lib/data'
+import { computeTopicStats } from '../lib/topicStats'
 import { Flag } from 'lucide-react'
 import { getDailyGoal, AGAIN_EXCLUDED_FROM_DATE } from '../lib/dailyGoal'
 import Layout from '../components/Layout'
-import ToothViewer from '../components/ToothViewer'
 import DailyCalendar from '../components/DailyCalendar'
 
 const containerVariants = {
@@ -35,9 +35,8 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(!!user)
   const [hoveredId, setHoveredId] = useState(null)
   const [branchImages, setBranchImages] = useState({})
-  const [showModel, setShowModel] = useState(false)
   const [streak, setStreak] = useState(0)
-  const [flaggedByTopic, setFlaggedByTopic] = useState([])
+  const [flaggedTotal, setFlaggedTotal] = useState(0)
 
   useEffect(() => {
     loadBranchImages()
@@ -66,50 +65,46 @@ export default function Dashboard() {
   async function loadStats() {
     try {
       const { data: topics } = await supabase.from('topics').select('id, branch_id')
-      const { data: progress } = await supabase
-        .from('user_topic_progress')
-        .select('topic_id')
-        .eq('user_id', user.id)
-        .eq('completed', true)
-
-      const completedIds = new Set(progress?.map(p => p.topic_id) || [])
-
-      const now = new Date().toISOString()
-      const dueCards = await fetchAllRows(q => q
-        .from('user_cards')
-        .select('question_id, status')
-        .eq('user_id', user.id)
-        .lte('due_date', now)
-        .neq('status', 'new')
-      )
 
       const questions = await fetchAllRows(q => q
         .from('questions')
-        .select('id, topic_id, topics(branch_id)')
+        .select('id, topic_id')
       )
 
-      const questionBranchMap = {}
-      questions?.forEach(q => { questionBranchMap[q.id] = q.topics?.branch_id })
+      const allCards = await fetchAllRows(q => q
+        .from('user_cards')
+        .select('question_id, status, due_date, flagged')
+        .eq('user_id', user.id)
+      )
+      const cardsMap = {}
+      allCards?.forEach(c => { cardsMap[c.question_id] = c })
 
-      const branchDue = {}
-      dueCards?.forEach(c => {
-        const branchId = questionBranchMap[c.question_id]
-        if (branchId) branchDue[branchId] = (branchDue[branchId] || 0) + 1
-      })
+      const qIdsByTopic = {}
+      questions?.forEach(q => { (qIdsByTopic[q.topic_id] ||= []).push(q.id) })
 
+      // Branş ilerlemesi = tüm soruları öğrenilmiş (yeşil) konu oranı
       const stats = {}
-      BRANCHES.forEach(b => {
+      ;[...BRANCHES, ...TEMEL_BILIMLER].forEach(b => {
         const branchTopics = topics?.filter(t => t.branch_id === b.id) || []
-        const completedCount = branchTopics.filter(t => completedIds.has(t.id)).length
+        let masteredCount = 0
+        let dueCount = 0
+        let newCount = 0
+        branchTopics.forEach(t => {
+          const ts = computeTopicStats(qIdsByTopic[t.id] || [], cardsMap)
+          if (ts.isMastered) masteredCount++
+          dueCount += ts.dueCount
+          newCount += ts.newCount
+        })
         stats[b.id] = {
           topicCount: branchTopics.length,
-          completedCount,
-          dueCount: branchDue[b.id] || 0,
-          progress: branchTopics.length > 0
-            ? Math.round((completedCount / branchTopics.length) * 100)
-            : 0,
+          masteredCount,
+          dueCount,
+          newCount,
+          progress: branchTopics.length > 0 ? Math.round((masteredCount / branchTopics.length) * 100) : 0,
         }
       })
+
+      setFlaggedTotal(allCards?.filter(c => c.flagged).length || 0)
 
       const todayStart = new Date()
       todayStart.setHours(0, 0, 0, 0)
@@ -269,46 +264,12 @@ export default function Dashboard() {
       // Need ≥2 consecutive days to "restart" after a break
       setStreak(computedStreak >= 2 ? computedStreak : 0)
 
-      // ── Bayraklı sorular: konuya göre grupla ────────────────────────
-      const flaggedCards = await fetchAllRows(q => q
-        .from('user_cards')
-        .select('question_id')
-        .eq('user_id', user.id)
-        .eq('flagged', true)
-      )
-      if (flaggedCards?.length) {
-        const flaggedQIds = flaggedCards.map(c => c.question_id)
-        const flaggedQs = await fetchAllRows(q => q
-          .from('questions').select('id, topic_id').in('id', flaggedQIds)
-        )
-        const countByTopic = {}
-        flaggedQs?.forEach(q => { countByTopic[q.topic_id] = (countByTopic[q.topic_id] || 0) + 1 })
-        const topicIds = Object.keys(countByTopic).map(Number)
-        const { data: topicRows } = await supabase
-          .from('topics').select('id, title, branch_id').in('id', topicIds)
-        const list = (topicRows || []).map(t => {
-          const b = getBranchById(t.branch_id)
-          return {
-            topicId: t.id,
-            title: t.title,
-            count: countByTopic[t.id] || 0,
-            branchName: b?.name || '',
-            branchColor: b?.color || '#cc0000',
-          }
-        }).sort((a, b) => b.count - a.count)
-        setFlaggedByTopic(list)
-      } else {
-        setFlaggedByTopic([])
-      }
     } catch (err) {
       console.error(err)
     }
     setLoading(false)
   }
 
-  const totalTopics = Object.values(branchStats).reduce((s, b) => s + b.topicCount, 0)
-  const completedTopics = Object.values(branchStats).reduce((s, b) => s + b.completedCount, 0)
-  const overallProgress = totalTopics > 0 ? Math.round((completedTopics / totalTopics) * 100) : 0
 
   return (
     <Layout>
@@ -441,23 +402,28 @@ export default function Dashboard() {
                 </button>
               )}
 
-              {/* 3D Model Button */}
-              <button
-                onClick={() => setShowModel(true)}
-                className="group flex items-center gap-3 font-barlow font-bold text-[11px] tracking-[0.22em] uppercase px-5 py-3 transition-all duration-200 w-fit"
-                style={{
-                  color: '#0891b2',
-                  background: 'rgba(8,145,178,0.08)',
-                  border: '1px solid rgba(8,145,178,0.3)',
-                  clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)',
-                }}
-                onMouseEnter={e => e.currentTarget.style.background = 'rgba(8,145,178,0.18)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'rgba(8,145,178,0.08)'}
-              >
-                <span style={{ fontSize: '1rem' }}>◈</span>
-                3D Dişlenme Modeli
-                <span style={{ opacity: 0.5 }}>→</span>
-              </button>
+              {/* Bayraklı sorular */}
+              {user && flaggedTotal > 0 && (
+                <button
+                  onClick={() => navigate('/flagged')}
+                  className="flex items-center gap-3 font-barlow font-bold text-[11px] tracking-[0.22em] uppercase px-5 py-3 transition-all duration-200 w-fit"
+                  style={{
+                    color: '#ff8888',
+                    background: 'rgba(204,0,0,0.07)',
+                    border: '1px solid rgba(204,0,0,0.35)',
+                    clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(204,0,0,0.16)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'rgba(204,0,0,0.07)'}
+                >
+                  <Flag size={14} fill="#ff8888" />
+                  Bayraklı Sorular
+                  <span className="font-bebas text-base leading-none px-1.5 py-0.5" style={{ background: 'rgba(204,0,0,0.25)', color: '#fff' }}>
+                    {flaggedTotal}
+                  </span>
+                  <span style={{ opacity: 0.5 }}>→</span>
+                </button>
+              )}
             </motion.div>
           </div>
 
@@ -507,21 +473,19 @@ export default function Dashboard() {
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
-          className="grid grid-cols-2 md:grid-cols-4"
+          className="grid grid-cols-2"
           style={{ background: '#080f1e', borderBottom: '1px solid #1a2d45', gap: '1px' }}
         >
           {[
             { label: 'BUGÜN ÇÖZÜLEN SORU', value: todayAnswered, color: '#0891b2' },
             { label: 'TOPLAM ÇÖZÜLEN SORU', value: totalGraduated, color: '#f0c040' },
-            { label: 'TAMAMLANAN KONU', value: completedTopics, color: '#10b981' },
-            { label: 'GENEL İLERLEME', value: `${overallProgress}%`, color: '#0891b2' },
           ].map((stat, i) => (
             <motion.div
               key={i}
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.22 + i * 0.06, ease: [0.22, 1, 0.36, 1] }}
-              className="relative overflow-hidden px-5 sm:px-7 py-5"
+              className="relative overflow-hidden px-5 sm:px-8 py-6"
               style={{ background: '#0a1628' }}
             >
               <div className="absolute left-0 top-0 bottom-0 w-[3px]" style={{ background: stat.color }} />
@@ -535,13 +499,13 @@ export default function Dashboard() {
               />
               <div
                 className="font-bebas leading-none tracking-wider relative z-10"
-                style={{ fontSize: 'clamp(28px, 5vw, 42px)', color: stat.color }}
+                style={{ fontSize: 'clamp(36px, 6vw, 56px)', color: stat.color }}
               >
                 {stat.value}
               </div>
               <div
-                className="font-barlow font-bold text-gray-600 uppercase tracking-[0.15em] mt-1 relative z-10"
-                style={{ fontSize: '9px' }}
+                className="font-barlow font-bold uppercase tracking-[0.15em] mt-1.5 relative z-10"
+                style={{ fontSize: '11px', color: '#5a7090' }}
               >
                 {stat.label}
               </div>
@@ -549,144 +513,6 @@ export default function Dashboard() {
           ))}
         </motion.div>
       )}
-
-      {/* ── BAYRAKLI SORULAR ── */}
-      {user && !loading && flaggedByTopic.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.24, ease: [0.22, 1, 0.36, 1] }}
-          className="mx-6 sm:mx-10 mt-6 mb-2"
-          style={{ background: '#0a1017', border: '1px solid rgba(204,0,0,0.25)', borderLeft: '4px solid #cc0000' }}
-        >
-          <div className="flex items-center gap-2 px-5 pt-4 pb-2">
-            <Flag size={13} color="#ff5252" />
-            <span className="font-bebas text-white tracking-widest text-base leading-none">
-              BAYRAKLI SORULAR
-            </span>
-            <span
-              className="font-barlow font-bold text-[10px] px-1.5 py-0.5 leading-none"
-              style={{ background: 'rgba(204,0,0,0.2)', color: '#ff8888' }}
-            >
-              {flaggedByTopic.reduce((s, t) => s + t.count, 0)}
-            </span>
-          </div>
-          <p className="font-barlow font-bold text-gray-600 text-[10px] uppercase tracking-wider px-5 pb-3" style={{ color: '#5a4040' }}>
-            Şimdilik sıradan çıkardığın sorular — hazır olunca inceleyip geri döndür
-          </p>
-          <div className="flex flex-col" style={{ borderTop: '1px solid rgba(204,0,0,0.12)' }}>
-            {flaggedByTopic.map((t, i) => (
-              <Link
-                key={t.topicId}
-                to={`/topic/${t.topicId}?flagged=1`}
-                className="flex items-center justify-between gap-3 px-5 py-2.5 transition-colors"
-                style={{
-                  borderTop: i === 0 ? 'none' : '1px solid rgba(255,255,255,0.03)',
-                }}
-                onMouseEnter={e => e.currentTarget.style.background = 'rgba(204,0,0,0.05)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-              >
-                <div className="min-w-0">
-                  <span className="text-sm leading-snug" style={{ color: '#c8ccd8' }}>{t.title}</span>
-                  {t.branchName && (
-                    <span className="block font-barlow font-bold text-[9px] uppercase tracking-wider" style={{ color: t.branchColor }}>
-                      {t.branchName}
-                    </span>
-                  )}
-                </div>
-                <span
-                  className="font-bebas text-base flex-shrink-0 px-2 py-0.5"
-                  style={{ color: '#ff8888', background: 'rgba(204,0,0,0.1)' }}
-                >
-                  {t.count}
-                </span>
-              </Link>
-            ))}
-          </div>
-        </motion.div>
-      )}
-
-
-      {/* ── MIXED QUIZ CTA ── */}
-      <motion.div
-        initial={{ opacity: 0, x: -40 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ delay: 0.3, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-        className="px-6 sm:px-10 mt-6 mb-4"
-      >
-        <Link to="/mixed-quiz" className="block group">
-          <motion.div
-            whileHover={{ scale: 1.006 }}
-            transition={{ duration: 0.2 }}
-            className="relative overflow-hidden"
-            style={{
-              background: 'linear-gradient(105deg, #080f1e 0%, #0a1628 60%, #06101a 100%)',
-              borderLeft: '4px solid #0891b2',
-              border: '1px solid #1a2d45',
-              borderLeftWidth: 4,
-              borderLeftColor: '#0891b2',
-            }}
-          >
-            {/* Diagonal background */}
-            <div
-              className="absolute right-0 top-0 bottom-0 pointer-events-none"
-              style={{
-                width: '35%',
-                background: 'linear-gradient(to left, rgba(8,145,178,0.07), transparent)',
-                clipPath: 'polygon(20% 0, 100% 0, 100% 100%, 0 100%)',
-              }}
-            />
-
-            {/* Arrow tab — right edge */}
-            <motion.div
-              className="absolute right-0 top-0 bottom-0 w-14 flex items-center justify-center"
-              style={{
-                background: '#0891b2',
-                clipPath: 'polygon(18px 0, 100% 0, 100% 100%, 0 100%)',
-              }}
-              whileHover={{ width: 80 }}
-              transition={{ duration: 0.2 }}
-            >
-              <span
-                className="font-bebas text-white text-xl pl-3 select-none"
-                style={{ letterSpacing: '0.05em' }}
-              >
-                →
-              </span>
-            </motion.div>
-
-            <div className="flex items-center gap-5 px-5 sm:px-7 py-5 pr-20 relative z-10">
-              {/* Icon */}
-              <div
-                className="flex-shrink-0 w-11 h-11 flex items-center justify-center font-bebas text-xl"
-                style={{
-                  background: 'rgba(8,145,178,0.12)',
-                  border: '1px solid rgba(8,145,178,0.3)',
-                  color: '#0891b2',
-                  clipPath: 'polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px))',
-                }}
-              >
-                ✦
-              </div>
-
-              <div className="flex-1 min-w-0">
-                <div
-                  className="font-bebas text-white tracking-widest leading-none"
-                  style={{ fontSize: 'clamp(18px, 3.5vw, 26px)', transform: 'skewX(-3deg)', display: 'inline-block' }}
-                >
-                  KARIŞIK SORU <span style={{ color: '#0891b2' }}>MODU</span>
-                </div>
-                <div
-                  className="font-barlow font-bold text-gray-600 uppercase tracking-[0.2em] mt-1"
-                  style={{ fontSize: '10px' }}
-                >
-                  Tüm branşlardan karışık · SM-2 yok · Sadece pratik
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        </Link>
-      </motion.div>
 
       {/* ── BRANCH CARDS ── */}
       <div className="px-6 sm:px-10 pb-20">
@@ -784,62 +610,6 @@ export default function Dashboard() {
           </motion.div>
         </div>
       </div>
-      {/* ── 3D TOOTH MODEL MODAL ── */}
-      <AnimatePresence>
-        {showModel && (
-          <motion.div
-            key="tooth-modal"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.25 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 lg:p-8"
-            style={{ background: 'rgba(4,8,18,0.96)', backdropFilter: 'blur(4px)' }}
-            onClick={(e) => { if (e.target === e.currentTarget) setShowModel(false) }}
-          >
-            <motion.div
-              initial={{ scale: 0.92, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.92, y: 20 }}
-              transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-              className="relative w-full"
-              style={{
-                maxWidth: 1100,
-                height: 'min(82vh, 700px)',
-                background: '#0a1628',
-                border: '1px solid rgba(8,145,178,0.25)',
-                borderLeft: '3px solid #0891b2',
-                clipPath: 'polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 0 100%)',
-              }}
-            >
-              {/* Header bar */}
-              <div
-                className="absolute top-0 left-0 right-0 flex items-center justify-between px-5 py-3 z-20"
-                style={{ borderBottom: '1px solid rgba(8,145,178,0.15)', background: 'rgba(8,145,178,0.06)' }}
-              >
-                <div className="flex items-center gap-3">
-                  <span className="font-barlow font-bold text-[10px] tracking-[0.28em] uppercase" style={{ color: '#0891b2' }}>
-                    ◈ Daimi Dişlenme · 3D İnteraktif Model
-                  </span>
-                </div>
-                <button
-                  onClick={() => setShowModel(false)}
-                  className="font-barlow font-bold text-[10px] tracking-[0.2em] uppercase flex items-center gap-2 px-3 py-1.5 transition-colors"
-                  style={{ color: '#0891b2', border: '1px solid rgba(8,145,178,0.2)' }}
-                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(8,145,178,0.1)'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                >
-                  Kapat ✕
-                </button>
-              </div>
-              {/* Viewer */}
-              <div className="absolute inset-0 top-11">
-                <ToothViewer />
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </Layout>
   )
 }
@@ -847,7 +617,7 @@ export default function Dashboard() {
 function BranchCard({ branch, stats, loading, showProgress, isHovered, isDimmed, onHover, imageUrl }) {
   const progress = stats?.progress || 0
   const topicCount = stats?.topicCount ?? '—'
-  const completedCount = stats?.completedCount || 0
+  const masteredCount = stats?.masteredCount || 0
   const dueCount = stats?.dueCount || 0
 
   return (
@@ -920,7 +690,7 @@ function BranchCard({ branch, stats, loading, showProgress, isHovered, isDimmed,
                   className="flex items-center gap-3 mt-1.5 font-barlow font-bold text-[10px] uppercase tracking-wider"
                   style={{ color: '#3a4a60' }}
                 >
-                  <span>{completedCount}/{topicCount} konu</span>
+                  <span>{masteredCount}/{topicCount} konu bitti</span>
                   {dueCount > 0 && (
                     <span style={{ color: branch.color }}>{dueCount} bekliyor</span>
                   )}
