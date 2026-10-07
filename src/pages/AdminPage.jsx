@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, Trash2, Edit3, Save, X, Loader2, Upload, FileText, Image, Copy, Download } from 'lucide-react'
+import { Plus, Trash2, Edit3, Save, X, Loader2, Upload, FileText, Copy, Download, KeyRound, UserPlus, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { BRANCHES, TEMEL_BILIMLER } from '../lib/data'
+import { questionsToText, downloadTextFile, toFileSlug } from '../lib/questionText'
+import { DEFAULT_STUDY_PROMPT } from '../lib/defaultStudyPrompt'
 
 const ALL_BRANCHES = [...BRANCHES, ...TEMEL_BILIMLER].sort((a, b) => a.id - b.id)
 import Layout from '../components/Layout'
@@ -64,17 +66,18 @@ export default function AdminPage() {
         </div>
 
         {/* Tabs */}
-        <div className="flex items-center mb-6" style={{ borderBottom: '2px solid #1a2d45' }}>
+        <div className="flex items-center mb-6 overflow-x-auto" style={{ borderBottom: '2px solid #1a2d45' }}>
           {[
             { id: 'topics', label: 'KONULAR' },
             { id: 'questions', label: 'SORULAR' },
             { id: 'branches', label: 'BRANŞLAR' },
-            { id: 'import', label: 'İÇE AKTAR' },
+            { id: 'users', label: 'KULLANICILAR' },
+            { id: 'prompt', label: 'PROMPT' },
           ].map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className="font-bebas tracking-[0.12em] px-5 py-2.5 text-sm transition-all duration-150 relative"
+              className="font-bebas tracking-[0.12em] px-5 py-2.5 text-sm transition-all duration-150 relative whitespace-nowrap"
               style={{
                 color: activeTab === tab.id ? '#0891b2' : '#555',
                 borderBottom: activeTab === tab.id ? '2px solid #0891b2' : '2px solid transparent',
@@ -90,7 +93,8 @@ export default function AdminPage() {
           {activeTab === 'topics' && <TopicsTab key="topics" />}
           {activeTab === 'questions' && <QuestionsTab key="questions" />}
           {activeTab === 'branches' && <BranchesTab key="branches" />}
-          {activeTab === 'import' && <ImportTab key="import" />}
+          {activeTab === 'users' && <UsersTab key="users" adminNickname={user?.nickname} />}
+          {activeTab === 'prompt' && <PromptTab key="prompt" />}
         </AnimatePresence>
       </div>
     </Layout>
@@ -249,18 +253,6 @@ function TopicsTab() {
 }
 
 /* ── QUESTIONS TAB ── */
-function buildQuestionsPlainText(questions) {
-  const letters = ['A', 'B', 'C', 'D', 'E', 'F']
-  return questions.map((q, i) => {
-    const lines = [`${i + 1}. ${q.question_text}`]
-    ;(q.options || []).forEach((opt, oi) => {
-      lines.push(`${letters[oi] ?? oi + 1}) ${opt}${oi === q.correct_answer ? ' ✓' : ''}`)
-    })
-    if (q.explanation) lines.push(`Açıklama: ${q.explanation}`)
-    return lines.join('\n')
-  }).join('\n\n')
-}
-
 function QuestionsTab() {
   const [topics, setTopics] = useState([])
   const [selectedTopic, setSelectedTopic] = useState('')
@@ -268,6 +260,7 @@ function QuestionsTab() {
   const [loading, setLoading] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [showTextView, setShowTextView] = useState(false)
+  const [showImport, setShowImport] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [saving, setSaving] = useState(false)
   const [selectedIds, setSelectedIds] = useState(new Set())
@@ -360,6 +353,13 @@ function QuestionsTab() {
             Yeni Soru
           </button>
         )}
+        {selectedTopic && (
+          <button className="btn-ghost flex items-center gap-1.5 text-sm"
+            onClick={() => setShowImport(v => !v)}>
+            <Upload size={15} />
+            {showImport ? 'İçe Aktarmayı Kapat' : 'JSON İçe Aktar'}
+          </button>
+        )}
         {selectedTopic && questions.length > 0 && (
           <button className="btn-ghost flex items-center gap-1.5 text-sm"
             onClick={() => setShowTextView(v => !v)}>
@@ -368,6 +368,15 @@ function QuestionsTab() {
           </button>
         )}
       </div>
+
+      {showImport && selectedTopic && (
+        <JsonImportPanel
+          key={selectedTopic}
+          topicId={selectedTopic}
+          topicTitle={topics.find(t => String(t.id) === String(selectedTopic))?.title}
+          onImported={loadQuestions}
+        />
+      )}
 
       <AnimatePresence>
         {showTextView && selectedTopic && questions.length > 0 && (
@@ -383,7 +392,7 @@ function QuestionsTab() {
                     className="btn-primary flex items-center gap-1.5 text-xs px-3 py-1.5"
                     onClick={async () => {
                       try {
-                        await navigator.clipboard.writeText(buildQuestionsPlainText(questions))
+                        await navigator.clipboard.writeText(questionsToText(questions))
                         toast.success('Kopyalandı')
                       } catch {
                         toast.error('Kopyalanamadı')
@@ -396,21 +405,8 @@ function QuestionsTab() {
                   <button
                     className="btn-ghost flex items-center gap-1.5 text-xs px-3 py-1.5"
                     onClick={() => {
-                      const topicTitle = topics.find(t => String(t.id) === String(selectedTopic))?.title || 'sorular'
-                      const filename = topicTitle
-                        .toLocaleLowerCase('tr-TR')
-                        .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
-                        .replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
-                        .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'sorular'
-                      const blob = new Blob([buildQuestionsPlainText(questions)], { type: 'text/plain;charset=utf-8' })
-                      const url = URL.createObjectURL(blob)
-                      const a = document.createElement('a')
-                      a.href = url
-                      a.download = `${filename}.txt`
-                      document.body.appendChild(a)
-                      a.click()
-                      document.body.removeChild(a)
-                      setTimeout(() => URL.revokeObjectURL(url), 4000)
+                      const topicTitle = topics.find(t => String(t.id) === String(selectedTopic))?.title
+                      downloadTextFile(`${toFileSlug(topicTitle)}.txt`, questionsToText(questions))
                     }}
                   >
                     <Download size={13} />
@@ -422,7 +418,7 @@ function QuestionsTab() {
                 readOnly
                 className="input font-mono text-xs resize-y w-full"
                 style={{ minHeight: 320 }}
-                value={buildQuestionsPlainText(questions)}
+                value={questionsToText(questions)}
                 onFocus={e => e.target.select()}
               />
             </div>
@@ -591,20 +587,11 @@ function BranchesTab() {
   )
 }
 
-/* ── IMPORT TAB ── */
-function ImportTab() {
-  const [selectedBranchId, setSelectedBranchId] = useState('')
-  const [topics, setTopics] = useState([])
-  const [selectedTopicId, setSelectedTopicId] = useState('')
+/* ── JSON IMPORT (Sorular sekmesinin içinde, seçili konuya) ── */
+function JsonImportPanel({ topicId, topicTitle, onImported }) {
   const [jsonText, setJsonText] = useState('')
   const [importing, setImporting] = useState(false)
   const [result, setResult] = useState(null)
-
-  useEffect(() => {
-    if (!selectedBranchId) { setTopics([]); setSelectedTopicId(''); return }
-    supabase.from('topics').select('id, title').eq('branch_id', selectedBranchId).order('sort_order')
-      .then(({ data }) => { setTopics(data || []); setSelectedTopicId('') })
-  }, [selectedBranchId])
 
   const exampleJson = JSON.stringify([
     {
@@ -621,76 +608,298 @@ function ImportTab() {
     try {
       const data = JSON.parse(jsonText)
       if (!Array.isArray(data)) throw new Error('JSON array olmalı')
-      const withTopic = data.map(q => ({ ...q, topic_id: Number(selectedTopicId) }))
+      const withTopic = data.map(q => ({ ...q, topic_id: Number(topicId) }))
       const { data: inserted, error } = await supabase.from('questions').insert(withTopic).select()
       if (error) throw error
       setResult({ success: true, count: inserted.length })
+      setJsonText('')
+      onImported?.()
     } catch (err) {
       setResult({ success: false, message: err.message })
     }
     setImporting(false)
   }
 
-  const selectStyle = {
-    background: '#0a1628', border: '1px solid #1a2d45', color: '#e2e8f0',
-    padding: '0.5rem 0.75rem', fontSize: '0.75rem', width: '100%',
-    outline: 'none', appearance: 'none',
+  return (
+    <div className="p-5 space-y-4" style={{ background: '#0d1e35', border: '1px solid #1a2d45', borderLeft: '3px solid #0891b2' }}>
+      <div className="flex items-center gap-2">
+        <FileText size={16} className="text-[#0891b2]" />
+        <h3 className="font-bebas tracking-widest text-white">JSON İLE TOPLU SORU EKLE{topicTitle ? ` → ${topicTitle}` : ''}</h3>
+      </div>
+      <p className="text-[10px] text-gray-600 uppercase tracking-wider">
+        Sorular aşağıdaki formatta JSON olarak yapıştırın (seçili konuya eklenir):
+      </p>
+      <pre className="text-xs p-3 text-gray-500 overflow-x-auto"
+        style={{ background: '#0a1628', border: '1px solid #1a2d45', fontFamily: 'monospace' }}>
+        {exampleJson}
+      </pre>
+      <textarea className="input min-h-[200px] font-mono text-xs resize-y" placeholder="JSON verisi buraya yapıştırın..."
+        value={jsonText} onChange={e => setJsonText(e.target.value)} />
+      {result && (
+        <div className={`text-xs px-3 py-2 uppercase tracking-wider ${result.success ? 'text-emerald-400' : 'text-[#ff6b6b]'}`}
+          style={{
+            background: result.success ? 'rgba(16,185,129,0.08)' : 'rgba(8,145,178,0.08)',
+            borderLeft: `3px solid ${result.success ? '#22c55e' : '#0891b2'}`,
+          }}>
+          {result.success ? `✓ ${result.count} soru başarıyla içe aktarıldı!` : `Hata: ${result.message}`}
+        </div>
+      )}
+      <button className="btn-primary flex items-center gap-1.5 text-sm" onClick={handleImport}
+        disabled={importing || !jsonText.trim()}>
+        {importing ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+        İçe Aktar
+      </button>
+    </div>
+  )
+}
+
+/* ── USERS TAB ── */
+// Kullanıcı oluşturma / şifre değiştirme veritabanındaki admin fonksiyonlarıyla yapılır
+// (supabase_migration_overhaul.sql). Dışarıdan kayıt kapalı kalır.
+function rpcErrorMessage(error) {
+  if (!error) return null
+  if (error.code === 'PGRST202' || /could not find the function/i.test(error.message || '')) {
+    return 'Veritabanı fonksiyonu yok — supabase_migration_overhaul.sql henüz çalıştırılmamış.'
   }
+  return error.message || 'Bilinmeyen hata'
+}
+
+function UsersTab({ adminNickname }) {
+  const [users, setUsers] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [adminPassword, setAdminPassword] = useState(() => {
+    try { return sessionStorage.getItem('dus_admin_pw') || '' } catch { return '' }
+  })
+  const [newNick, setNewNick] = useState('')
+  const [newPw, setNewPw] = useState('')
+  const [creating, setCreating] = useState(false)
+  const [resetFor, setResetFor] = useState(null) // user id
+  const [resetPw, setResetPw] = useState('')
+  const [resetting, setResetting] = useState(false)
+
+  useEffect(() => { loadUsers() }, [])
+
+  function rememberAdminPassword(v) {
+    setAdminPassword(v)
+    try { sessionStorage.setItem('dus_admin_pw', v) } catch { /* yoksay */ }
+  }
+
+  async function loadUsers() {
+    setLoading(true)
+    let { data, error } = await supabase.from('users').select('id, nickname, is_admin, created_at').order('created_at')
+    if (error) {
+      ;({ data, error } = await supabase.from('users').select('id, nickname, is_admin'))
+    }
+    if (error) toast.error('Kullanıcılar yüklenemedi')
+    setUsers(data || [])
+    setLoading(false)
+  }
+
+  async function createUser() {
+    if (!adminPassword) { toast.error('Önce kendi admin şifreni gir'); return }
+    if (newNick.trim().length < 2) { toast.error('Kullanıcı adı en az 2 karakter'); return }
+    if (newPw.length < 4) { toast.error('Şifre en az 4 karakter'); return }
+    setCreating(true)
+    const { error } = await supabase.rpc('admin_create_user', {
+      p_admin_nickname: adminNickname,
+      p_admin_password: adminPassword,
+      p_nickname: newNick.trim(),
+      p_password: newPw,
+    })
+    setCreating(false)
+    if (error) { toast.error(rpcErrorMessage(error)); return }
+    toast.success(`${newNick.trim()} oluşturuldu`)
+    setNewNick('')
+    setNewPw('')
+    loadUsers()
+  }
+
+  async function setPassword(u) {
+    if (!adminPassword) { toast.error('Önce kendi admin şifreni gir'); return }
+    if (resetPw.length < 4) { toast.error('Şifre en az 4 karakter'); return }
+    setResetting(true)
+    const { error } = await supabase.rpc('admin_set_password', {
+      p_admin_nickname: adminNickname,
+      p_admin_password: adminPassword,
+      p_user_id: u.id,
+      p_new_password: resetPw,
+    })
+    setResetting(false)
+    if (error) { toast.error(rpcErrorMessage(error)); return }
+    toast.success(`${u.nickname} şifresi değişti`)
+    setResetFor(null)
+    setResetPw('')
+  }
+
+  const box = { background: '#0d1e35', border: '1px solid #1a2d45' }
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-      <div className="p-5 space-y-4" style={{ background: '#0d1e35', border: '1px solid #1a2d45', borderLeft: '3px solid #0891b2' }}>
-        <div className="flex items-center gap-2">
-          <FileText size={16} className="text-[#0891b2]" />
-          <h3 className="font-bebas tracking-widest text-white">JSON İLE TOPLU SORU İÇE AKTARMA</h3>
-        </div>
+      <div className="p-4 space-y-2" style={{ ...box, borderLeft: '3px solid #f59e0b' }}>
+        <p className="text-[10px] text-gray-500 uppercase tracking-widest flex items-center gap-1.5">
+          <KeyRound size={12} /> Senin şifren ({adminNickname}) — işlemleri onaylamak için
+        </p>
+        <input
+          className="input text-sm max-w-xs"
+          type="password"
+          autoComplete="current-password"
+          placeholder="Kendi giriş şifren"
+          value={adminPassword}
+          onChange={e => rememberAdminPassword(e.target.value)}
+        />
+        <p className="text-[10px] text-gray-600">Sadece bu sekme açıkken tarayıcıda tutulur, hiçbir yere kaydedilmez.</p>
+      </div>
 
-        {/* Branch selector */}
-        <div className="space-y-1">
-          <label className="text-[10px] text-gray-600 uppercase tracking-wider">1. Branş Seçin</label>
-          <select style={selectStyle} value={selectedBranchId} onChange={e => setSelectedBranchId(e.target.value)}>
-            <option value="">— Branş seçin —</option>
-            {ALL_BRANCHES.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-          </select>
+      <div className="p-4 space-y-3" style={{ ...box, borderLeft: '3px solid #0891b2' }}>
+        <h3 className="font-bebas tracking-widest text-white flex items-center gap-2"><UserPlus size={16} /> YENİ KULLANICI</h3>
+        <div className="flex flex-wrap gap-2">
+          <input className="input text-sm flex-1 min-w-[160px]" placeholder="Kullanıcı adı" autoComplete="off"
+            value={newNick} onChange={e => setNewNick(e.target.value)} />
+          <input className="input text-sm flex-1 min-w-[160px]" placeholder="Şifre (en az 4)" autoComplete="new-password"
+            value={newPw} onChange={e => setNewPw(e.target.value)} />
+          <button className="btn-primary flex items-center gap-1.5 text-sm" onClick={createUser} disabled={creating}>
+            {creating ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+            Oluştur
+          </button>
         </div>
+      </div>
 
-        {/* Topic selector */}
-        <div className="space-y-1">
-          <label className="text-[10px] text-gray-600 uppercase tracking-wider">2. Konu Seçin</label>
-          <select style={selectStyle} value={selectedTopicId} onChange={e => setSelectedTopicId(e.target.value)}
-            disabled={!selectedBranchId || topics.length === 0}>
-            <option value="">— Konu seçin —</option>
-            {topics.map(t => <option key={t.id} value={t.id}>{t.title}</option>)}
-          </select>
-        </div>
+      <div className="flex items-center justify-between">
+        <p className="text-[10px] text-gray-500 uppercase tracking-widest">{users.length} kullanıcı</p>
+        <button className="btn-ghost flex items-center gap-1.5 text-xs px-3 py-1.5" onClick={loadUsers}>
+          <RefreshCw size={12} /> Yenile
+        </button>
+      </div>
 
-        {/* JSON area — only shown once a topic is selected */}
-        {selectedTopicId && (
-          <>
-            <p className="text-[10px] text-gray-600 uppercase tracking-wider">
-              3. Sorular aşağıdaki formatta JSON olarak yapıştırın (topic_id otomatik atanır):
-            </p>
-            <pre className="text-xs p-3 text-gray-500 overflow-x-auto"
-              style={{ background: '#0a1628', border: '1px solid #1a2d45', fontFamily: 'monospace' }}>
-              {exampleJson}
-            </pre>
-            <textarea className="input min-h-[200px] font-mono text-xs resize-y" placeholder="JSON verisi buraya yapıştırın..."
-              value={jsonText} onChange={e => setJsonText(e.target.value)} />
-            {result && (
-              <div className={`text-xs px-3 py-2 uppercase tracking-wider ${result.success ? 'text-emerald-400' : 'text-[#ff6b6b]'}`}
-                style={{
-                  background: result.success ? 'rgba(16,185,129,0.08)' : 'rgba(8,145,178,0.08)',
-                  borderLeft: `3px solid ${result.success ? '#22c55e' : '#0891b2'}`,
-                }}>
-                {result.success ? `✓ ${result.count} soru başarıyla içe aktarıldı!` : `Hata: ${result.message}`}
+      {loading ? (
+        <div className="flex justify-center py-8"><Loader2 size={24} className="animate-spin text-[#0891b2]" /></div>
+      ) : (
+        <div className="space-y-[2px]">
+          {users.map(u => (
+            <div key={u.id} className="p-3 sm:p-4" style={box}>
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-gray-200 font-medium">
+                    {u.nickname}
+                    {u.is_admin && <span className="ml-2 text-[10px] uppercase tracking-wider px-1.5 py-0.5" style={{ color: '#f59e0b', border: '1px solid rgba(245,158,11,0.4)' }}>admin</span>}
+                  </p>
+                  {u.created_at && (
+                    <p className="text-[10px] text-gray-600 mt-0.5">
+                      {new Date(u.created_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    </p>
+                  )}
+                </div>
+                <button
+                  className="btn-ghost flex items-center gap-1.5 text-xs px-3 py-1.5"
+                  onClick={() => { setResetFor(resetFor === u.id ? null : u.id); setResetPw('') }}
+                >
+                  <KeyRound size={12} /> Şifre Değiştir
+                </button>
               </div>
-            )}
-            <button className="btn-primary flex items-center gap-1.5 text-sm" onClick={handleImport}
-              disabled={importing || !jsonText.trim()}>
-              {importing ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
-              İçe Aktar
+              {resetFor === u.id && (
+                <div className="flex flex-wrap gap-2 mt-3">
+                  <input className="input text-sm flex-1 min-w-[160px]" placeholder={`${u.nickname} için yeni şifre`}
+                    autoComplete="new-password" value={resetPw} onChange={e => setResetPw(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') setPassword(u) }} />
+                  <button className="btn-primary flex items-center gap-1.5 text-sm" onClick={() => setPassword(u)} disabled={resetting}>
+                    {resetting ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                    Kaydet
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </motion.div>
+  )
+}
+
+/* ── PROMPT TAB ── */
+// Çalışma promptunun yedeği. app_settings tablosu yoksa varsayılan metin gösterilir (kopyalanabilir).
+function PromptTab() {
+  const [text, setText] = useState('')
+  const [savedText, setSavedText] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [tableMissing, setTableMissing] = useState(false)
+  const [updatedAt, setUpdatedAt] = useState(null)
+
+  useEffect(() => {
+    supabase.from('app_settings').select('value, updated_at').eq('key', 'study_prompt').maybeSingle()
+      .then(({ data, error }) => {
+        if (error) setTableMissing(true)
+        const v = data?.value || DEFAULT_STUDY_PROMPT
+        setText(v)
+        setSavedText(data?.value || '')
+        setUpdatedAt(data?.updated_at || null)
+        setLoading(false)
+      })
+  }, [])
+
+  async function save() {
+    setSaving(true)
+    const now = new Date().toISOString()
+    const { error } = await supabase.from('app_settings').upsert({ key: 'study_prompt', value: text, updated_at: now })
+    setSaving(false)
+    if (error) {
+      toast.error('Kaydedilemedi — supabase_migration_overhaul.sql çalıştırılmış mı?')
+      return
+    }
+    setTableMissing(false)
+    setSavedText(text)
+    setUpdatedAt(now)
+    toast.success('Prompt kaydedildi')
+  }
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(text)
+      toast.success('Prompt kopyalandı')
+    } catch {
+      toast.error('Kopyalanamadı')
+    }
+  }
+
+  const dirty = text !== savedText
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
+      <div className="p-4 space-y-3" style={{ background: '#0d1e35', border: '1px solid #1a2d45', borderLeft: '3px solid #0891b2' }}>
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div>
+            <h3 className="font-bebas tracking-widest text-white">ÇALIŞMA PROMPTU</h3>
+            <p className="text-[10px] text-gray-600 uppercase tracking-widest mt-0.5">
+              {tableMissing
+                ? 'Veritabanı tablosu yok — SQL çalıştırılınca kaydedilebilir'
+                : updatedAt
+                  ? `Son kayıt: ${new Date(updatedAt).toLocaleString('tr-TR')}`
+                  : 'Henüz kaydedilmedi'}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button className="btn-ghost flex items-center gap-1.5 text-xs px-3 py-1.5" onClick={copy} disabled={loading}>
+              <Copy size={13} /> Kopyala
             </button>
-          </>
+            <button className="btn-primary flex items-center gap-1.5 text-xs px-3 py-1.5" onClick={save} disabled={loading || saving || !dirty}>
+              {saving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
+              {dirty ? 'Kaydet' : 'Kayıtlı'}
+            </button>
+            <button className="btn-ghost flex items-center gap-1.5 text-xs px-3 py-1.5" disabled={loading}
+              onClick={() => downloadTextFile('calisma-promptu.txt', text)}>
+              <Download size={13} /> .txt
+            </button>
+          </div>
+        </div>
+        {loading ? (
+          <div className="flex justify-center py-8"><Loader2 size={22} className="animate-spin text-[#0891b2]" /></div>
+        ) : (
+          <textarea
+            className="input font-mono text-xs resize-y w-full"
+            style={{ minHeight: 480 }}
+            value={text}
+            onChange={e => setText(e.target.value)}
+          />
         )}
       </div>
     </motion.div>
