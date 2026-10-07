@@ -8,7 +8,7 @@
  */
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Bold, Italic, Underline, Trash2, Type, Image as ImageIcon, ArrowLeft, History, Save, RefreshCw } from 'lucide-react'
+import { Bold, Italic, Underline, Trash2, Type, Image as ImageIcon, ArrowLeft, History, Save, RefreshCw, RotateCcw, RotateCw } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 const CANVAS_MIN   = 3000
@@ -62,6 +62,37 @@ function Handle({ pos, onMouseDown }) {
   )
 }
 
+/* ── Döndürme ───────────────────────────────────────────────────────────
+ * rotation (derece) opsiyonel bir alan. 0/undefined iken hiçbir transform
+ * uygulanmaz → eski notlar birebir aynı görünür. Döndürme merkezden yapılır. */
+function rotationStyle(el) {
+  return el.rotation ? { transform: `rotate(${el.rotation}deg)`, transformOrigin: '50% 50%' } : {}
+}
+function normalizeAngle(a) {
+  let r = Math.round(a) % 360
+  if (r > 180) r -= 360
+  if (r <= -180) r += 360
+  return r
+}
+function RotateHandle({ onMouseDown }) {
+  return (
+    <div
+      onMouseDown={onMouseDown}
+      title="Döndür (Shift: 15° adım)"
+      style={{
+        position: 'absolute', top: -34, left: '50%', marginLeft: -9,
+        width: 18, height: 18, borderRadius: '50%',
+        background: '#06101e', border: '2px solid #0891b2',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        color: '#0891b2', cursor: 'grab', zIndex: 9999,
+      }}
+    >
+      <RotateCw size={10} strokeWidth={3} />
+      <div style={{ position: 'absolute', top: 16, left: 7, width: 2, height: 14, background: 'rgba(8,145,178,0.6)', pointerEvents: 'none' }} />
+    </div>
+  )
+}
+
 /* ── Text element ────────────────────────────────────────────────────── */
 function DuplicateBtn({ onDuplicate }) {
   return (
@@ -92,7 +123,7 @@ function DuplicateBtn({ onDuplicate }) {
   )
 }
 
-function TextEl({ el, selected, editing, onMouseDown, onDoubleClick, onContentChange, onResizeMouseDown, onBlur, onDuplicate, onEditRef, onWidthChange }) {
+function TextEl({ el, selected, editing, onMouseDown, onDoubleClick, onContentChange, onResizeMouseDown, onRotateMouseDown, onBlur, onDuplicate, onEditRef, onWidthChange }) {
   const ref = useRef(null)
 
   // Editing moduna girince DOM ref'ini üst bileşene bildir
@@ -141,6 +172,7 @@ function TextEl({ el, selected, editing, onMouseDown, onDoubleClick, onContentCh
         outline: selected ? '1px solid rgba(8,145,178,0.8)' : '1px solid transparent',
         cursor: editing ? 'text' : 'move',
         userSelect: editing ? 'text' : 'none',
+        ...rotationStyle(el),
       }}
       onMouseDown={onMouseDown}
       onDoubleClick={onDoubleClick}
@@ -171,6 +203,7 @@ function TextEl({ el, selected, editing, onMouseDown, onDoubleClick, onContentCh
       {selected && !editing && (
         <>
           {onDuplicate && <DuplicateBtn onDuplicate={onDuplicate} />}
+          {onRotateMouseDown && <RotateHandle onMouseDown={onRotateMouseDown} />}
           <div
             onMouseDown={e => onResizeMouseDown(e, 'e')}
             style={{
@@ -188,7 +221,7 @@ function TextEl({ el, selected, editing, onMouseDown, onDoubleClick, onContentCh
 }
 
 /* ── Image element ───────────────────────────────────────────────────── */
-function ImageEl({ el, selected, onMouseDown, onResizeMouseDown, onDuplicate }) {
+function ImageEl({ el, selected, onMouseDown, onResizeMouseDown, onRotateMouseDown, onDuplicate }) {
   return (
     <div
       style={{
@@ -199,6 +232,7 @@ function ImageEl({ el, selected, onMouseDown, onResizeMouseDown, onDuplicate }) 
         cursor: 'move',
         userSelect: 'none',
         overflow: 'visible',
+        ...rotationStyle(el),
       }}
       onMouseDown={onMouseDown}
     >
@@ -213,6 +247,7 @@ function ImageEl({ el, selected, onMouseDown, onResizeMouseDown, onDuplicate }) 
       {selected && (
         <>
           {onDuplicate && <DuplicateBtn onDuplicate={onDuplicate} />}
+          {onRotateMouseDown && <RotateHandle onMouseDown={onRotateMouseDown} />}
           {Object.keys(HANDLES).map(h => (
             <Handle key={h} pos={h} onMouseDown={e => onResizeMouseDown(e, h)} />
           ))}
@@ -235,8 +270,8 @@ function ElementToolbar({ el, onChange, onDelete, onColorChange }) {
         background: 'rgba(4,12,24,0.97)',
         borderBottom: '1px solid #0d1e30',
         backdropFilter: 'blur(4px)',
-        padding: '6px 14px',
-        display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+        padding: '8px 14px',
+        display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
       }}
     >
       {el.type === 'text' && (
@@ -244,7 +279,7 @@ function ElementToolbar({ el, onChange, onDelete, onColorChange }) {
           {/* Font size */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
             <TBtn onClick={() => onChange({ fontSize: Math.max(8, (el.fontSize ?? 16) - 2) })}>−</TBtn>
-            <span style={{ color: '#2a4060', fontFamily: 'Barlow', fontWeight: 700, fontSize: 11, minWidth: 26, textAlign: 'center' }}>
+            <span style={{ color: '#5a7a9a', fontFamily: 'Barlow', fontWeight: 700, fontSize: 13, minWidth: 30, textAlign: 'center' }}>
               {el.fontSize ?? 16}
             </span>
             <TBtn onClick={() => onChange({ fontSize: Math.min(120, (el.fontSize ?? 16) + 2) })}>+</TBtn>
@@ -253,38 +288,59 @@ function ElementToolbar({ el, onChange, onDelete, onColorChange }) {
           <Sep />
 
           {/* B I U */}
-          <TBtn active={el.fontWeight === 'bold'}       onClick={() => onChange({ fontWeight: el.fontWeight === 'bold' ? 'normal' : 'bold' })}><Bold size={11} /></TBtn>
-          <TBtn active={el.fontStyle === 'italic'}      onClick={() => onChange({ fontStyle: el.fontStyle === 'italic' ? 'normal' : 'italic' })}><Italic size={11} /></TBtn>
-          <TBtn active={el.textDecoration === 'underline'} onClick={() => onChange({ textDecoration: el.textDecoration === 'underline' ? 'none' : 'underline' })}><Underline size={11} /></TBtn>
+          <TBtn active={el.fontWeight === 'bold'}       onClick={() => onChange({ fontWeight: el.fontWeight === 'bold' ? 'normal' : 'bold' })}><Bold size={15} /></TBtn>
+          <TBtn active={el.fontStyle === 'italic'}      onClick={() => onChange({ fontStyle: el.fontStyle === 'italic' ? 'normal' : 'italic' })}><Italic size={15} /></TBtn>
+          <TBtn active={el.textDecoration === 'underline'} onClick={() => onChange({ textDecoration: el.textDecoration === 'underline' ? 'none' : 'underline' })}><Underline size={15} /></TBtn>
 
           <Sep />
 
           {/* Color presets — onMouseDown + preventDefault: contentEditable odağı kaybolmaz */}
-          {COLORS.map(c => (
-            <button key={c}
-              onMouseDown={e => { e.preventDefault(); onColorChange ? onColorChange(c) : onChange({ color: c }) }}
-              style={{
-                width: 16, height: 16, background: c, border: el.color === c ? '2px solid #0891b2' : '1px solid #1a2d45',
-                cursor: 'pointer', flexShrink: 0, borderRadius: 2,
-              }} />
-          ))}
-          {/* Özel renk picker — dialog açıyor, seçim kayboluyor, tüm elementi renklendirir */}
-          <input type="color" value={el.color ?? '#e2e8f0'}
-            onChange={e => onChange({ color: e.target.value })}
-            title="Özel renk (tüm metni değiştirir)"
-            style={{ width: 20, height: 20, padding: 0, border: '1px solid #1a2d45', background: 'transparent', cursor: 'pointer', borderRadius: 2 }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            {COLORS.map(c => (
+              <button key={c}
+                title={c}
+                onMouseDown={e => { e.preventDefault(); onColorChange ? onColorChange(c) : onChange({ color: c }) }}
+                style={{
+                  width: 28, height: 28, background: c,
+                  border: el.color === c ? '3px solid #0891b2' : '1px solid #2a4060',
+                  boxShadow: el.color === c ? '0 0 0 2px #06101e inset' : 'none',
+                  cursor: 'pointer', flexShrink: 0, borderRadius: 4,
+                }} />
+            ))}
+            {/* Özel renk picker — dialog açıyor, seçim kayboluyor, tüm elementi renklendirir */}
+            <input type="color" value={el.color ?? '#e2e8f0'}
+              onChange={e => onChange({ color: e.target.value })}
+              title="Özel renk (tüm metni değiştirir)"
+              style={{ width: 36, height: 30, padding: 0, border: '1px solid #2a4060', background: 'transparent', cursor: 'pointer', borderRadius: 4 }} />
+          </div>
         </>
       )}
 
-      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5 }}>
-        <TBtn onClick={() => onChange({ zIndex: (el.zIndex ?? 1) + 1 })} title="Öne getir" style={{ fontSize: 10, padding: '0 6px', letterSpacing: '0.06em' }}>↑ ÖNE</TBtn>
-        <TBtn onClick={() => onChange({ zIndex: Math.max(0, (el.zIndex ?? 1) - 1) })} title="Arkaya gönder" style={{ fontSize: 10, padding: '0 6px', letterSpacing: '0.06em' }}>↓ ARKA</TBtn>
+      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+        {/* Döndür */}
+        <TBtn onClick={() => onChange({ rotation: normalizeAngle((el.rotation ?? 0) - 15) })} title="Sola döndür (15°)"><RotateCcw size={15} /></TBtn>
+        <button
+          onClick={() => onChange({ rotation: 0 })}
+          title="Döndürmeyi sıfırla"
+          style={{
+            minWidth: 44, height: 32, padding: '0 6px',
+            background: 'transparent', border: '1px solid #1a2d45',
+            color: el.rotation ? '#0891b2' : '#3a5070',
+            fontFamily: 'Barlow', fontWeight: 700, fontSize: 13, cursor: 'pointer',
+          }}
+        >
+          {el.rotation ?? 0}°
+        </button>
+        <TBtn onClick={() => onChange({ rotation: normalizeAngle((el.rotation ?? 0) + 15) })} title="Sağa döndür (15°)"><RotateCw size={15} /></TBtn>
+        <Sep />
+        <TBtn onClick={() => onChange({ zIndex: (el.zIndex ?? 1) + 1 })} title="Öne getir" style={{ fontSize: 11, padding: '0 8px', letterSpacing: '0.06em' }}>↑ ÖNE</TBtn>
+        <TBtn onClick={() => onChange({ zIndex: Math.max(0, (el.zIndex ?? 1) - 1) })} title="Arkaya gönder" style={{ fontSize: 11, padding: '0 8px', letterSpacing: '0.06em' }}>↓ ARKA</TBtn>
         <button onClick={onDelete} style={{
           display: 'flex', alignItems: 'center', gap: 4,
           color: '#ef4444', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)',
-          padding: '3px 8px', cursor: 'pointer', fontFamily: 'Barlow', fontWeight: 700, fontSize: 10, letterSpacing: '0.1em',
+          padding: '0 10px', height: 32, cursor: 'pointer', fontFamily: 'Barlow', fontWeight: 700, fontSize: 11, letterSpacing: '0.1em',
         }}>
-          <Trash2 size={10} /> SİL
+          <Trash2 size={13} /> SİL
         </button>
       </div>
     </motion.div>
@@ -294,11 +350,11 @@ function ElementToolbar({ el, onChange, onDelete, onColorChange }) {
 function TBtn({ active, onClick, children, title, style: extStyle }) {
   return (
     <button onClick={onClick} title={title} style={{
-      width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center',
+      minWidth: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center',
       background: active ? 'rgba(8,145,178,0.18)' : 'transparent',
       border: active ? '1px solid rgba(8,145,178,0.5)' : '1px solid #1a2d45',
-      color: active ? '#0891b2' : '#2a4060',
-      cursor: 'pointer', fontFamily: 'Barlow', fontWeight: 700, fontSize: 13,
+      color: active ? '#0891b2' : '#5a7a9a',
+      cursor: 'pointer', fontFamily: 'Barlow', fontWeight: 700, fontSize: 16,
       flexShrink: 0,
       ...extStyle,
     }}>
@@ -307,7 +363,7 @@ function TBtn({ active, onClick, children, title, style: extStyle }) {
   )
 }
 function Sep() {
-  return <div style={{ width: 1, height: 18, background: '#0d1e30', flexShrink: 0 }} />
+  return <div style={{ width: 1, height: 24, background: '#1a2d45', flexShrink: 0 }} />
 }
 
 /* ── Main Canvas ─────────────────────────────────────────────────────── */
@@ -588,7 +644,36 @@ export default function NotesCanvas({ canvasId, branchId, branchName, userId, on
         if (ds.type === 'move') {
           return { ...el, x: Math.max(0, ds.ox + dx), y: Math.max(0, ds.oy + dy) }
         }
+        if (ds.type === 'rotate') {
+          const ang = Math.atan2(e.clientY - ds.cy, e.clientX - ds.cx) * 180 / Math.PI
+          let rot = ds.orig + (ang - ds.startAngle)
+          if (e.shiftKey) rot = Math.round(rot / 15) * 15
+          else {
+            // 0/90/180/270 yakınında yapıştır
+            const snap = Math.round(rot / 90) * 90
+            if (Math.abs(rot - snap) < 4) rot = snap
+          }
+          return { ...el, rotation: normalizeAngle(rot) }
+        }
         // resize
+        if (ds.rot) {
+          // Dönmüş öğe: fare hareketini öğenin kendi eksenine çevir, karşı köşe sabit kalsın
+          const rad = ds.rot * Math.PI / 180
+          const cos = Math.cos(rad), sin = Math.sin(rad)
+          const ldx = dx * cos + dy * sin
+          const ldy = -dx * sin + dy * cos
+          let offX = 0, offY = 0, w = ds.ow, h = ds.oh
+          if (ds.handle === 'e')  { w = Math.max(60, ds.ow + ldx) }
+          if (ds.handle === 'se') { w = Math.max(60, ds.ow + ldx); h = Math.max(30, ds.oh + ldy) }
+          if (ds.handle === 'sw') { w = Math.max(60, ds.ow - ldx); h = Math.max(30, ds.oh + ldy); offX = ds.ow - w }
+          if (ds.handle === 'ne') { w = Math.max(60, ds.ow + ldx); h = Math.max(30, ds.oh - ldy); offY = ds.oh - h }
+          if (ds.handle === 'nw') { w = Math.max(60, ds.ow - ldx); h = Math.max(30, ds.oh - ldy); offX = ds.ow - w; offY = ds.oh - h }
+          const sx = offX + w / 2 - ds.ow / 2
+          const sy = offY + h / 2 - ds.oh / 2
+          const ncx = ds.ox + ds.ow / 2 + sx * cos - sy * sin
+          const ncy = ds.oy + ds.oh / 2 + sx * sin + sy * cos
+          return { ...el, x: ncx - w / 2, y: ncy - h / 2, width: w, height: h }
+        }
         let x = ds.ox, y = ds.oy, w = ds.ow, h = ds.oh
         if (ds.handle === 'e')  { w = Math.max(60, ds.ow + dx) }
         if (ds.handle === 'se') { w = Math.max(60, ds.ow + dx); h = Math.max(30, ds.oh + dy) }
@@ -813,6 +898,25 @@ export default function NotesCanvas({ canvasId, branchId, branchName, userId, on
       ox: el.x, oy: el.y,
       ow: el.width ?? 300,
       oh: typeof el.height === 'number' ? el.height : 40,
+      rot: el.rotation || 0,
+    }
+  }
+
+  function onRotateMouseDown(e, id) {
+    e.stopPropagation()
+    e.preventDefault()
+    const el = elementsRef.current.find(x => x.id === id)
+    if (!el) return
+    // Döndürme merkezden: dönmüş kutunun sınır kutusunun merkezi = öğenin merkezi
+    const box = e.currentTarget.parentElement.getBoundingClientRect()
+    const cx = box.left + box.width / 2
+    const cy = box.top + box.height / 2
+    dragRef.current = {
+      type: 'rotate', id,
+      cx, cy,
+      startAngle: Math.atan2(e.clientY - cy, e.clientX - cx) * 180 / Math.PI,
+      orig: el.rotation || 0,
+      startX: e.clientX, startY: e.clientY,
     }
   }
 
@@ -968,6 +1072,7 @@ export default function NotesCanvas({ canvasId, branchId, branchName, userId, on
                   textHistTimerRef.current = setTimeout(() => pushHistory(elementsRef.current), 1000)
                 }}
                 onResizeMouseDown={(e, h) => onResizeMouseDown(e, el.id, h)}
+                onRotateMouseDown={selectedIds.size === 1 ? e => onRotateMouseDown(e, el.id) : null}
                 onBlur={() => setEditingId(null)}
                 onEditRef={domNode => { editingDomRef.current = domNode }}
                 onDuplicate={selectedIds.size === 1 ? () => addEl({ ...el, x: el.x + 24, y: el.y + 24 }) : null}
@@ -977,6 +1082,7 @@ export default function NotesCanvas({ canvasId, branchId, branchName, userId, on
                 selected={selectedIds.has(el.id)}
                 onMouseDown={e => onElMouseDown(e, el.id)}
                 onResizeMouseDown={(e, h) => onResizeMouseDown(e, el.id, h)}
+                onRotateMouseDown={selectedIds.size === 1 ? e => onRotateMouseDown(e, el.id) : null}
                 onDuplicate={selectedIds.size === 1 ? () => addEl({ ...el, x: el.x + 24, y: el.y + 24 }) : null}
               />
           )}
