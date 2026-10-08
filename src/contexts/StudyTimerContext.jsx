@@ -6,8 +6,11 @@
  * - 2 dakika hareketsizlikte DURUR (paused)
  * - Durunca yalnızca yeni bir soru cevaplanınca devam eder
  * - Gün değişince o güne ait süre DB'ye kaydedilir, sıfırlanır
- * - Çoklu cihaz desteği: Supabase source of truth,
- *   localStorage sadece cache. GREATEST semantics ile kayıt.
+ * - Çoklu cihaz desteği: Supabase source of truth, localStorage sadece cache.
+ *   Her cihaz sadece KENDİ saydığı saniyeleri (delta) add_study_seconds ile
+ *   toplama ekler → telefon + PC süreleri birleşir. Dönen toplam ekranda
+ *   gösterilir; sayaç dururken toplam düzenli olarak DB'den tazelenir.
+ *   add_study_seconds yoksa eski davranış (GREATEST) kullanılır.
  */
 import { createContext, useContext, useState, useEffect, useRef } from 'react'
 import { useAuth } from './AuthContext'
@@ -15,6 +18,7 @@ import { supabase } from '../lib/supabase'
 
 const INACTIVITY_MS = 2 * 60 * 1000   // 2 dakika
 const AUTOSAVE_S    = 30               // her 30 saniyede bir kayıt
+const SYNC_MS       = 60 * 1000        // sayaç dururken DB'den tazeleme sıklığı
 
 export const StudyTimerContext = createContext(null)
 
@@ -54,6 +58,8 @@ export function StudyTimerProvider({ children }) {
   const inactiveRef  = useRef(null)
   const lastMoveRef  = useRef(0)
   const loadedRef    = useRef(false)  // DB yüklemesi tamamlandı mı
+  const pendingRef   = useRef(0)      // bu cihazda sayılıp henüz DB'ye eklenmemiş saniye
+  const additiveRef  = useRef(true)   // add_study_seconds var mı (yoksa GREATEST'e düş)
 
   // ── Kullanıcı hazır olunca DB'den yükle ────────────────────────────
   useEffect(() => {
@@ -112,10 +118,11 @@ export function StudyTimerProvider({ children }) {
       if (today === dateRef.current) return
 
       if (user && secRef.current > 0) {
-        saveToDB(user.id, dateRef.current, secRef.current)
+        flush()
       }
       dateRef.current = today
       secRef.current  = 0
+      pendingRef.current = 0
       setSeconds(0)
       setStarted(false)
       setRunning(false)
@@ -154,6 +161,26 @@ export function StudyTimerProvider({ children }) {
     }
   }, [])
 
+  // ── Cihazlar arası senkron ──────────────────────────────────────────
+  useEffect(() => {
+    if (!user?.id) return
+    const id = setInterval(() => { if (!runningRef.current) syncFromDB() }, SYNC_MS)
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') flush()
+      else syncFromDB()
+    }
+    const onFocus = () => syncFromDB()
+    document.addEventListener('visibilitychange', onVisibility)
+    window.addEventListener('focus', onFocus)
+    window.addEventListener('pagehide', flush)
+    return () => {
+      clearInterval(id)
+      document.removeEventListener('visibilitychange', onVisibility)
+      window.removeEventListener('focus', onFocus)
+      window.removeEventListener('pagehide', flush)
+    }
+  }, [user?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Yardımcı fonksiyonlar ────────────────────────────────────────────
   function resetInactivity() {
     clearTimeout(inactiveRef.current)
@@ -164,10 +191,11 @@ export function StudyTimerProvider({ children }) {
     clearInterval(intervalRef.current)
     intervalRef.current = setInterval(() => {
       secRef.current += 1
+      pendingRef.current += 1
       setSeconds(secRef.current)
-      if (secRef.current % AUTOSAVE_S === 0) {
+      if (pendingRef.current >= AUTOSAVE_S) {
         localStorage.setItem('study_seconds', String(secRef.current))
-        if (user) saveToDB(user.id, dateRef.current, secRef.current)
+        flush()
       }
     }, 1_000)
   }
@@ -179,7 +207,58 @@ export function StudyTimerProvider({ children }) {
     clearInterval(intervalRef.current)
     clearTimeout(inactiveRef.current)
     localStorage.setItem('study_seconds', String(secRef.current))
-    if (user) saveToDB(user.id, dateRef.current, secRef.current)
+    flush()
+  }
+
+  // Bu cihazın biriktirdiği saniyeleri DB'deki günlük toplama ekle.
+  async function flush() {
+    if (!user?.id) return
+    const date = dateRef.current
+    const delta = pendingRef.current
+    if (delta <= 0) return
+    pendingRef.current = 0
+    if (additiveRef.current) {
+      const { data, error } = await supabase.rpc('add_study_seconds', {
+        p_user_id: user.id, p_date: date, p_delta: delta,
+      })
+      if (!error && typeof data === 'number') {
+        // Diğer cihazların süresi de dahil toplam; bekleme sırasında sayılanları ekle
+        if (date === dateRef.current) {
+          secRef.current = Math.max(secRef.current, data + pendingRef.current)
+          setSeconds(secRef.current)
+          localStorage.setItem('study_seconds', String(secRef.current))
+        }
+        return
+      }
+      if (error && (error.code === 'PGRST202' || /could not find the function/i.test(error.message || ''))) {
+        additiveRef.current = false
+      } else {
+        // Geçici hata: saniyeleri kaybetme, sonraki kayıtta tekrar dene
+        pendingRef.current += delta
+        return
+      }
+    }
+    if (date === dateRef.current) saveToDB(user.id, date, secRef.current)
+  }
+
+  // Sayaç dururken diğer cihazda çalışılan süreyi çek
+  async function syncFromDB() {
+    if (!user?.id || !loadedRef.current) return
+    const date = dateRef.current
+    const { data, error } = await supabase
+      .from('study_sessions')
+      .select('seconds')
+      .eq('user_id', user.id)
+      .eq('date', date)
+      .maybeSingle()
+    if (error || !data || date !== dateRef.current) return
+    const total = data.seconds + pendingRef.current
+    if (total > secRef.current) {
+      secRef.current = total
+      setSeconds(total)
+      setStarted(true)
+      localStorage.setItem('study_seconds', String(total))
+    }
   }
 
   // GREATEST semantics: DB'deki değeri asla küçültme
@@ -218,9 +297,10 @@ export function StudyTimerProvider({ children }) {
 
     const today = todayKey()
     if (today !== dateRef.current) {
-      if (user && secRef.current > 0) saveToDB(user.id, dateRef.current, secRef.current)
+      if (user && secRef.current > 0) flush()
       dateRef.current = today
       secRef.current  = 0
+      pendingRef.current = 0
       setSeconds(0)
       localStorage.setItem('study_date',    today)
       localStorage.setItem('study_seconds', '0')
