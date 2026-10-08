@@ -351,17 +351,27 @@ function TopicCard({ topic, stats, showProgress, branchColor, index, bulkMode, i
   }
   if (total > 0 && !showProgress) meta.push(<span key="t">{total} soru</span>)
 
+  // Biten konu: belirgin yeşil zemin + solda yeşil şerit (motivasyon için göze batsın)
+  const masteredLook = isMastered && !bulkMode
+  const baseBg = bulkMode && isSelected
+    ? `${branchColor}14`
+    : masteredLook ? 'linear-gradient(90deg, rgba(16,185,129,0.20), rgba(16,185,129,0.07) 70%)' : 'transparent'
+  const hoverBg = masteredLook
+    ? 'linear-gradient(90deg, rgba(16,185,129,0.26), rgba(16,185,129,0.10) 70%)'
+    : 'rgba(255,255,255,0.025)'
+
   return (
     <div
       onClick={handleCardClick}
       className="group relative flex items-center gap-3 sm:gap-4 px-3 sm:px-4 py-3.5 transition-colors"
       style={{
-        background: bulkMode && isSelected ? `${branchColor}14` : 'transparent',
+        background: baseBg,
+        boxShadow: masteredLook ? 'inset 4px 0 0 #10b981' : 'none',
         opacity: disabledInBulk ? 0.35 : 1,
         cursor: disabledInBulk ? 'not-allowed' : 'pointer',
       }}
-      onMouseEnter={e => { if (!bulkMode) e.currentTarget.style.background = 'rgba(255,255,255,0.025)' }}
-      onMouseLeave={e => { e.currentTarget.style.background = bulkMode && isSelected ? `${branchColor}14` : 'transparent' }}
+      onMouseEnter={e => { if (!bulkMode) e.currentTarget.style.background = hoverBg }}
+      onMouseLeave={e => { e.currentTarget.style.background = baseBg }}
     >
       {/* Sol: numara / tamamlandı / toplu seçim kutusu */}
       <div className="flex-shrink-0 w-7 flex items-center justify-center">
@@ -377,8 +387,8 @@ function TopicCard({ topic, stats, showProgress, branchColor, index, bulkMode, i
             {isSelected && <Check size={11} strokeWidth={3} style={{ color: '#000' }} />}
           </div>
         ) : isMastered ? (
-          <div className="flex items-center justify-center" style={{ width: 22, height: 22, borderRadius: '50%', background: 'rgba(16,185,129,0.15)' }}>
-            <Check size={13} strokeWidth={3} style={{ color: '#34d399' }} />
+          <div className="flex items-center justify-center" style={{ width: 24, height: 24, borderRadius: '50%', background: '#10b981', boxShadow: '0 0 12px rgba(16,185,129,0.55)' }}>
+            <Check size={14} strokeWidth={3.5} style={{ color: '#04140d' }} />
           </div>
         ) : (
           <span className="text-sm tabular-nums" style={{ color: '#3a4a60' }}>{index + 1}</span>
@@ -387,7 +397,7 @@ function TopicCard({ topic, stats, showProgress, branchColor, index, bulkMode, i
 
       {/* Orta: başlık + ilerleme */}
       <div className="flex-1 min-w-0">
-        <h3 className="text-[16px] leading-snug font-medium truncate" style={{ color: isMastered ? '#9fdcc4' : '#e1e5ec' }}>
+        <h3 className="text-[16px] leading-snug font-medium truncate" style={{ color: isMastered ? '#6ee7b7' : '#e1e5ec' }}>
           {topic.title}
         </h3>
         {meta.length > 0 && (
