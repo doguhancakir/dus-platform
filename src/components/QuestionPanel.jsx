@@ -232,7 +232,10 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
       }
     })
 
-    const todayNew = newOnes.slice(0, DAILY_NEW_LIMIT)
+    // Toplu çözde (birden çok konu seçili → topicId dizi) yeni soru limiti yok;
+    // limit sadece tek konunun "Çöz" butonu için geçerli.
+    const isBulk = Array.isArray(topicId)
+    const todayNew = isBulk ? newOnes : newOnes.slice(0, DAILY_NEW_LIMIT)
     const fullQueue = [...todayNew, ...due]
 
     const newCount = qs.filter(q => !cardsMap[q.id]?.flagged && (!cardsMap[q.id] || cardsMap[q.id]?.status === CARD_STATUS.NEW)).length
@@ -443,7 +446,7 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
 
   if (finished) {
     const allNew = questions.every(q => !cards[q.id] || cards[q.id]?.status === 'new')
-    const hitDailyLimit = !flaggedOnly && allNew && questions.length > DAILY_NEW_LIMIT
+    const hitDailyLimit = !flaggedOnly && !Array.isArray(topicId) && allNew && questions.length > DAILY_NEW_LIMIT
     return (
       <BattleScreen onClose={onClose}>
         <HUDBar stats={stats} currentIndex={queue.length} queueLength={queue.length} onClose={onClose} flaggedOnly={flaggedOnly} />
