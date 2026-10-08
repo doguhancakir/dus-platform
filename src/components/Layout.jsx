@@ -68,6 +68,7 @@ export default function Layout({ children }) {
         {/* ── Desktop Nav ── */}
         <div className="hidden md:flex items-center gap-1 ml-auto pr-6 relative z-10">
           <NavLink to="/" label="ANA SAYFA" active={isActive('/')} />
+          <NavLink to="/library" label="KÜTÜPHANE" active={isActive('/library')} />
 
           {user.is_admin && (
             <NavLink to="/admin" label="ADMİN" active={isActive('/admin')} />
@@ -179,6 +180,13 @@ export default function Layout({ children }) {
                   label="ANA SAYFA"
                   active={isActive('/')}
                   delay={0}
+                  onClick={() => setMenuOpen(false)}
+                />
+                <MobileMenuItem
+                  to="/library"
+                  label="KÜTÜPHANE"
+                  active={isActive('/library')}
+                  delay={0.03}
                   onClick={() => setMenuOpen(false)}
                 />
                 {user.is_admin && (

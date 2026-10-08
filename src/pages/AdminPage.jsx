@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase'
 import { BRANCHES, TEMEL_BILIMLER } from '../lib/data'
 import { questionsToText, downloadTextFile, toFileSlug } from '../lib/questionText'
 import { DEFAULT_STUDY_PROMPT } from '../lib/defaultStudyPrompt'
+import { loadBooks, r2Url, formatSize, BOOK_CATEGORIES } from '../lib/books'
 
 const ALL_BRANCHES = [...BRANCHES, ...TEMEL_BILIMLER].sort((a, b) => a.id - b.id)
 import Layout from '../components/Layout'
@@ -71,6 +72,7 @@ export default function AdminPage() {
             { id: 'topics', label: 'KONULAR' },
             { id: 'questions', label: 'SORULAR' },
             { id: 'branches', label: 'BRANŞLAR' },
+            { id: 'books', label: 'KİTAPLAR' },
             { id: 'users', label: 'KULLANICILAR' },
             { id: 'prompt', label: 'PROMPT' },
           ].map(tab => (
@@ -93,6 +95,7 @@ export default function AdminPage() {
           {activeTab === 'topics' && <TopicsTab key="topics" />}
           {activeTab === 'questions' && <QuestionsTab key="questions" />}
           {activeTab === 'branches' && <BranchesTab key="branches" />}
+          {activeTab === 'books' && <BooksTab key="books" />}
           {activeTab === 'users' && <UsersTab key="users" adminNickname={user?.nickname} />}
           {activeTab === 'prompt' && <PromptTab key="prompt" />}
         </AnimatePresence>
@@ -902,6 +905,127 @@ function PromptTab() {
           />
         )}
       </div>
+    </motion.div>
+  )
+}
+
+/* ── BOOKS TAB ── */
+// Kitap listesi (R2'deki dosyalar). Dosyanın kendisini silmek için rclone gerekir;
+// burada sadece sitedeki kaydı düzenler/gizler/siler.
+function BooksTab() {
+  const [books, setBooks] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [available, setAvailable] = useState(true)
+  const [filter, setFilter] = useState('')
+  const [branchFilter, setBranchFilter] = useState('all')
+  const [savingId, setSavingId] = useState(null)
+
+  useEffect(() => { load() }, [])
+
+  async function load() {
+    setLoading(true)
+    const { books, available } = await loadBooks({ includeHidden: true })
+    setBooks(books)
+    setAvailable(available)
+    setLoading(false)
+  }
+
+  async function patch(id, changes) {
+    setSavingId(id)
+    const { error } = await supabase.from('books').update(changes).eq('id', id)
+    setSavingId(null)
+    if (error) { toast.error('Kaydedilemedi'); return false }
+    setBooks(prev => prev.map(b => b.id === id ? { ...b, ...changes } : b))
+    return true
+  }
+
+  async function remove(b) {
+    if (!confirm(`"${b.title}" siteden kaldırılsın mı?\n(R2'deki dosya silinmez.)`)) return
+    const { error } = await supabase.from('books').delete().eq('id', b.id)
+    if (error) { toast.error('Silinemedi'); return }
+    setBooks(prev => prev.filter(x => x.id !== b.id))
+    toast.success('Kaldırıldı')
+  }
+
+  const q = filter.trim().toLocaleLowerCase('tr-TR')
+  const shown = books.filter(b => {
+    if (branchFilter === 'hidden' && !b.hidden) return false
+    if (branchFilter === 'karma' && b.branch_id !== null) return false
+    if (!['all', 'hidden', 'karma'].includes(branchFilter) && b.branch_id !== Number(branchFilter)) return false
+    if (q && !b.title.toLocaleLowerCase('tr-TR').includes(q) && !b.file_key.toLocaleLowerCase('tr-TR').includes(q)) return false
+    return true
+  })
+
+  if (!loading && !available) {
+    return (
+      <div className="p-4 text-xs uppercase tracking-wider" style={{ background: '#0d1e35', borderLeft: '3px solid #f0c040', color: '#f0c040' }}>
+        Kitap tablosu yok — supabase_migration_books.sql çalıştırılmalı.
+      </div>
+    )
+  }
+
+  const selectStyle = { background: '#0a1628', border: '1px solid #1a2d45', color: '#e2e8f0', padding: '0.35rem 0.5rem', fontSize: '0.75rem' }
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
+      <div className="flex items-center gap-2 flex-wrap">
+        <input className="input text-sm flex-1 min-w-[180px] max-w-sm" placeholder="Kitap ara…" value={filter} onChange={e => setFilter(e.target.value)} />
+        <select style={selectStyle} value={branchFilter} onChange={e => setBranchFilter(e.target.value)}>
+          <option value="all">Tüm branşlar</option>
+          {ALL_BRANCHES.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+          <option value="karma">Karma</option>
+          <option value="hidden">Sadece gizliler</option>
+        </select>
+        <span className="text-[10px] text-gray-500 uppercase tracking-widest">{shown.length} / {books.length} kitap</span>
+      </div>
+      <p className="text-[11px] text-gray-600">
+        Ad, branş ve tür değişikliği anında kaydedilir. "Gizle" kitabı sitede göstermez. Dosyayı R2'den tamamen silmek için bana söyle.
+      </p>
+
+      {loading ? (
+        <div className="flex justify-center py-8"><Loader2 size={24} className="animate-spin text-[#0891b2]" /></div>
+      ) : (
+        <div className="space-y-[2px]">
+          {shown.map(b => (
+            <div key={b.id} className="p-3 flex gap-3 items-start" style={{ background: '#0d1e35', border: '1px solid #1a2d45', opacity: b.hidden ? 0.5 : 1 }}>
+              <a href={r2Url(b.file_key)} target="_blank" rel="noopener noreferrer" className="flex-shrink-0">
+                {b.cover_key
+                  ? <img src={r2Url(b.cover_key)} alt="" loading="lazy" style={{ width: 48, height: 64, objectFit: 'cover', border: '1px solid #1a2d45' }} />
+                  : <div style={{ width: 48, height: 64, background: '#0a1628', border: '1px solid #1a2d45' }} />}
+              </a>
+              <div className="flex-1 min-w-0 space-y-1.5">
+                <input
+                  className="input text-sm py-1"
+                  defaultValue={b.title}
+                  onBlur={e => { const v = e.target.value.trim(); if (v && v !== b.title) patch(b.id, { title: v }).then(ok => ok && toast.success('Ad kaydedildi')) }}
+                  onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }}
+                />
+                <div className="flex items-center gap-2 flex-wrap">
+                  <select style={selectStyle} value={b.branch_id ?? 'karma'}
+                    onChange={e => patch(b.id, { branch_id: e.target.value === 'karma' ? null : Number(e.target.value) })}>
+                    {ALL_BRANCHES.map(br => <option key={br.id} value={br.id}>{br.name}</option>)}
+                    <option value="karma">Karma</option>
+                  </select>
+                  <select style={selectStyle} value={b.category} onChange={e => patch(b.id, { category: e.target.value })}>
+                    {BOOK_CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+                  </select>
+                  <span className="text-[10px] text-gray-600">{formatSize(b.size_bytes)}</span>
+                  {savingId === b.id && <Loader2 size={12} className="animate-spin text-[#0891b2]" />}
+                </div>
+                <p className="text-[10px] text-gray-700 truncate" title={b.file_key}>{b.file_key}</p>
+              </div>
+              <div className="flex flex-col gap-1.5 flex-shrink-0">
+                <button className="btn-ghost text-xs px-2.5 py-1" onClick={() => patch(b.id, { hidden: !b.hidden })}>
+                  {b.hidden ? 'Göster' : 'Gizle'}
+                </button>
+                <button className="text-xs px-2.5 py-1" style={{ color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)' }} onClick={() => remove(b)}>
+                  <Trash2 size={12} className="inline" /> Kaldır
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </motion.div>
   )
 }
