@@ -412,6 +412,26 @@ export default function Dashboard() {
                 </button>
               )}
 
+              {/* Kütüphane */}
+              {user && (
+                <button
+                  onClick={() => navigate('/library')}
+                  className="flex items-center gap-3 font-barlow font-bold text-[11px] tracking-[0.22em] uppercase px-5 py-3 transition-all duration-200 w-fit"
+                  style={{
+                    color: '#7dd3fc',
+                    background: 'rgba(8,145,178,0.07)',
+                    border: '1px solid rgba(8,145,178,0.35)',
+                    clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(8,145,178,0.16)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'rgba(8,145,178,0.07)'}
+                >
+                  <span style={{ fontSize: '1rem' }}>📚</span>
+                  Kütüphane
+                  <span style={{ opacity: 0.5 }}>→</span>
+                </button>
+              )}
+
               {/* Bayraklı sorular */}
               {user && flaggedTotal > 0 && (
                 <button

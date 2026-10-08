@@ -10,6 +10,8 @@ import { computeTopicStats } from '../lib/topicStats'
 import Layout from '../components/Layout'
 import QuestionPanel from '../components/QuestionPanel'
 import QuestionsTextModal from '../components/QuestionsTextModal'
+import BookGrid from '../components/BookGrid'
+import { loadBooks } from '../lib/books'
 
 const containerVariants = {
   hidden: {},
@@ -38,9 +40,19 @@ export default function BranchPage() {
   const [bulkMode, setBulkMode] = useState(false)
   const [selectedBulk, setSelectedBulk] = useState(new Set())
 
+  // ── Konular / Kitaplar sekmesi ─────────────────────────────────────────────
+  const [tab, setTab] = useState('topics')
+  const [books, setBooks] = useState([])
+
   useEffect(() => {
     loadData()
   }, [id, user?.id])
+
+  useEffect(() => {
+    setTab('topics')
+    if (!branch) return
+    loadBooks({ branchId: branch.id }).then(({ books }) => setBooks(books))
+  }, [id])
 
   if (!branch) return <Navigate to="/" replace />
 
@@ -209,12 +221,26 @@ export default function BranchPage() {
 
         {/* Topics divider */}
         <div className="flex items-center gap-3 mb-3 flex-wrap">
-          <div className="w-[3px] h-4" style={{ background: branch.color }} />
-          <span className="font-barlow font-bold text-xs uppercase tracking-[0.2em]" style={{ color: '#4a6080' }}>
-            Konular
-          </span>
-          <div className="flex-1 h-px" style={{ background: '#1a2d45' }} />
-          {!loading && user && topics.length > 0 && (
+          <div className="flex items-center gap-1 p-1 rounded-lg" style={{ background: '#0b1626', border: '1px solid #18263a' }}>
+            {[
+              { id: 'topics', label: 'Konular', count: topics.length },
+              { id: 'books', label: 'Kitaplar', count: books.length },
+            ].map(t => (
+              <button
+                key={t.id}
+                onClick={() => { setTab(t.id); if (t.id === 'books' && bulkMode) toggleBulkMode() }}
+                className="h-8 px-3.5 rounded-md text-[14px] transition-colors"
+                style={tab === t.id
+                  ? { background: `${branch.color}33`, color: '#fff' }
+                  : { background: 'transparent', color: '#7d8ca0' }}
+              >
+                {t.label}
+                {t.count > 0 && <span className="ml-1.5 text-[12px]" style={{ opacity: 0.6 }}>{t.count}</span>}
+              </button>
+            ))}
+          </div>
+          <div className="flex-1" />
+          {tab === 'topics' && !loading && user && topics.length > 0 && (
             <>
               {bulkMode && (
                 <button
@@ -241,8 +267,10 @@ export default function BranchPage() {
           )}
         </div>
 
-        {/* Topics list */}
-        {loading ? (
+        {/* Kitaplar */}
+        {tab === 'books' ? (
+          <BookGrid books={books} accent={branch.color} />
+        ) : loading ? (
           <div className="space-y-[2px]">
             {[1, 2, 3, 4, 5].map(i => (
               <div key={i} className="relative overflow-hidden" style={{ height: 76, background: '#0a1525' }}>
