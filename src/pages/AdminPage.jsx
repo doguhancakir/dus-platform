@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Plus, Trash2, Edit3, Save, X, Loader2, Upload, FileText, Copy, Download, KeyRound, UserPlus, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '../contexts/AuthContext'
-import { supabase } from '../lib/supabase'
+import { supabase, fetchAllRows } from '../lib/supabase'
 import { BRANCHES, TEMEL_BILIMLER } from '../lib/data'
 import { questionsToText, downloadTextFile, toFileSlug } from '../lib/questionText'
 import { DEFAULT_STUDY_PROMPT } from '../lib/defaultStudyPrompt'
@@ -69,8 +69,7 @@ export default function AdminPage() {
         {/* Tabs */}
         <div className="flex items-center mb-6 overflow-x-auto" style={{ borderBottom: '2px solid #1a2d45' }}>
           {[
-            { id: 'topics', label: 'KONULAR' },
-            { id: 'questions', label: 'SORULAR' },
+            { id: 'topics', label: 'KONULAR & SORULAR' },
             { id: 'branches', label: 'BRANŞLAR' },
             { id: 'books', label: 'KİTAPLAR' },
             { id: 'users', label: 'KULLANICILAR' },
@@ -93,7 +92,6 @@ export default function AdminPage() {
 
         <AnimatePresence mode="wait">
           {activeTab === 'topics' && <TopicsTab key="topics" />}
-          {activeTab === 'questions' && <QuestionsTab key="questions" />}
           {activeTab === 'branches' && <BranchesTab key="branches" />}
           {activeTab === 'books' && <BooksTab key="books" />}
           {activeTab === 'users' && <UsersTab key="users" adminNickname={user?.nickname} />}
@@ -111,10 +109,12 @@ function TopicsTab() {
   const [loading, setLoading] = useState(true)
   const [editingId, setEditingId] = useState(null)
   const [showNew, setShowNew] = useState(false)
-  const [form, setForm] = useState({ title: '', content: '', sort_order: 0 })
+  const [form, setForm] = useState({ title: '', sort_order: 0, json: '' })
   const [saving, setSaving] = useState(false)
+  const [openTopicId, setOpenTopicId] = useState(null) // soruları açık olan konu
+  const [questionCounts, setQuestionCounts] = useState({})
 
-  useEffect(() => { loadTopics() }, [selectedBranch])
+  useEffect(() => { loadTopics(); setOpenTopicId(null) }, [selectedBranch])
 
   async function loadTopics() {
     setLoading(true)
@@ -124,31 +124,69 @@ function TopicsTab() {
       .eq('branch_id', selectedBranch)
       .order('sort_order')
     setTopics(data || [])
+    await refreshCounts((data || []).map(t => t.id))
     setLoading(false)
+  }
+
+  // Sadece soru sayılarını tazeler (listeyi yeniden yüklemez → açık panel kapanmaz)
+  async function refreshCounts(ids = topics.map(t => t.id)) {
+    if (!ids.length) { setQuestionCounts({}); return }
+    let qs = []
+    try { qs = await fetchAllRows(q => q.from('questions').select('topic_id').in('topic_id', ids)) } catch { /* sayılar boş kalır */ }
+    const counts = {}
+    ;(qs || []).forEach(q => { counts[q.topic_id] = (counts[q.topic_id] || 0) + 1 })
+    setQuestionCounts(counts)
+  }
+
+  // JSON'u konu oluşturmadan ÖNCE doğrula → hatalı JSON'da boş konu açılmaz
+  function parseQuestionsJson(text) {
+    if (!text.trim()) return []
+    const data = JSON.parse(text)
+    if (!Array.isArray(data)) throw new Error('JSON bir dizi ([ ... ]) olmalı')
+    data.forEach((q, i) => {
+      if (!q?.question_text || !Array.isArray(q.options)) throw new Error(`${i + 1}. soruda question_text veya options eksik`)
+    })
+    return data
   }
 
   async function saveTopic() {
     if (!form.title.trim()) return
     setSaving(true)
-    if (editingId) {
-      await supabase.from('topics').update({
-        title: form.title,
-        content: form.content,
-        sort_order: parseInt(form.sort_order) || 0,
-      }).eq('id', editingId)
-    } else {
-      await supabase.from('topics').insert({
-        branch_id: selectedBranch,
-        title: form.title,
-        content: form.content,
-        sort_order: parseInt(form.sort_order) || topics.length,
-      })
+    try {
+      if (editingId) {
+        const { error } = await supabase.from('topics').update({
+          title: form.title.trim(),
+          sort_order: parseInt(form.sort_order) || 0,
+        }).eq('id', editingId)
+        if (error) throw error
+        toast.success('Konu güncellendi')
+      } else {
+        let questions
+        try { questions = parseQuestionsJson(form.json) }
+        catch (err) { toast.error(`JSON hatası: ${err.message}`); setSaving(false); return }
+        const { data: topic, error } = await supabase.from('topics').insert({
+          branch_id: selectedBranch,
+          title: form.title.trim(),
+          content: '',
+          sort_order: parseInt(form.sort_order) || topics.length,
+        }).select().single()
+        if (error) throw error
+        if (questions.length) {
+          const { error: qErr } = await supabase.from('questions').insert(questions.map(q => ({ ...q, topic_id: topic.id })))
+          if (qErr) {
+            toast.error(`Konu açıldı ama sorular eklenemedi: ${qErr.message}`)
+            setOpenTopicId(topic.id)
+          } else toast.success(`"${topic.title}" açıldı, ${questions.length} soru eklendi`)
+        } else toast.success(`"${topic.title}" açıldı`)
+      }
+      setEditingId(null)
+      setShowNew(false)
+      setForm({ title: '', sort_order: 0, json: '' })
+      loadTopics()
+    } catch (err) {
+      toast.error(err.message || 'Kaydedilemedi')
     }
     setSaving(false)
-    setEditingId(null)
-    setShowNew(false)
-    setForm({ title: '', content: '', sort_order: 0 })
-    loadTopics()
   }
 
   async function deleteTopic(id) {
@@ -159,7 +197,7 @@ function TopicsTab() {
 
   function startEdit(topic) {
     setEditingId(topic.id)
-    setForm({ title: topic.title, content: topic.content || '', sort_order: topic.sort_order })
+    setForm({ title: topic.title, sort_order: topic.sort_order, json: '' })
     setShowNew(false)
   }
 
@@ -177,7 +215,7 @@ function TopicsTab() {
         </select>
         <button
           className="btn-primary flex items-center gap-1.5 text-sm"
-          onClick={() => { setShowNew(true); setEditingId(null); setForm({ title: '', content: '', sort_order: topics.length }) }}
+          onClick={() => { setShowNew(true); setEditingId(null); setForm({ title: '', sort_order: topics.length, json: '' }) }}
         >
           <Plus size={15} />
           Yeni Konu
@@ -203,13 +241,21 @@ function TopicsTab() {
                 onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
               <input className="input" type="number" placeholder="Sıralama" value={form.sort_order}
                 onChange={e => setForm(f => ({ ...f, sort_order: e.target.value }))} />
-              <textarea className="input min-h-[200px] font-mono text-xs resize-y" placeholder="İçerik (Markdown)..."
-                value={form.content} onChange={e => setForm(f => ({ ...f, content: e.target.value }))} />
+              {!editingId && (
+                <>
+                  <p className="text-[10px] text-gray-500 uppercase tracking-widest">
+                    Sorular (JSON, opsiyonel) — konu açılırken hepsi birlikte eklenir
+                  </p>
+                  <textarea className="input min-h-[220px] font-mono text-xs resize-y"
+                    placeholder={'[\n  {\n    "question_text": "Soru metni",\n    "options": ["A", "B", "C", "D", "E"],\n    "correct_answer": 0,\n    "explanation": "Açıklama"\n  }\n]'}
+                    value={form.json} onChange={e => setForm(f => ({ ...f, json: e.target.value }))} />
+                </>
+              )}
               <div className="flex gap-2">
                 <button className="btn-primary flex items-center gap-1.5 text-sm" onClick={saveTopic}
                   disabled={saving || !form.title.trim()}>
                   {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-                  Kaydet
+                  {editingId ? 'Kaydet' : 'Konuyu Aç'}
                 </button>
                 <button className="btn-ghost text-sm" onClick={() => { setEditingId(null); setShowNew(false) }}>İptal</button>
               </div>
@@ -229,13 +275,22 @@ function TopicsTab() {
       ) : (
         <div className="space-y-[2px]">
           {topics.map(topic => (
-            <div key={topic.id} className="flex items-center justify-between gap-3 p-4"
-              style={{ background: '#0d1e35', border: '1px solid #1a2d45' }}>
+            <div key={topic.id}>
+            <div className="flex items-center justify-between gap-3 p-4 cursor-pointer"
+              onClick={() => setOpenTopicId(openTopicId === topic.id ? null : topic.id)}
+              style={{ background: openTopicId === topic.id ? '#10243f' : '#0d1e35', border: '1px solid #1a2d45' }}>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-200 truncate">{topic.title}</p>
-                <p className="text-[10px] text-gray-600 uppercase tracking-wider mt-0.5">Sıra: {topic.sort_order}</p>
+                <p className="text-[10px] text-gray-600 uppercase tracking-wider mt-0.5">
+                  Sıra: {topic.sort_order} · {questionCounts[topic.id] || 0} soru
+                </p>
               </div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
+                <button onClick={() => setOpenTopicId(openTopicId === topic.id ? null : topic.id)}
+                  className="px-2.5 py-1.5 text-xs transition-colors"
+                  style={{ color: openTopicId === topic.id ? '#fff' : '#8aa4c0', background: openTopicId === topic.id ? '#0891b2' : '#0a1628', border: '1px solid #1a2d45' }}>
+                  Sorular
+                </button>
                 <button onClick={() => startEdit(topic)}
                   className="p-2 text-gray-600 hover:text-gray-300 transition-colors"
                   style={{ background: '#0a1628', border: '1px solid #1a2d45' }}>
@@ -248,6 +303,12 @@ function TopicsTab() {
                 </button>
               </div>
             </div>
+            {openTopicId === topic.id && (
+              <div className="p-3 sm:p-4 mb-2" style={{ background: '#081322', borderLeft: '3px solid #0891b2', borderRight: '1px solid #1a2d45', borderBottom: '1px solid #1a2d45' }}>
+                <QuestionsTab fixedTopicId={topic.id} fixedTopicTitle={topic.title} onChanged={() => refreshCounts()} />
+              </div>
+            )}
+            </div>
           ))}
         </div>
       )}
@@ -256,9 +317,9 @@ function TopicsTab() {
 }
 
 /* ── QUESTIONS TAB ── */
-function QuestionsTab() {
-  const [topics, setTopics] = useState([])
-  const [selectedTopic, setSelectedTopic] = useState('')
+function QuestionsTab({ fixedTopicId, fixedTopicTitle, onChanged } = {}) {
+  const [topics, setTopics] = useState(fixedTopicId ? [{ id: fixedTopicId, title: fixedTopicTitle }] : [])
+  const [selectedTopic, setSelectedTopic] = useState(fixedTopicId ? String(fixedTopicId) : '')
   const [questions, setQuestions] = useState([])
   const [loading, setLoading] = useState(false)
   const [showForm, setShowForm] = useState(false)
@@ -276,6 +337,7 @@ function QuestionsTab() {
   })
 
   useEffect(() => {
+    if (fixedTopicId) return
     supabase.from('topics').select('id, title, branch_id').order('branch_id').order('sort_order')
       .then(({ data }) => setTopics(data || []))
   }, [])
@@ -290,6 +352,7 @@ function QuestionsTab() {
     const { data } = await supabase.from('questions').select('*').eq('topic_id', selectedTopic).order('id')
     setQuestions(data || [])
     setLoading(false)
+    onChanged?.()
   }
 
   async function saveQuestion() {
@@ -338,7 +401,7 @@ function QuestionsTab() {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
       <div className="flex items-center gap-3 flex-wrap">
-        <select className="input w-auto flex-1 max-w-sm" value={selectedTopic}
+        {!fixedTopicId && <select className="input w-auto flex-1 max-w-sm" value={selectedTopic}
           onChange={e => setSelectedTopic(e.target.value)}>
           <option value="">Konu seçin...</option>
           {ALL_BRANCHES.map(branch => (
@@ -348,7 +411,7 @@ function QuestionsTab() {
               ))}
             </optgroup>
           ))}
-        </select>
+        </select>}
         {selectedTopic && (
           <button className="btn-primary flex items-center gap-1.5 text-sm"
             onClick={() => { setShowForm(true); setEditingId(null); resetForm() }}>
