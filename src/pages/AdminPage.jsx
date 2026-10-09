@@ -102,6 +102,19 @@ export default function AdminPage() {
   )
 }
 
+// Kaynak: JSON'daki soruda "source" yoksa formdaki kaynak yazılır; boşsa alan hiç gönderilmez
+function withSource(questions, source) {
+  const src = (source || '').trim()
+  return questions.map(q => {
+    const s = (q.source ?? src)?.toString().trim()
+    const { source: _drop, ...rest } = q
+    return s ? { ...rest, source: s } : rest
+  })
+}
+function sourceErrorHint(error) {
+  return /source/i.test(error?.message || '') ? ' — kaynak kolonu yok, SQL çalıştırılmalı' : ''
+}
+
 /* ── TOPICS TAB ── */
 function TopicsTab() {
   const [topics, setTopics] = useState([])
@@ -109,7 +122,7 @@ function TopicsTab() {
   const [loading, setLoading] = useState(true)
   const [editingId, setEditingId] = useState(null)
   const [showNew, setShowNew] = useState(false)
-  const [form, setForm] = useState({ title: '', sort_order: 0, json: '' })
+  const [form, setForm] = useState({ title: '', sort_order: 0, json: '', source: '' })
   const [saving, setSaving] = useState(false)
   const [openTopicId, setOpenTopicId] = useState(null) // soruları açık olan konu
   const [questionCounts, setQuestionCounts] = useState({})
@@ -172,16 +185,16 @@ function TopicsTab() {
         }).select().single()
         if (error) throw error
         if (questions.length) {
-          const { error: qErr } = await supabase.from('questions').insert(questions.map(q => ({ ...q, topic_id: topic.id })))
+          const { error: qErr } = await supabase.from('questions').insert(withSource(questions, form.source).map(q => ({ ...q, topic_id: topic.id })))
           if (qErr) {
-            toast.error(`Konu açıldı ama sorular eklenemedi: ${qErr.message}`)
+            toast.error(`Konu açıldı ama sorular eklenemedi: ${qErr.message}${sourceErrorHint(qErr)}`)
             setOpenTopicId(topic.id)
           } else toast.success(`"${topic.title}" açıldı, ${questions.length} soru eklendi`)
         } else toast.success(`"${topic.title}" açıldı`)
       }
       setEditingId(null)
       setShowNew(false)
-      setForm({ title: '', sort_order: 0, json: '' })
+      setForm({ title: '', sort_order: 0, json: '', source: '' })
       loadTopics()
     } catch (err) {
       toast.error(err.message || 'Kaydedilemedi')
@@ -197,7 +210,7 @@ function TopicsTab() {
 
   function startEdit(topic) {
     setEditingId(topic.id)
-    setForm({ title: topic.title, sort_order: topic.sort_order, json: '' })
+    setForm({ title: topic.title, sort_order: topic.sort_order, json: '', source: '' })
     setShowNew(false)
   }
 
@@ -215,7 +228,7 @@ function TopicsTab() {
         </select>
         <button
           className="btn-primary flex items-center gap-1.5 text-sm"
-          onClick={() => { setShowNew(true); setEditingId(null); setForm({ title: '', sort_order: topics.length, json: '' }) }}
+          onClick={() => { setShowNew(true); setEditingId(null); setForm({ title: '', sort_order: topics.length, json: '', source: '' }) }}
         >
           <Plus size={15} />
           Yeni Konu
@@ -243,6 +256,8 @@ function TopicsTab() {
                 onChange={e => setForm(f => ({ ...f, sort_order: e.target.value }))} />
               {!editingId && (
                 <>
+                  <input className="input" placeholder="Kaynak (ör. Dus Data Maxx Soru Bankası) — bu JSON'daki tüm sorulara yazılır"
+                    value={form.source} onChange={e => setForm(f => ({ ...f, source: e.target.value }))} />
                   <p className="text-[10px] text-gray-500 uppercase tracking-widest">
                     Sorular (JSON, opsiyonel) — konu açılırken hepsi birlikte eklenir
                   </p>
@@ -334,6 +349,7 @@ function QuestionsTab({ fixedTopicId, fixedTopicTitle, onChanged } = {}) {
     options: ['', '', '', '', ''],
     correct_answer: 0,
     explanation: '',
+    source: '',
   })
 
   useEffect(() => {
@@ -365,11 +381,19 @@ function QuestionsTab({ fixedTopicId, fixedTopicTitle, onChanged } = {}) {
       correct_answer: parseInt(form.correct_answer),
       explanation: form.explanation,
     }
-    if (editingId) {
-      await supabase.from('questions').update(payload).eq('id', editingId)
-    } else {
-      await supabase.from('questions').insert(payload)
+    if (form.source.trim()) payload.source = form.source.trim()
+    else if (editingId) payload.source = null
+    const write = (pl) => editingId
+      ? supabase.from('questions').update(pl).eq('id', editingId)
+      : supabase.from('questions').insert(pl)
+    let { error } = await write(payload)
+    if (error && /source/i.test(error.message || '')) {
+      // kaynak kolonu henüz yoksa soruyu kaynaksız kaydet
+      const { source: _s, ...rest } = payload
+      ;({ error } = await write(rest))
+      if (!error) toast('Kaynak kaydedilmedi — SQL çalıştırılmalı')
     }
+    if (error) { toast.error(`Kaydedilemedi: ${error.message}`); setSaving(false); return }
     setSaving(false)
     setShowForm(false)
     setEditingId(null)
@@ -378,7 +402,7 @@ function QuestionsTab({ fixedTopicId, fixedTopicTitle, onChanged } = {}) {
   }
 
   function resetForm() {
-    setForm({ question_text: '', options: ['', '', '', '', ''], correct_answer: 0, explanation: '' })
+    setForm({ question_text: '', options: ['', '', '', '', ''], correct_answer: 0, explanation: '', source: '' })
   }
 
   async function deleteQuestion(id) {
@@ -394,6 +418,7 @@ function QuestionsTab({ fixedTopicId, fixedTopicTitle, onChanged } = {}) {
       options: [...(q.options || []), '', '', '', '', ''].slice(0, 5),
       correct_answer: q.correct_answer || 0,
       explanation: q.explanation || '',
+      source: q.source || '',
     })
     setShowForm(true)
   }
@@ -522,6 +547,8 @@ function QuestionsTab({ fixedTopicId, fixedTopicTitle, onChanged } = {}) {
               </div>
               <textarea className="input resize-y" placeholder="Açıklama (opsiyonel)..."
                 value={form.explanation} onChange={e => setForm(f => ({ ...f, explanation: e.target.value }))} />
+              <input className="input text-sm" placeholder="Kaynak (opsiyonel)"
+                value={form.source} onChange={e => setForm(f => ({ ...f, source: e.target.value }))} />
               <div className="flex gap-2">
                 <button className="btn-primary flex items-center gap-1.5 text-sm" onClick={saveQuestion}
                   disabled={saving || !form.question_text.trim()}>
@@ -548,7 +575,7 @@ function QuestionsTab({ fixedTopicId, fixedTopicTitle, onChanged } = {}) {
               <div key={q.id} className="p-4" style={{ background: '#0d1e35', border: '1px solid #1a2d45' }}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
-                    <p className="text-[10px] text-gray-700 mb-1 uppercase tracking-wider">#{idx + 1}</p>
+                    <p className="text-[10px] text-gray-700 mb-1 uppercase tracking-wider">#{idx + 1}{q.source ? ` · ${q.source}` : ''}</p>
                     <p className="text-sm text-gray-300 leading-relaxed">{q.question_text}</p>
                     {q.options?.length > 0 && (
                       <div className="mt-2 space-y-0.5">
@@ -656,6 +683,7 @@ function BranchesTab() {
 /* ── JSON IMPORT (Sorular sekmesinin içinde, seçili konuya) ── */
 function JsonImportPanel({ topicId, topicTitle, onImported }) {
   const [jsonText, setJsonText] = useState('')
+  const [source, setSource] = useState('')
   const [importing, setImporting] = useState(false)
   const [result, setResult] = useState(null)
 
@@ -674,9 +702,9 @@ function JsonImportPanel({ topicId, topicTitle, onImported }) {
     try {
       const data = JSON.parse(jsonText)
       if (!Array.isArray(data)) throw new Error('JSON array olmalı')
-      const withTopic = data.map(q => ({ ...q, topic_id: Number(topicId) }))
+      const withTopic = withSource(data, source).map(q => ({ ...q, topic_id: Number(topicId) }))
       const { data: inserted, error } = await supabase.from('questions').insert(withTopic).select()
-      if (error) throw error
+      if (error) throw new Error(error.message + sourceErrorHint(error))
       setResult({ success: true, count: inserted.length })
       setJsonText('')
       onImported?.()
@@ -692,6 +720,8 @@ function JsonImportPanel({ topicId, topicTitle, onImported }) {
         <FileText size={16} className="text-[#0891b2]" />
         <h3 className="font-bebas tracking-widest text-white">JSON İLE TOPLU SORU EKLE{topicTitle ? ` → ${topicTitle}` : ''}</h3>
       </div>
+      <input className="input text-sm" placeholder="Kaynak (ör. Dusem Soru Bankası) — bu JSON'daki tüm sorulara yazılır"
+        value={source} onChange={e => setSource(e.target.value)} />
       <p className="text-[10px] text-gray-600 uppercase tracking-wider">
         Sorular aşağıdaki formatta JSON olarak yapıştırın (seçili konuya eklenir):
       </p>
