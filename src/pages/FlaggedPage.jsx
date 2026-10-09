@@ -180,6 +180,7 @@ function FlaggedCard({ question, topic, color, onCopy, onUnflag }) {
       <div className="flex items-start justify-between gap-2 px-4 pt-3">
         <span className="font-barlow font-bold text-[11px] uppercase tracking-wider leading-snug" style={{ color }}>
           {topic.title}
+          {question.source && <span className="block normal-case font-normal tracking-normal text-[11px] mt-0.5" style={{ color: '#6b7a8f' }}>{question.source}</span>}
         </span>
         <div className="flex items-center gap-1.5 flex-shrink-0">
           <button

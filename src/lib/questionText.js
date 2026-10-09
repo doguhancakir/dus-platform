@@ -4,6 +4,7 @@ const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F']
 export function questionToText(q, { index, topicTitle } = {}) {
   const lines = []
   if (topicTitle) lines.push(`[${topicTitle}]`)
+  if (q.source) lines.push(`Kaynak: ${q.source}`)
   lines.push(index != null ? `${index}. ${q.question_text}` : q.question_text)
   ;(q.options || []).forEach((opt, oi) => {
     lines.push(`${LETTERS[oi] ?? oi + 1}) ${opt}${oi === q.correct_answer ? ' ✓' : ''}`)

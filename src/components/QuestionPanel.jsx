@@ -11,6 +11,7 @@ const OPTION_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F']
 
 function buildQuestionCopyText(ctx, showAnswer) {
   const lines = [`Soru: ${ctx.questionText}`, '']
+  if (ctx.source) lines.splice(1, 0, `Kaynak: ${ctx.source}`)
   ctx.options.forEach((opt, i) => lines.push(`${OPTION_LETTERS[i] ?? i + 1}) ${opt}`))
   if (showAnswer) {
     lines.push('')
@@ -480,6 +481,7 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
     correctOptionText:   currentQuestion.options?.[currentQuestion.correct_answer] ?? '',
     selectedOptionText:  selectedOption !== null ? options[selectedOption] ?? '' : null,
     explanation:         currentQuestion.explanation ?? '',
+    source:              currentQuestion.source ?? '',
   } : null
 
   async function handleCopyQuestion() {
@@ -606,6 +608,15 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
                     SORU {currentIndex + 1}
                   </div>
                   <CardStatusBadge card={currentCard} />
+                  {currentQuestion.source && (
+                    <span
+                      className="text-[12px] truncate max-w-[160px] sm:max-w-[320px]"
+                      style={{ color: '#7d8ca0' }}
+                      title={`Kaynak: ${currentQuestion.source}`}
+                    >
+                      {currentQuestion.source}
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center gap-1.5 flex-shrink-0">
                   <button
