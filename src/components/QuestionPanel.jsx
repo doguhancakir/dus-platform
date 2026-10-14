@@ -113,7 +113,7 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
     return () => window.removeEventListener('keydown', handler)
   }, [topicId])
 
-  // Klavye kısayolları: soru fazı 1-5 (double-tap = confirm), Space = boş bırak, cevap fazı 1-4
+  // Klavye kısayolları: soru fazı 1-5 (double-tap = confirm, Alt+rakam = ele), Space = boş bırak, cevap fazı 1-4
   useEffect(() => {
     const DOUBLE_TAP_MS = 400
 
@@ -132,7 +132,11 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
         return
       }
 
-      const num = parseInt(e.key)
+      // Rakam: üst sıra veya num pad (NumLock kapalıyken de e.code Numpad1 olur).
+      // Ctrl/Cmd kombinasyonları tarayıcıya bırakılır (sekme değiştirme vb.)
+      if (e.ctrlKey || e.metaKey) return
+      const codeMatch = /^(?:Digit|Numpad)([0-9])$/.exec(e.code || '')
+      const num = codeMatch ? Number(codeMatch[1]) : parseInt(e.key)
       if (isNaN(num) || num === 0) return
 
       if (!showAnswer) {
@@ -141,6 +145,14 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
         if (!opts) return
         const idx = num - 1
         if (idx < 0 || idx >= opts.length) return
+
+        // Alt + rakam → şıkkı ele (çarpı butonu gibi; tekrar basınca geri alır)
+        if (e.altKey) {
+          e.preventDefault()
+          toggleElimination(idx)
+          lastKeyRef.current = { num: -1, time: 0 }
+          return
+        }
 
         const now  = Date.now()
         const last = lastKeyRef.current
@@ -158,6 +170,7 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
         }
       } else {
         // Cevap fazı: 1=TEKRAR, 2=ZOR, 3=İYİ, 4=KOLAY
+        if (e.altKey) return
         if (num >= 1 && num <= RATING_CONFIG.length) {
           handleRating(RATING_CONFIG[num - 1].rating)
         }
@@ -823,6 +836,7 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
                         <motion.button
                           whileTap={{ scale: 0.9 }}
                           onClick={() => toggleElimination(i)}
+                          title={`Şıkkı ele (Alt+${i + 1})`}
                           className="w-10 flex-shrink-0 flex items-center justify-center text-xs font-bold transition-all duration-150"
                           style={{
                             background: isEliminated ? 'rgba(8,145,178,0.15)' : 'rgba(255,255,255,0.02)',
