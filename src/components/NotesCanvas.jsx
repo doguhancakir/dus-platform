@@ -8,8 +8,9 @@
  */
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Bold, Italic, Underline, Trash2, Type, Image as ImageIcon, ArrowLeft, History, Save, RefreshCw, RotateCcw, RotateCw } from 'lucide-react'
+import { Bold, Italic, Underline, Trash2, Type, Image as ImageIcon, ArrowLeft, History, Save, RefreshCw, RotateCcw, RotateCw, Eraser } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { clipboardToNoteHtml, htmlToNoteHtml } from '../lib/noteText'
 
 const CANVAS_MIN   = 3000
 const CANVAS_GROW  = 2000
@@ -194,6 +195,16 @@ function TextEl({ el, selected, editing, onMouseDown, onDoubleClick, onContentCh
           contentEditable
           suppressContentEditableWarning
           onInput={e => onContentChange(e.currentTarget.innerHTML)}
+          onPaste={e => {
+            // görsel yapıştırılıyorsa tarayıcıya bırak; metni temizleyerek ekle
+            const types = [...(e.clipboardData?.types ?? [])]
+            if (types.includes('Files')) return
+            e.preventDefault()
+            const html = clipboardToNoteHtml(e.clipboardData)
+            if (!html) return
+            document.execCommand('insertHTML', false, html.replace(/\n/g, '<br>'))
+            onContentChange(e.currentTarget.innerHTML)
+          }}
           onBlur={onBlur}
           style={textStyle}
         />
@@ -258,7 +269,7 @@ function ImageEl({ el, selected, onMouseDown, onResizeMouseDown, onRotateMouseDo
 }
 
 /* ── Element toolbar ─────────────────────────────────────────────────── */
-function ElementToolbar({ el, onChange, onDelete, onColorChange }) {
+function ElementToolbar({ el, onChange, onDelete, onColorChange, onCleanFormat }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: -6 }}
@@ -291,6 +302,11 @@ function ElementToolbar({ el, onChange, onDelete, onColorChange }) {
           <TBtn active={el.fontWeight === 'bold'}       onClick={() => onChange({ fontWeight: el.fontWeight === 'bold' ? 'normal' : 'bold' })}><Bold size={15} /></TBtn>
           <TBtn active={el.fontStyle === 'italic'}      onClick={() => onChange({ fontStyle: el.fontStyle === 'italic' ? 'normal' : 'italic' })}><Italic size={15} /></TBtn>
           <TBtn active={el.textDecoration === 'underline'} onClick={() => onChange({ textDecoration: el.textDecoration === 'underline' ? 'none' : 'underline' })}><Underline size={15} /></TBtn>
+          {onCleanFormat && (
+            <TBtn onClick={onCleanFormat} title="Biçimi temizle: yapıştırmadan gelen fazla boşlukları ve sabit yazı boyutunu kaldırır (Ctrl+Z ile geri alınır)" style={{ padding: '0 8px', fontSize: 11, gap: 5 }}>
+              <Eraser size={14} /> Temizle
+            </TBtn>
+          )}
 
           <Sep />
 
@@ -552,13 +568,12 @@ export default function NotesCanvas({ canvasId, branchId, branchName, userId, on
       }
 
       // 2. Metin var mı?
-      const textItem = items.find(i => i.type === 'text/plain')
+      const textItem = items.find(i => i.type === 'text/plain' || i.type === 'text/html')
       if (textItem) {
         e.preventDefault()
-        textItem.getAsString(text => {
-          if (!text.trim()) return
-          addEl({ type: 'text', content: text.trim(), x: 60, y: scrollTop + 80 })
-        })
+        const content = clipboardToNoteHtml(e.clipboardData)
+        if (!content.replace(/<[^>]+>/g, '').trim()) return
+        addEl({ type: 'text', content, x: 60, y: scrollTop + 80 })
         return
       }
 
@@ -814,6 +829,20 @@ export default function NotesCanvas({ canvasId, branchId, branchName, userId, on
     pushHistory(restored)
     scheduleSave(restored, h)
     setShowSnapshots(false)
+  }
+
+  // Seçili yazının içeriğini sadeleştir (boş satırlar, satır içi font-size vb.)
+  function cleanFormat(id) {
+    const el = elementsRef.current.find(e => e.id === id)
+    if (!el || el.type !== 'text') return
+    const cleaned = htmlToNoteHtml(el.content || '', { preserveNewlines: true })
+    if (cleaned === el.content) return
+    setEditingId(null)
+    pushHistory(elementsRef.current) // Ctrl+Z tam olarak bu hale döner
+    const newEls = elementsRef.current.map(e => e.id === id ? { ...e, content: cleaned } : e)
+    setElements(newEls)
+    pushHistory(newEls)
+    scheduleSave(newEls, heightRef.current)
   }
 
   function updateEl(id, changes) {
@@ -1098,6 +1127,7 @@ export default function NotesCanvas({ canvasId, branchId, branchName, userId, on
                   onChange={changes => updateEl(singleSelected.id, changes)}
                   onDelete={removeSelected}
                   onColorChange={handleColorChange}
+                  onCleanFormat={singleSelected.type === 'text' ? () => cleanFormat(singleSelected.id) : undefined}
                 />
               : <motion.div
                   initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
