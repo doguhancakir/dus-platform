@@ -143,6 +143,8 @@ export default function BranchPage() {
   const progress = topics.length > 0 ? Math.round((masteredCount / topics.length) * 100) : 0
   const totalDue = Object.values(topicStats).reduce((s, t) => s + t.dueCount, 0)
   const totalNew = Object.values(topicStats).reduce((s, t) => s + t.newCount, 0)
+  // Branştaki tüm sorular (çözülmüş, bekleyen, yeni, bayraklı hepsi)
+  const totalQuestions = Object.values(topicStats).reduce((s, t) => s + (t.totalCount || 0), 0)
 
   return (
     <Layout>
@@ -201,6 +203,11 @@ export default function BranchPage() {
                   <span><span style={{ color: '#c8d0dc' }}>{masteredCount}/{topics.length}</span> konu tamamlandı</span>
                   {totalDue > 0 && <><span style={{ color: '#2e3b4d' }}>·</span><span><span style={{ color: '#c8d0dc' }}>{totalDue}</span> tekrar</span></>}
                   {totalNew > 0 && <><span style={{ color: '#2e3b4d' }}>·</span><span>{totalNew} yeni</span></>}
+                  {totalQuestions > 0 && (
+                    <span className="ml-auto sm:ml-3 text-[12px] px-2 py-0.5 rounded-md" style={{ color: '#8a9ab0', background: '#0f1b2c', border: '1px solid #1c2a3e' }}>
+                      toplam <span style={{ color: '#c8d0dc' }}>{totalQuestions.toLocaleString('tr-TR')}</span> soru
+                    </span>
+                  )}
                 </div>
                 <div className="h-[3px] w-72 max-w-full rounded-full overflow-hidden" style={{ background: '#16212f' }}>
                   <motion.div
