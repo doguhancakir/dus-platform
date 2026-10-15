@@ -1,14 +1,27 @@
 const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F']
 
 // Şıklar orijinal (karıştırılmamış) sırada, doğru şık ✓ ile işaretli.
-export function questionToText(q, { index, topicTitle } = {}) {
+// userChoice: kullanıcının seçtiği şıkkın metni (yanlışsa "benim cevabım" olarak eklenir)
+export function wrongChoiceIndex(q, userChoice) {
+  if (!userChoice) return -1
+  const i = (q.options || []).indexOf(userChoice)
+  return i >= 0 && i !== q.correct_answer ? i : -1
+}
+
+export function questionToText(q, { index, topicTitle, userChoice } = {}) {
   const lines = []
   if (topicTitle) lines.push(`[${topicTitle}]`)
   if (q.source) lines.push(`Kaynak: ${q.source}`)
   lines.push(index != null ? `${index}. ${q.question_text}` : q.question_text)
+  const wrong = wrongChoiceIndex(q, userChoice)
   ;(q.options || []).forEach((opt, oi) => {
-    lines.push(`${LETTERS[oi] ?? oi + 1}) ${opt}${oi === q.correct_answer ? ' ✓' : ''}`)
+    const mark = oi === q.correct_answer ? ' ✓' : oi === wrong ? ' ✗ (benim cevabım)' : ''
+    lines.push(`${LETTERS[oi] ?? oi + 1}) ${opt}${mark}`)
   })
+  if (wrong >= 0) {
+    lines.push(`Benim cevabım: ${LETTERS[wrong] ?? wrong + 1}) ${q.options[wrong]}`)
+    lines.push(`Doğru cevap: ${LETTERS[q.correct_answer] ?? q.correct_answer + 1}) ${q.options[q.correct_answer]}`)
+  }
   if (q.explanation) lines.push(`Açıklama: ${q.explanation}`)
   return lines.join('\n')
 }

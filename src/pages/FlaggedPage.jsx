@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase, fetchAllRows } from '../lib/supabase'
 import { BRANCHES, TEMEL_BILIMLER } from '../lib/data'
-import { questionToText } from '../lib/questionText'
+import { questionToText, wrongChoiceIndex } from '../lib/questionText'
 import Layout from '../components/Layout'
 
 const ALL_BRANCHES = [...BRANCHES, ...TEMEL_BILIMLER]
@@ -33,9 +33,18 @@ export default function FlaggedPage() {
   async function load() {
     setLoading(true)
     try {
-      const flagged = await fetchAllRows(q => q
-        .from('user_cards').select('question_id').eq('user_id', user.id).eq('flagged', true)
-      )
+      let flagged
+      try {
+        flagged = await fetchAllRows(q => q
+          .from('user_cards').select('question_id, flagged_choice').eq('user_id', user.id).eq('flagged', true)
+        )
+      } catch {
+        // flagged_choice kolonu yoksa sadece soruları getir
+        flagged = await fetchAllRows(q => q
+          .from('user_cards').select('question_id').eq('user_id', user.id).eq('flagged', true)
+        )
+      }
+      const choiceById = Object.fromEntries((flagged || []).map(c => [c.question_id, c.flagged_choice || null]))
       const qIds = (flagged || []).map(c => c.question_id)
       if (qIds.length === 0) { setGroups([]); setLoading(false); return }
 
@@ -47,7 +56,7 @@ export default function FlaggedPage() {
       const result = ALL_BRANCHES.map(branch => {
         const items = questions
           .filter(q => topicById[q.topic_id]?.branch_id === branch.id)
-          .map(q => ({ question: q, topic: topicById[q.topic_id] }))
+          .map(q => ({ question: q, topic: topicById[q.topic_id], choice: choiceById[q.id] }))
           .sort((a, b) => (a.topic.sort_order - b.topic.sort_order) || (a.question.id - b.question.id))
         return { branch, items }
       }).filter(g => g.items.length > 0)
@@ -142,7 +151,7 @@ export default function FlaggedPage() {
                   <div className="flex-1" />
                   <button
                     onClick={() => copyText(
-                      items.map(it => questionToText(it.question, { topicTitle: it.topic.title })).join('\n\n'),
+                      items.map(it => questionToText(it.question, { topicTitle: it.topic.title, userChoice: it.choice })).join('\n\n'),
                       `${branch.name}: ${items.length} soru kopyalandı`,
                     )}
                     className="flex items-center gap-2 font-barlow font-bold text-xs uppercase tracking-wider px-4 py-2"
@@ -154,13 +163,14 @@ export default function FlaggedPage() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-                  {items.map(({ question, topic }) => (
+                  {items.map(({ question, topic, choice }) => (
                     <FlaggedCard
                       key={question.id}
                       question={question}
                       topic={topic}
+                      choice={choice}
                       color={branch.color}
-                      onCopy={() => copyText(questionToText(question, { topicTitle: topic.title }), 'Soru kopyalandı')}
+                      onCopy={() => copyText(questionToText(question, { topicTitle: topic.title, userChoice: choice }), 'Soru kopyalandı')}
                       onUnflag={() => unflag(question.id)}
                     />
                   ))}
@@ -174,7 +184,8 @@ export default function FlaggedPage() {
   )
 }
 
-function FlaggedCard({ question, topic, color, onCopy, onUnflag }) {
+function FlaggedCard({ question, topic, choice, color, onCopy, onUnflag }) {
+  const wrong = wrongChoiceIndex(question, choice)
   return (
     <div className="flex flex-col" style={{ background: '#0a1525', border: '1px solid #16283f', borderTop: `3px solid ${color}` }}>
       <div className="flex items-start justify-between gap-2 px-4 pt-3">
@@ -209,17 +220,19 @@ function FlaggedCard({ question, topic, color, onCopy, onUnflag }) {
       <div className="px-4 pt-3 space-y-1">
         {(question.options || []).map((opt, i) => {
           const correct = i === question.correct_answer
+          const mine = i === wrong
           return (
             <p
               key={i}
               className="text-sm leading-snug px-2 py-1"
               style={{
-                color: correct ? '#6ee7b7' : '#8090a8',
-                background: correct ? 'rgba(16,185,129,0.08)' : 'transparent',
-                borderLeft: `2px solid ${correct ? '#10b981' : 'transparent'}`,
+                color: correct ? '#6ee7b7' : mine ? '#fca5a5' : '#8090a8',
+                background: correct ? 'rgba(16,185,129,0.08)' : mine ? 'rgba(239,68,68,0.10)' : 'transparent',
+                borderLeft: `2px solid ${correct ? '#10b981' : mine ? '#ef4444' : 'transparent'}`,
               }}
             >
               <span className="font-bold mr-1.5">{LETTERS[i] ?? i + 1})</span>{opt}{correct && ' ✓'}
+              {mine && <span className="ml-1.5 text-[11px]" style={{ color: '#f87171' }}>✗ senin cevabın</span>}
             </p>
           )
         })}
