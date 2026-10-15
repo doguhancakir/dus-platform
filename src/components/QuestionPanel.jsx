@@ -121,6 +121,13 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
       if (answering) return
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return
 
+      // F → bayrakla / bayrağı kaldır
+      if (e.code === 'KeyF' && !e.ctrlKey && !e.metaKey && !e.altKey && !e.repeat) {
+        e.preventDefault()
+        toggleFlag()
+        return
+      }
+
       // Space → cevabı göster (boş bırak)
       if (e.code === 'Space' || e.key === ' ') {
         if (!showAnswer) {
@@ -513,14 +520,29 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
     const wasFlagged = !!currentCard?.flagged
     const newFlagged = !wasFlagged
     const existingCard = cards[currentQuestion.id] || newCard(user.id, currentQuestion.id)
-    const updatedCard = { ...existingCard, flagged: newFlagged }
+    // Cevap gösterildikten sonra bayraklanırsa seçilen şık (metni) saklanır →
+    // bayraklı sorular sayfasında ve kopyalamada "benim cevabım" olarak çıkar
+    const chosenText = newFlagged && showAnswer && selectedOption !== null
+      ? (shuffledDisplay?.options?.[selectedOption] ?? null)
+      : null
+    const updatedCard = { ...existingCard, flagged: newFlagged, flagged_choice: chosenText }
 
     try {
-      await supabase
+      let savedCard = updatedCard
+      let { error } = await supabase
         .from('user_cards')
         .upsert({ ...updatedCard, user_id: user.id, question_id: currentQuestion.id })
+      if (error && /flagged_choice/.test(error.message || '')) {
+        // kolon henüz eklenmediyse seçimi kaydetmeden bayrakla
+        const { flagged_choice: _fc, ...rest } = updatedCard
+        savedCard = rest
+        ;({ error } = await supabase
+          .from('user_cards')
+          .upsert({ ...rest, user_id: user.id, question_id: currentQuestion.id }))
+      }
+      if (error) throw error
 
-      setCards(prev => ({ ...prev, [currentQuestion.id]: updatedCard }))
+      setCards(prev => ({ ...prev, [currentQuestion.id]: savedCard }))
       toast.success(newFlagged ? 'Bayraklandı — normal sıradan çıkarıldı' : 'Bayrak kaldırıldı')
 
       // Bayraklanınca normal modda, bayrak kaldırılınca da inceleme modunda
@@ -642,7 +664,7 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
                   </button>
                   <button
                     onClick={toggleFlag}
-                    title={currentCard?.flagged ? 'Bayrağı kaldır (soru normal sıraya döner)' : 'Soruyu bayrakla (şimdilik sıradan çıkar, sonra tekrar bak)'}
+                    title={currentCard?.flagged ? 'Bayrağı kaldır (soru normal sıraya döner) — F' : 'Soruyu bayrakla (şimdilik sıradan çıkar, sonra tekrar bak) — F'}
                     className="flex-shrink-0 p-1.5 transition-colors"
                     style={
                       currentCard?.flagged
