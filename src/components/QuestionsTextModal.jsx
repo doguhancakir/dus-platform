@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { X, Copy, Download, Loader2 } from 'lucide-react'
+import { X, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '../lib/supabase'
-import { questionsToText, downloadTextFile, toFileSlug } from '../lib/questionText'
+import { questionToText } from '../lib/questionText'
+import BulkCopyBar from './BulkCopyBar'
 
 export default function QuestionsTextModal({ topic, onClose }) {
-  const [text, setText] = useState('')
-  const [count, setCount] = useState(0)
+  const [texts, setTexts] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -16,8 +16,7 @@ export default function QuestionsTextModal({ topic, onClose }) {
       .then(({ data, error }) => {
         if (cancelled) return
         if (error) toast.error('Sorular yüklenemedi')
-        setText(questionsToText(data || []))
-        setCount(data?.length || 0)
+        setTexts((data || []).map((q, i) => questionToText(q, { index: i + 1 })))
         setLoading(false)
       })
     const onKey = (e) => { if (e.key === 'Escape') onClose() }
@@ -25,14 +24,7 @@ export default function QuestionsTextModal({ topic, onClose }) {
     return () => { cancelled = true; window.removeEventListener('keydown', onKey) }
   }, [topic.id])
 
-  async function copyAll() {
-    try {
-      await navigator.clipboard.writeText(text)
-      toast.success(`${count} soru kopyalandı`)
-    } catch {
-      toast.error('Kopyalanamadı — .txt olarak indir')
-    }
-  }
+  const count = texts.length
 
   return (
     <motion.div
@@ -59,20 +51,8 @@ export default function QuestionsTextModal({ topic, onClose }) {
           </button>
         </div>
 
-        <div className="flex items-center gap-2 px-4 py-3 flex-wrap">
-          <button className="btn-primary flex items-center gap-1.5 text-sm px-4 py-2" onClick={copyAll} disabled={loading || !count}>
-            <Copy size={14} />
-            Tümünü Kopyala
-          </button>
-          <button
-            className="btn-ghost flex items-center gap-1.5 text-sm px-4 py-2"
-            disabled={loading || !count}
-            onClick={() => downloadTextFile(`${toFileSlug(topic.title)}.txt`, text)}
-          >
-            <Download size={14} />
-            .txt İndir
-          </button>
-          <span className="text-[10px] text-gray-600 uppercase tracking-wider">telefonda kopyalama yarıda kesilirse .txt indir</span>
+        <div className="px-4 py-3">
+          {!loading && count > 0 && <BulkCopyBar texts={texts} title={topic.title} buttonLabel="Tümünü Kopyala" />}
         </div>
 
         <div className="px-4 pb-4 flex-1 min-h-0 flex">
@@ -85,7 +65,7 @@ export default function QuestionsTextModal({ topic, onClose }) {
               readOnly
               className="input font-mono text-xs resize-none w-full flex-1"
               style={{ minHeight: 360 }}
-              value={text}
+              value={texts.join('\n\n')}
               onFocus={e => e.target.select()}
             />
           )}

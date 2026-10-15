@@ -7,6 +7,7 @@ import { supabase, fetchAllRows } from '../lib/supabase'
 import { BRANCHES, TEMEL_BILIMLER } from '../lib/data'
 import { questionToText, wrongChoiceIndex } from '../lib/questionText'
 import Layout from '../components/Layout'
+import BulkCopyBar from '../components/BulkCopyBar'
 
 const ALL_BRANCHES = [...BRANCHES, ...TEMEL_BILIMLER]
 const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F']
@@ -149,17 +150,11 @@ export default function FlaggedPage() {
                     {items.length}
                   </span>
                   <div className="flex-1" />
-                  <button
-                    onClick={() => copyText(
-                      items.map(it => questionToText(it.question, { topicTitle: it.topic.title, userChoice: it.choice })).join('\n\n'),
-                      `${branch.name}: ${items.length} soru kopyalandı`,
-                    )}
-                    className="flex items-center gap-2 font-barlow font-bold text-xs uppercase tracking-wider px-4 py-2"
-                    style={{ color: '#fff', background: branch.color }}
-                  >
-                    <Copy size={13} />
-                    Hepsini Kopyala
-                  </button>
+                  <BulkCopyBar
+                    texts={items.map(it => questionToText(it.question, { topicTitle: it.topic.title, userChoice: it.choice }))}
+                    title={`${branch.name} bayraklı sorular`}
+                    color={branch.color}
+                  />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
