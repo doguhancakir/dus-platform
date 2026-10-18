@@ -5,8 +5,9 @@ import { useAuth } from '../contexts/AuthContext'
 import { supabase, fetchAllRows } from '../lib/supabase'
 import { BRANCHES, TEMEL_BILIMLER } from '../lib/data'
 import { computeTopicStats } from '../lib/topicStats'
-import { Flag } from 'lucide-react'
+import { Flag, Star } from 'lucide-react'
 import { getDailyGoal, loadGoalHistory, AGAIN_EXCLUDED_FROM_DATE } from '../lib/dailyGoal'
+import { loadNotes } from '../lib/questionNotes'
 import Layout from '../components/Layout'
 import DailyCalendar from '../components/DailyCalendar'
 
@@ -37,6 +38,7 @@ export default function Dashboard() {
   const [branchImages, setBranchImages] = useState({})
   const [streak, setStreak] = useState(0)
   const [flaggedTotal, setFlaggedTotal] = useState(0)
+  const [starredTotal, setStarredTotal] = useState(0)
   const [goalHistory, setGoalHistory] = useState(null) // null = henüz yüklenmedi
   const [goalsAvailable, setGoalsAvailable] = useState(false)
 
@@ -45,6 +47,7 @@ export default function Dashboard() {
     if (user) {
       setLoading(true)
       refreshGoalHistory()
+      loadNotes(user.id).then(r => setStarredTotal(r.rows.length))
       loadStats()
     } else {
       setLoading(false)
@@ -450,6 +453,29 @@ export default function Dashboard() {
                   Bayraklı Sorular
                   <span className="font-bebas text-base leading-none px-1.5 py-0.5" style={{ background: 'rgba(204,0,0,0.25)', color: '#fff' }}>
                     {flaggedTotal}
+                  </span>
+                  <span style={{ opacity: 0.5 }}>→</span>
+                </button>
+              )}
+
+              {/* Yıldızlı sorular */}
+              {user && starredTotal > 0 && (
+                <button
+                  onClick={() => navigate('/starred')}
+                  className="flex items-center gap-3 font-barlow font-bold text-[11px] tracking-[0.22em] uppercase px-5 py-3 transition-all duration-200 w-fit"
+                  style={{
+                    color: '#f0c040',
+                    background: 'rgba(240,192,64,0.06)',
+                    border: '1px solid rgba(240,192,64,0.35)',
+                    clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(240,192,64,0.14)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'rgba(240,192,64,0.06)'}
+                >
+                  <Star size={14} fill="#f0c040" />
+                  Yıldızlı Sorular
+                  <span className="font-bebas text-base leading-none px-1.5 py-0.5" style={{ background: 'rgba(240,192,64,0.25)', color: '#fff' }}>
+                    {starredTotal}
                   </span>
                   <span style={{ opacity: 0.5 }}>→</span>
                 </button>
