@@ -6,6 +6,8 @@ import { useAuth } from '../contexts/AuthContext'
 import { useStudyTimer } from '../contexts/StudyTimerContext'
 import { supabase } from '../lib/supabase'
 import { processCard, newCard, getEstimatedTime, RATINGS, CARD_STATUS, isDue } from '../lib/sm2'
+import { loadNotes, saveNote, removeNote, notesErrorMessage } from '../lib/questionNotes'
+import StarButton from './StarButton'
 
 const OPTION_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F']
 
@@ -69,6 +71,7 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
   const { triggerQuestion } = useStudyTimer()
   const [questions, setQuestions] = useState([])
   const [cards, setCards] = useState({})
+  const [notes, setNotes] = useState({}) // question_id -> not (yıldızlı sorular)
   const [queue, setQueue] = useState([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [showAnswer, setShowAnswer] = useState(false)
@@ -195,6 +198,7 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
 
   async function loadData() {
     setLoading(true)
+    loadNotes(user.id).then(({ map }) => setNotes(map))
     try {
       const topicIds = Array.isArray(topicId) ? topicId : [topicId]
       const { data: qs } = await supabase
@@ -640,7 +644,7 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
             {/* ── Question text ── */}
             <div className="relative z-10 mb-6">
               {/* Question number badge */}
-              <div className="flex items-center justify-between gap-3 mb-3">
+              <div className="relative z-40 flex items-center justify-between gap-3 mb-3">
                 <div className="flex items-center gap-3">
                   <div
                     className="font-barlow font-bold text-[10px] tracking-[0.2em] uppercase px-2 py-0.5"
@@ -665,6 +669,24 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
                   )}
                 </div>
                 <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <StarButton
+                    key={currentQuestion.id}
+                    note={notes[currentQuestion.id]}
+                    onSave={async (text) => {
+                      const qid = currentQuestion.id
+                      const err = await saveNote(user.id, qid, text)
+                      if (err) { toast.error(notesErrorMessage(err)); return false }
+                      setNotes(prev => ({ ...prev, [qid]: text }))
+                      toast.success('Yıldızlandı')
+                    }}
+                    onRemove={async () => {
+                      const qid = currentQuestion.id
+                      const err = await removeNote(user.id, qid)
+                      if (err) { toast.error(notesErrorMessage(err)); return false }
+                      setNotes(prev => { const n = { ...prev }; delete n[qid]; return n })
+                      toast.success('Yıldız kaldırıldı')
+                    }}
+                  />
                   <button
                     onClick={handleCopyQuestion}
                     title="Soruyu kopyala (başka bir AI'a sormak için)"

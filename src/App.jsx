@@ -10,6 +10,7 @@ import Login from './pages/Login'
 import NotesPage from './pages/NotesPage'
 import FlaggedPage from './pages/FlaggedPage'
 import LibraryPage from './pages/LibraryPage'
+import StarredPage from './pages/StarredPage'
 import { supabase } from './lib/supabase'
 import StudyTimerWidget from './components/StudyTimerWidget'
 import QuickNotesSidebar from './components/QuickNotesSidebar'
@@ -107,6 +108,10 @@ function AppRoutes() {
       } />
       <Route path="/flagged" element={
         <ProtectedRoute><FlaggedPage /></ProtectedRoute>
+      } />
+
+      <Route path="/starred" element={
+        <ProtectedRoute><StarredPage /></ProtectedRoute>
       } />
 
       <Route path="/library" element={
