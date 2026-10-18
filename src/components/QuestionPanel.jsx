@@ -236,28 +236,39 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
       return
     }
 
-    const due = []
-    const newOnes = []
-
-    qs.forEach(q => {
+    // Sıra: 1) Yeni  2) İnceleme (review)  3) Öğreniyor (learning/relearning)
+    const groupOf = (q) => {
       const card = cardsMap[q.id]
-      if (card?.flagged) return // bayraklı sorular normal sıraya girmez
-      if (!card || card.status === CARD_STATUS.NEW) {
-        newOnes.push(q.id)
-      } else if (isDue(card)) {
-        if (card.status === CARD_STATUS.LEARNING || card.status === CARD_STATUS.RELEARNING) {
-          due.unshift(q.id)
-        } else {
-          due.push(q.id)
-        }
-      }
-    })
+      if (card?.flagged) return null // bayraklı sorular normal sıraya girmez
+      if (!card || card.status === CARD_STATUS.NEW) return 'new'
+      if (!isDue(card)) return null
+      if (card.status === CARD_STATUS.LEARNING || card.status === CARD_STATUS.RELEARNING) return 'learning'
+      return 'review'
+    }
+    const orderOf = (list, newLimit) => {
+      const g = { new: [], review: [], learning: [] }
+      list.forEach(q => { const k = groupOf(q); if (k) g[k].push(q.id) })
+      const fresh = newLimit != null ? g.new.slice(0, newLimit) : g.new
+      return [...fresh, ...g.review, ...g.learning]
+    }
 
     // Toplu çözde (birden çok konu seçili → topicId dizi) yeni soru limiti yok;
-    // limit sadece tek konunun "Çöz" butonu için geçerli.
+    // limit sadece tek konunun "Çöz" butonu için geçerli. Toplu çözde konular
+    // bu oturumdaki soru sayısı en az olandan en çoğa doğru sıralanır.
     const isBulk = Array.isArray(topicId)
-    const todayNew = isBulk ? newOnes : newOnes.slice(0, DAILY_NEW_LIMIT)
-    const fullQueue = [...todayNew, ...due]
+    let fullQueue
+    if (isBulk) {
+      const byTopic = new Map()
+      qs.forEach(q => {
+        if (!byTopic.has(q.topic_id)) byTopic.set(q.topic_id, [])
+        byTopic.get(q.topic_id).push(q)
+      })
+      const blocks = [...byTopic.values()].map(list => orderOf(list, null)).filter(b => b.length)
+      blocks.sort((x, y) => x.length - y.length) // stabil sıralama: eşitlerde konu sırası korunur
+      fullQueue = blocks.flat()
+    } else {
+      fullQueue = orderOf(qs, DAILY_NEW_LIMIT)
+    }
 
     const newCount = qs.filter(q => !cardsMap[q.id]?.flagged && (!cardsMap[q.id] || cardsMap[q.id]?.status === CARD_STATUS.NEW)).length
     const learningCount = qs.filter(q => {
