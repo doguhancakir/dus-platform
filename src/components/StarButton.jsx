@@ -23,16 +23,18 @@ export default function StarButton({ note, onSave, onRemove, size = 12, align = 
       if (wrapRef.current?.contains(e.target) || popRef.current?.contains(e.target)) return
       setOpen(false)
     }
-    const close = () => setOpen(false)
+    // Telefonda klavye açılınca ekran boyutu değişir → kapatma, sadece yeniden konumla
     const follow = () => measure()
-    window.addEventListener('resize', close)
+    window.addEventListener('resize', follow)
+    window.visualViewport?.addEventListener('resize', follow)
     window.addEventListener('scroll', follow, true)
     document.addEventListener('mousedown', onDown)
     document.addEventListener('touchstart', onDown)
     return () => {
       document.removeEventListener('mousedown', onDown)
       document.removeEventListener('touchstart', onDown)
-      window.removeEventListener('resize', close)
+      window.removeEventListener('resize', follow)
+      window.visualViewport?.removeEventListener('resize', follow)
       window.removeEventListener('scroll', follow, true)
     }
   }, [open])
