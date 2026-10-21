@@ -140,7 +140,10 @@ export default function BranchPage() {
   }
 
   const masteredCount = topics.filter(t => topicStats[t.id]?.isMastered).length
-  const progress = topics.length > 0 ? Math.round((masteredCount / topics.length) * 100) : 0
+  // Tamamlanan konu = yeni sorusu kalmayan konu (yeşil "hepsi öğrenildi" bunun alt kümesi)
+  const completedCount = topics.filter(t => topicStats[t.id]?.noNewLeft).length
+  const progress = topics.length > 0 ? Math.round((completedCount / topics.length) * 100) : 0
+  const masteredPct = topics.length > 0 ? Math.round((masteredCount / topics.length) * 100) : 0
   const totalDue = Object.values(topicStats).reduce((s, t) => s + t.dueCount, 0)
   const totalNew = Object.values(topicStats).reduce((s, t) => s + t.newCount, 0)
   // Branştaki tüm sorular (çözülmüş, bekleyen, yeni, bayraklı hepsi)
@@ -200,7 +203,8 @@ export default function BranchPage() {
                   className="flex items-center flex-wrap gap-x-2 gap-y-1 text-[14px] mb-3"
                   style={{ color: '#6b7a8f' }}
                 >
-                  <span><span style={{ color: '#c8d0dc' }}>{masteredCount}/{topics.length}</span> konu tamamlandı</span>
+                  <span><span style={{ color: '#c8d0dc' }}>{completedCount}/{topics.length}</span> konu tamamlandı</span>
+                  {masteredCount > 0 && <><span style={{ color: '#2e3b4d' }}>·</span><span><span style={{ color: '#34d399' }}>{masteredCount}</span> tamamen öğrenildi</span></>}
                   {totalDue > 0 && <><span style={{ color: '#2e3b4d' }}>·</span><span><span style={{ color: '#c8d0dc' }}>{totalDue}</span> tekrar</span></>}
                   {totalNew > 0 && <><span style={{ color: '#2e3b4d' }}>·</span><span>{totalNew} yeni</span></>}
                   {totalQuestions > 0 && (
@@ -209,12 +213,20 @@ export default function BranchPage() {
                     </span>
                   )}
                 </div>
-                <div className="h-[3px] w-72 max-w-full rounded-full overflow-hidden" style={{ background: '#16212f' }}>
+                <div className="relative h-[3px] w-72 max-w-full rounded-full overflow-hidden" style={{ background: '#16212f' }}>
+                  {/* mavi: yeni sorusu kalmayan konular, yeşil: tamamen öğrenilenler */}
                   <motion.div
-                    className="h-full"
-                    style={{ background: '#10b981' }}
+                    className="absolute inset-y-0 left-0"
+                    style={{ background: '#3b82f6' }}
                     initial={{ width: 0 }}
                     animate={{ width: `${progress}%` }}
+                    transition={{ duration: 0.9, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                  />
+                  <motion.div
+                    className="absolute inset-y-0 left-0"
+                    style={{ background: '#10b981' }}
+                    initial={{ width: 0 }}
+                    animate={{ width: `${masteredPct}%` }}
                     transition={{ duration: 0.9, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
                   />
                 </div>
@@ -363,6 +375,8 @@ export default function BranchPage() {
 
 function TopicCard({ topic, stats, showProgress, branchColor, index, bulkMode, isSelected, onToggleBulk, onSolve, onShowText }) {
   const isMastered = showProgress && stats.isMastered
+  // Yeni soru kalmadı ama hepsi öğrenilmedi → mavi "tamamlandı" işareti
+  const isDone = showProgress && stats.noNewLeft && !isMastered
   const pending = (stats.dueCount || 0) + (stats.newCount || 0)
   const hasPending = pending > 0
   const disabledInBulk = bulkMode && !hasPending
@@ -378,8 +392,9 @@ function TopicCard({ topic, stats, showProgress, branchColor, index, bulkMode, i
   // Alt satır: sade, küçük harf, tek renk; sadece "tekrar" vurgulu
   const meta = []
   if (showProgress && total > 0) {
-    if (isMastered) meta.push(<span key="m" style={{ color: '#4fae8c' }}>tamamlandı</span>)
+    if (isMastered) meta.push(<span key="m" style={{ color: '#4fae8c' }}>tamamen öğrenildi</span>)
     else {
+      if (isDone) meta.push(<span key="x" style={{ color: '#60a5fa' }}>yeni kalmadı</span>)
       if (stats.dueCount > 0) meta.push(<span key="d" style={{ color: '#c8d0dc' }}>{stats.dueCount} tekrar</span>)
       if (stats.newCount > 0) meta.push(<span key="n">{stats.newCount} yeni</span>)
     }
@@ -388,11 +403,14 @@ function TopicCard({ topic, stats, showProgress, branchColor, index, bulkMode, i
 
   // Biten konu: belirgin yeşil zemin + solda yeşil şerit (motivasyon için göze batsın)
   const masteredLook = isMastered && !bulkMode
+  const doneLook = isDone && !bulkMode
   const baseBg = bulkMode && isSelected
     ? `${branchColor}14`
-    : masteredLook ? 'linear-gradient(90deg, rgba(16,185,129,0.20), rgba(16,185,129,0.07) 70%)' : 'transparent'
+    : masteredLook ? 'linear-gradient(90deg, rgba(16,185,129,0.20), rgba(16,185,129,0.07) 70%)'
+    : doneLook ? 'linear-gradient(90deg, rgba(59,130,246,0.10), transparent 60%)' : 'transparent'
   const hoverBg = masteredLook
     ? 'linear-gradient(90deg, rgba(16,185,129,0.26), rgba(16,185,129,0.10) 70%)'
+    : doneLook ? 'linear-gradient(90deg, rgba(59,130,246,0.16), rgba(255,255,255,0.02) 60%)'
     : 'rgba(255,255,255,0.025)'
 
   return (
@@ -401,7 +419,7 @@ function TopicCard({ topic, stats, showProgress, branchColor, index, bulkMode, i
       className="group relative flex items-center gap-3 sm:gap-4 px-3 sm:px-4 py-3.5 transition-colors"
       style={{
         background: baseBg,
-        boxShadow: masteredLook ? 'inset 4px 0 0 #10b981' : 'none',
+        boxShadow: masteredLook ? 'inset 4px 0 0 #10b981' : doneLook ? 'inset 3px 0 0 #3b82f6' : 'none',
         opacity: disabledInBulk ? 0.35 : 1,
         cursor: disabledInBulk ? 'not-allowed' : 'pointer',
       }}
@@ -424,6 +442,10 @@ function TopicCard({ topic, stats, showProgress, branchColor, index, bulkMode, i
         ) : isMastered ? (
           <div className="flex items-center justify-center" style={{ width: 24, height: 24, borderRadius: '50%', background: '#10b981', boxShadow: '0 0 12px rgba(16,185,129,0.55)' }}>
             <Check size={14} strokeWidth={3.5} style={{ color: '#04140d' }} />
+          </div>
+        ) : isDone ? (
+          <div className="flex items-center justify-center" title="Yeni soru kalmadı" style={{ width: 24, height: 24, borderRadius: '50%', border: '2px solid #3b82f6', background: 'rgba(59,130,246,0.12)' }}>
+            <Check size={13} strokeWidth={3} style={{ color: '#60a5fa' }} />
           </div>
         ) : (
           <span className="text-sm tabular-nums" style={{ color: '#3a4a60' }}>{index + 1}</span>
