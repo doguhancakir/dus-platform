@@ -103,7 +103,7 @@ export default function Dashboard() {
         let newCount = 0
         branchTopics.forEach(t => {
           const ts = computeTopicStats(qIdsByTopic[t.id] || [], cardsMap)
-          if (ts.isMastered) masteredCount++
+          if (ts.noNewLeft) masteredCount++ // tamamlandı = yeni sorusu kalmadı
           dueCount += ts.dueCount
           newCount += ts.newCount
         })

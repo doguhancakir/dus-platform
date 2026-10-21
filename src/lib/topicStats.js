@@ -15,5 +15,8 @@ export function computeTopicStats(questionIds, cardsMap) {
   }
   const totalCount = questionIds.length
   const isMastered = totalCount > 0 && newCount === 0 && dueCount === 0 && learnedCount > 0
-  return { totalCount, newCount, dueCount, learnedCount, flaggedCount, isMastered }
+  // Konu "tamamlandı" = hiç yeni soru kalmadı (tekrarlar bekliyor olabilir).
+  // Branş ilerlemesi buna göre sayılır; isMastered (hepsi öğrenildi) ayrıca yeşil gösterilir.
+  const noNewLeft = totalCount > 0 && newCount === 0
+  return { totalCount, newCount, dueCount, learnedCount, flaggedCount, isMastered, noNewLeft }
 }
