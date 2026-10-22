@@ -545,7 +545,7 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
     const hitDailyLimit = !flaggedOnly && !Array.isArray(topicId) && allNew && questions.length > DAILY_NEW_LIMIT
     return (
       <BattleScreen onClose={onClose}>
-        <HUDBar stats={stats} currentIndex={queue.length} queueLength={queue.length} onClose={onClose} flaggedOnly={flaggedOnly} />
+        <HUDBar stats={stats} sessionResult={sessionResult} currentIndex={queue.length} queueLength={queue.length} onClose={onClose} flaggedOnly={flaggedOnly} />
         <FinishedScreen stats={stats} total={questions.length} hitDailyLimit={hitDailyLimit} onClose={onClose} sessionResult={sessionResult} flaggedOnly={flaggedOnly} onUndo={undoStack.length > 0 ? undoLastRating : null} />
       </BattleScreen>
     )
@@ -646,6 +646,7 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
     <BattleScreen onClose={onClose} accentColor={accentColor}>
       <HUDBar
         stats={stats}
+        sessionResult={sessionResult}
         currentIndex={currentIndex}
         queueLength={queue.length}
         onClose={onClose}
@@ -1123,8 +1124,22 @@ function BattleScreen({ children, accentColor = '#0891b2' }) {
   )
 }
 
+/* Bu oturumdaki doğru / yanlış sayacı */
+function ResultCounter({ result }) {
+  return (
+    <div
+      className="flex items-center gap-2 whitespace-nowrap flex-shrink-0 font-bebas text-base leading-none tracking-[0.08em] px-2 py-0.5 tabular-nums"
+      style={{ background: '#0d1a2e', border: '1px solid #1e3555' }}
+      title="Bu oturumda doğru / yanlış"
+    >
+      <span style={{ color: '#10b981' }}>✓ {result.correct}</span>
+      <span style={{ color: '#ef4444' }}>✗ {result.wrong}</span>
+    </div>
+  )
+}
+
 /* ── HUD Bar ── */
-function HUDBar({ stats, currentIndex, queueLength, onClose, accentColor = '#0891b2', isAdmin = false, onDeleteQuestion, flaggedOnly = false }) {
+function HUDBar({ stats, sessionResult = null, currentIndex, queueLength, onClose, accentColor = '#0891b2', isAdmin = false, onDeleteQuestion, flaggedOnly = false }) {
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   function handleDeleteClick() {
@@ -1197,6 +1212,7 @@ function HUDBar({ stats, currentIndex, queueLength, onClose, accentColor = '#089
               <span style={{ color: accentColor, transition: 'color 0.4s' }}>{currentIndex}</span>
               <span className="text-gray-700 text-sm">/{queueLength}</span>
             </div>
+            {sessionResult && <ResultCounter result={sessionResult} />}
           </div>
         )}
 
@@ -1205,6 +1221,9 @@ function HUDBar({ stats, currentIndex, queueLength, onClose, accentColor = '#089
           <div className="sm:hidden font-bebas text-sm tracking-wider" style={{ color: accentColor }}>
             {currentIndex}/{queueLength}
           </div>
+        )}
+        {queueLength > 0 && sessionResult && (
+          <div className="sm:hidden"><ResultCounter result={sessionResult} /></div>
         )}
 
         {/* Admin: soru sil */}
