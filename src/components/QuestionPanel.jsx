@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, ChevronRight, Trophy, Zap, Trash2, Copy, Flag } from 'lucide-react'
+import { X, ChevronRight, Trophy, Zap, Trash2, Copy, Flag, Undo2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '../contexts/AuthContext'
 import { useStudyTimer } from '../contexts/StudyTimerContext'
@@ -82,6 +82,8 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
   const [sessionResult, setSessionResult] = useState({ correct: 0, wrong: 0, skipped: 0 })
   const [finished, setFinished] = useState(false)
   const [answering, setAnswering] = useState(false)
+  // Geri al (Ctrl+Z): son cevaplardan önceki durumlar (kart, sıra, sonuç sayaçları)
+  const [undoStack, setUndoStack] = useState([])
   // Shuffled options — re-randomized on every card appearance
   const [shuffledDisplay, setShuffledDisplay] = useState(null) // { forIndex, options, correctIndex }
   // Double-click tracking
@@ -144,6 +146,12 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
 
       // Rakam: üst sıra veya num pad (NumLock kapalıyken de e.code Numpad1 olur).
       // Ctrl/Cmd kombinasyonları tarayıcıya bırakılır (sekme değiştirme vb.)
+      // Ctrl/Cmd+Z → son cevabı geri al
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.code === 'KeyZ') {
+        e.preventDefault()
+        undoLastRating()
+        return
+      }
       if (e.ctrlKey || e.metaKey) return
       const codeMatch = /^(?:Digit|Numpad)([0-9])$/.exec(e.code || '')
       const num = codeMatch ? Number(codeMatch[1]) : parseInt(e.key)
@@ -309,6 +317,15 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
       skipped: prev.skipped + (wasSkipped ? 1 : 0),
     }))
 
+    const undoEntry = {
+      qid: currentQId,
+      prevCard: cards[currentQId] ?? null, // null → bu soru için kayıt yoktu
+      prevQueue: queue,
+      prevIndex: currentIndex,
+      prevSessionResult: sessionResult,
+      prevStats: stats,
+    }
+
     const existingCard = cards[currentQId] || newCard(user.id, currentQId)
     const processed = processCard(existingCard, rating)
 
@@ -346,6 +363,7 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
 
       const newCardsMap = { ...cards, [currentQId]: updatedCard }
       setCards(newCardsMap)
+      setUndoStack(prev => [...prev.slice(-19), undoEntry])
 
       let newQueue = [...queue]
       if (
@@ -378,6 +396,48 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
     triggerQuestion()
     setAnswering(false)
   }
+  // Son cevabı geri al: kartı veritabanında eski haline döndür (yeni soruysa sil),
+  // soruyu hiç çözülmemiş gibi tekrar göster. Günlük sayaçlar DB'den okunduğu için düzelir.
+  async function undoLastRating() {
+    if (answering || undoStack.length === 0) return
+    const entry = undoStack[undoStack.length - 1]
+    setAnswering(true)
+    try {
+      let error
+      if (entry.prevCard) {
+        ;({ error } = await supabase.from('user_cards').upsert({ ...entry.prevCard, user_id: user.id, question_id: entry.qid }))
+        if (error) {
+          const { created_at: _c, counted_review_at: _r, ...rest } = entry.prevCard
+          ;({ error } = await supabase.from('user_cards').upsert({ ...rest, user_id: user.id, question_id: entry.qid }))
+        }
+      } else {
+        ;({ error } = await supabase.from('user_cards').delete().eq('user_id', user.id).eq('question_id', entry.qid))
+      }
+      if (error) throw error
+
+      setCards(prev => {
+        const next = { ...prev }
+        if (entry.prevCard) next[entry.qid] = entry.prevCard
+        else delete next[entry.qid]
+        return next
+      })
+      setUndoStack(prev => prev.slice(0, -1))
+      setQueue(entry.prevQueue)
+      setCurrentIndex(entry.prevIndex)
+      setSessionResult(entry.prevSessionResult)
+      setStats(entry.prevStats)
+      setFinished(false)
+      setShowAnswer(false)
+      setSelectedOption(null)
+      setEliminatedOptions(new Set())
+      toast.success('Son cevap geri alındı')
+    } catch (err) {
+      console.error('Undo error:', err)
+      toast.error('Geri alınamadı')
+    }
+    setAnswering(false)
+  }
+
 
   async function deleteQuestion() {
     const q = currentQuestion
@@ -486,7 +546,7 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
     return (
       <BattleScreen onClose={onClose}>
         <HUDBar stats={stats} currentIndex={queue.length} queueLength={queue.length} onClose={onClose} flaggedOnly={flaggedOnly} />
-        <FinishedScreen stats={stats} total={questions.length} hitDailyLimit={hitDailyLimit} onClose={onClose} sessionResult={sessionResult} flaggedOnly={flaggedOnly} />
+        <FinishedScreen stats={stats} total={questions.length} hitDailyLimit={hitDailyLimit} onClose={onClose} sessionResult={sessionResult} flaggedOnly={flaggedOnly} onUndo={undoStack.length > 0 ? undoLastRating : null} />
       </BattleScreen>
     )
   }
@@ -669,6 +729,17 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
                   )}
                 </div>
                 <div className="flex items-center gap-1.5 flex-shrink-0">
+                  {undoStack.length > 0 && (
+                    <button
+                      onClick={undoLastRating}
+                      title="Son cevabı geri al (Ctrl+Z)"
+                      aria-label="Son cevabı geri al"
+                      className="flex-shrink-0 p-1.5 transition-colors"
+                      style={{ background: '#0a1628', border: '1px solid #1a2d45', color: '#8aa4c0' }}
+                    >
+                      <Undo2 size={12} />
+                    </button>
+                  )}
                   <StarButton
                     key={currentQuestion.id}
                     note={notes[currentQuestion.id]}
@@ -1249,7 +1320,7 @@ function CardStatusBadge({ card }) {
 }
 
 /* ── Finished Screen ── */
-function FinishedScreen({ stats, total, hitDailyLimit, onClose, sessionResult, flaggedOnly = false }) {
+function FinishedScreen({ stats, total, hitDailyLimit, onClose, sessionResult, flaggedOnly = false, onUndo = null }) {
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -1401,6 +1472,15 @@ function FinishedScreen({ stats, total, hitDailyLimit, onClose, sessionResult, f
           <Trophy size={16} />
           KONUYA DÖN
         </motion.button>
+        {onUndo && (
+          <button
+            onClick={onUndo}
+            className="mt-3 w-full flex items-center justify-center gap-2 py-2.5 text-sm"
+            style={{ color: '#8aa4c0', border: '1px solid #1e3555' }}
+          >
+            <Undo2 size={14} /> Son cevabı geri al (Ctrl+Z)
+          </button>
+        )}
       </div>
     </motion.div>
   )
