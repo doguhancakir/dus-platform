@@ -705,10 +705,10 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
             {/* ── Question text ── */}
             <div className="relative z-10 mb-6">
               {/* Question number badge */}
-              <div className="relative z-40 flex items-center justify-between gap-3 mb-3">
-                <div className="flex items-center gap-3">
+              <div className="relative z-40 flex items-center justify-between gap-2 sm:gap-3 mb-3">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
                   <div
-                    className="font-barlow font-bold text-[10px] tracking-[0.2em] uppercase px-2 py-0.5"
+                    className="flex-shrink-0 whitespace-nowrap font-barlow font-bold text-[10px] tracking-[0.2em] uppercase px-2 py-0.5"
                     style={{
                       color: accentColor,
                       background: `${accentColor}14`,
@@ -721,7 +721,7 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
                   <CardStatusBadge card={currentCard} />
                   {currentQuestion.source && (
                     <span
-                      className="text-[12px] truncate max-w-[160px] sm:max-w-[320px]"
+                      className="text-[12px] truncate min-w-0 max-w-[160px] sm:max-w-[320px]"
                       style={{ color: '#7d8ca0' }}
                       title={`Kaynak: ${currentQuestion.source}`}
                     >
@@ -1330,7 +1330,7 @@ function CardStatusBadge({ card }) {
   if (!s) return null
   return (
     <div
-      className="font-barlow font-bold text-[9px] tracking-[0.18em] uppercase px-1.5 py-0.5"
+      className="flex-shrink-0 whitespace-nowrap font-barlow font-bold text-[9px] tracking-[0.18em] uppercase px-1.5 py-0.5"
       style={{ color: s.color, background: `${s.color}12`, border: `1px solid ${s.color}25` }}
     >
       {s.label}
