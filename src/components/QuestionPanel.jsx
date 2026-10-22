@@ -399,7 +399,8 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
   // Son cevabı geri al: kartı veritabanında eski haline döndür (yeni soruysa sil),
   // soruyu hiç çözülmemiş gibi tekrar göster. Günlük sayaçlar DB'den okunduğu için düzelir.
   async function undoLastRating() {
-    if (answering || undoStack.length === 0) return
+    if (answering) return
+    if (undoStack.length === 0) { toast('Geri alınacak cevap yok'); return }
     const entry = undoStack[undoStack.length - 1]
     setAnswering(true)
     try {
@@ -730,17 +731,15 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
                   )}
                 </div>
                 <div className="flex items-center gap-1.5 flex-shrink-0">
-                  {undoStack.length > 0 && (
-                    <button
-                      onClick={undoLastRating}
-                      title="Son cevabı geri al (Ctrl+Z)"
-                      aria-label="Son cevabı geri al"
-                      className="flex-shrink-0 p-1.5 transition-colors"
-                      style={{ background: '#0a1628', border: '1px solid #1a2d45', color: '#8aa4c0' }}
-                    >
-                      <Undo2 size={12} />
-                    </button>
-                  )}
+                  <button
+                    onClick={undoLastRating}
+                    title={undoStack.length > 0 ? 'Son cevabı geri al (Ctrl+Z)' : 'Geri alınacak cevap yok (bu oturumda henüz cevap vermedin)'}
+                    aria-label="Son cevabı geri al"
+                    className="flex-shrink-0 p-1.5 transition-colors"
+                    style={{ background: '#0a1628', border: '1px solid #1a2d45', color: '#8aa4c0', opacity: undoStack.length > 0 ? 1 : 0.35 }}
+                  >
+                    <Undo2 size={12} />
+                  </button>
                   <StarButton
                     key={currentQuestion.id}
                     note={notes[currentQuestion.id]}
