@@ -11,6 +11,7 @@ import { loadBooks, r2Url, formatSize, BOOK_CATEGORIES } from '../lib/books'
 
 const ALL_BRANCHES = [...BRANCHES, ...TEMEL_BILIMLER].sort((a, b) => a.id - b.id)
 import Layout from '../components/Layout'
+import ChangeLogTab from '../components/ChangeLogTab'
 
 const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || 'admin123'
 
@@ -74,6 +75,7 @@ export default function AdminPage() {
             { id: 'books', label: 'KİTAPLAR' },
             { id: 'users', label: 'KULLANICILAR' },
             { id: 'prompt', label: 'PROMPT' },
+            { id: 'history', label: 'GEÇMİŞ' },
           ].map(tab => (
             <button
               key={tab.id}
@@ -96,6 +98,7 @@ export default function AdminPage() {
           {activeTab === 'books' && <BooksTab key="books" />}
           {activeTab === 'users' && <UsersTab key="users" adminNickname={user?.nickname} />}
           {activeTab === 'prompt' && <PromptTab key="prompt" />}
+          {activeTab === 'history' && <ChangeLogTab key="history" />}
         </AnimatePresence>
       </div>
     </Layout>
