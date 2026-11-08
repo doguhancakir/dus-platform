@@ -8,6 +8,7 @@ import { computeTopicStats } from '../lib/topicStats'
 import { Flag, Star } from 'lucide-react'
 import { getDailyGoal, loadGoalHistory, AGAIN_EXCLUDED_FROM_DATE } from '../lib/dailyGoal'
 import { loadNotes } from '../lib/questionNotes'
+import { loadDayStartHour, studyDayStart, studyDayKey } from '../lib/studyDay'
 import Layout from '../components/Layout'
 import DailyCalendar from '../components/DailyCalendar'
 
@@ -46,6 +47,8 @@ export default function Dashboard() {
     loadBranchImages()
     if (user) {
       setLoading(true)
+      // Gün başlangıç saati başka cihazda değiştirildiyse her şey (sayaç, takvim, süre) yeni saate göre yeniden kurulsun
+      loadDayStartHour(user.id).then(changed => { if (changed) window.location.reload() })
       refreshGoalHistory()
       loadNotes(user.id).then(r => setStarredTotal(r.rows.length))
       loadStats()
@@ -118,9 +121,9 @@ export default function Dashboard() {
 
       setFlaggedTotal(allCards?.filter(c => c.flagged).length || 0)
 
-      const todayStart = new Date()
-      todayStart.setHours(0, 0, 0, 0)
-      const todayDateKey = todayStart.toISOString().split('T')[0]
+      // Gün, kullanıcının seçtiği saatte başlar (varsayılan 00:00) — bkz. lib/studyDay
+      const todayStart = studyDayStart()
+      const todayDateKey = studyDayKey()
       // 06.10.2026'dan itibaren "bugün çözülen" sadece Zor/İyi/Kolay ile cevaplanan
       // (counted_review_at) sayılır; öncesinde eski davranış (last_review, her
       // değerlendirme) devam eder — bkz. AGAIN_EXCLUDED_FROM_DATE.
@@ -220,14 +223,14 @@ export default function Dashboard() {
       const dayCounts = {}
       reviewHistory?.forEach(c => {
         if (!c.last_review) return
-        const day = c.last_review.split('T')[0]
+        const day = studyDayKey(c.last_review)
         dayCounts[day] = (dayCounts[day] || 0) + 1
       })
 
       const countedDayCounts = {}
       countedHistory?.forEach(c => {
         if (!c.counted_review_at) return
-        const day = c.counted_review_at.split('T')[0]
+        const day = studyDayKey(c.counted_review_at)
         countedDayCounts[day] = (countedDayCounts[day] || 0) + 1
       })
 
@@ -243,7 +246,7 @@ export default function Dashboard() {
       const newDayCounts = {}
       newHistory?.forEach(c => {
         if (!c.created_at) return
-        const day = c.created_at.split('T')[0]
+        const day = studyDayKey(c.created_at)
         newDayCounts[day] = (newDayCounts[day] || 0) + 1
       })
 
@@ -255,8 +258,8 @@ export default function Dashboard() {
         return true
       }
 
-      const todayStr = new Date().toISOString().split('T')[0]
-      const yestStr  = new Date(Date.now() - 86400000).toISOString().split('T')[0]
+      const todayStr = studyDayKey()
+      const yestStr  = studyDayKey(new Date(studyDayStart().getTime() - 3600000))
 
       // Find the most recent qualifying day to start counting from
       let startDateStr = null
