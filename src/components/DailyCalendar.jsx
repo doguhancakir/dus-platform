@@ -90,18 +90,25 @@ export default function DailyCalendar({
     // For today: ensure the goal todo exists before fetching (sequential, not racy).
     // Kişisel hedef yüklenene kadar bekle ki yanlış hedef metniyle görev açılmasın.
     if (selKey === todayKey && goalReady) {
-      const { data: todayRows } = await supabase
+      const { data: todayRows, error: todayErr } = await supabase
         .from('daily_todos')
         .select('id, text')
         .eq('user_id', userId)
         .eq('date', todayKey)
         .like('text', '% Soru Çöz')
-      const existing = (todayRows || []).find(t => isGoalTodoText(t.text))
-      if (!existing) {
+        .order('id')
+      const goals = (todayRows || []).filter(t => isGoalTodoText(t.text))
+      const existing = goals[0]
+      // Aynı güne iki hedef görevi düşmüşse (ör. eşzamanlı yükleme) fazlasını sil
+      if (goals.length > 1) {
+        await supabase.from('daily_todos').delete().in('id', goals.slice(1).map(t => t.id))
+      }
+      // Sorgu hata verdiyse (bağlantı kesildi, sayfa yenileniyor) görev yok sanıp ikinci kopyayı açma
+      if (!existing && !todayErr) {
         await supabase
           .from('daily_todos')
           .insert({ user_id: userId, date: todayKey, text: todayGoal.text, completed: false })
-      } else if (existing.text !== todayGoal.text) {
+      } else if (existing && existing.text !== todayGoal.text) {
         // Hedef bugün değiştirildi → görev metnini güncelle
         await supabase.from('daily_todos').update({ text: todayGoal.text }).eq('id', existing.id)
       }
