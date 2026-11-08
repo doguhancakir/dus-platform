@@ -15,6 +15,7 @@
 import { createContext, useContext, useState, useEffect, useRef } from 'react'
 import { useAuth } from './AuthContext'
 import { supabase } from '../lib/supabase'
+import { studyDayKey } from '../lib/studyDay'
 
 const INACTIVITY_MS = 2 * 60 * 1000   // 2 dakika
 const AUTOSAVE_S    = 30               // her 30 saniyede bir kayıt
@@ -22,8 +23,9 @@ const SYNC_MS       = 60 * 1000        // sayaç dururken DB'den tazeleme sıkl�
 
 export const StudyTimerContext = createContext(null)
 
+// Çalışma günü: kullanıcının gün başlangıç saatinde (ör. 07:00) yeni güne geçer
 function todayKey() {
-  return new Date().toLocaleDateString('sv-SE')
+  return studyDayKey()
 }
 
 export function formatTimerDisplay(seconds) {
@@ -66,14 +68,17 @@ export function StudyTimerProvider({ children }) {
     if (!user?.id) return
     const today = todayKey()
 
-    // Önceki günden kalan localStorage verisi → önce DB'ye kaydet
+    // Önceki günden kalan localStorage verisi → önce DB'ye kaydet.
+    // Artımlı kayıtta (add_study_seconds) süre zaten 30 sn'de bir DB'ye eklendiği için
+    // bu yapılmaz: eski yerel toplam, DB'de yapılan düzeltmeyi (ör. süreyi önceki güne
+    // taşıma) GREATEST ile geri ezerdi.
     const localDate = localStorage.getItem('study_date')
     const localSec  = parseInt(localStorage.getItem('study_seconds') ?? '0')
-    if (localDate && localDate < today && localSec > 0) {
+    if (!additiveRef.current && localDate && localDate < today && localSec > 0) {
       saveToDB(user.id, localDate, localSec)
     }
 
-    // Supabase + localStorage'dan en büyüğünü al
+    // Artımlı kayıtta DB doğru kaynaktır; yoksa Supabase + localStorage'dan en büyüğünü al
     supabase
       .from('study_sessions')
       .select('seconds')
@@ -83,7 +88,7 @@ export function StudyTimerProvider({ children }) {
       .then(({ data }) => {
         const dbSec    = data?.seconds ?? 0
         const localTodaySec = localDate === today ? Math.max(0, localSec) : 0
-        const bestSec  = Math.max(dbSec, localTodaySec)
+        const bestSec  = (additiveRef.current && data) ? dbSec : Math.max(dbSec, localTodaySec)
 
         secRef.current = bestSec
         dateRef.current = today
@@ -111,7 +116,7 @@ export function StudyTimerProvider({ children }) {
       })
   }, [user?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Gece 12 kontrolü (30 sn'de bir) ────────────────────────────────
+  // ── Gün değişimi kontrolü (gün başlangıç saatinde, 30 sn'de bir) ────────────────────────────────
   useEffect(() => {
     const id = setInterval(() => {
       const today = todayKey()

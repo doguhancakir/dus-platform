@@ -5,6 +5,7 @@ import { useStudyTimer, formatTimerDisplay, formatTimerLabel } from '../contexts
 import { getPhaseInfo } from '../lib/studyPlan'
 import { toast } from 'sonner'
 import { getDailyGoal, isGoalTodoText } from '../lib/dailyGoal'
+import { studyToday, getDayStartHour, saveDayStartHour } from '../lib/studyDay'
 
 const MONTHS_TR = [
   'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
@@ -18,10 +19,9 @@ function toKey(d) {
   return `${y}-${m}-${day}`
 }
 
+// "Bugün" = çalışma günü (gün başlangıç saatinden önce hâlâ dünkü gün)
 function getToday() {
-  const d = new Date()
-  d.setHours(0, 0, 0, 0)
-  return d
+  return studyToday()
 }
 
 export default function DailyCalendar({
@@ -45,6 +45,7 @@ export default function DailyCalendar({
   const [goalTotalInput, setGoalTotalInput] = useState('')
   const [goalNewInput, setGoalNewInput] = useState('')
   const [goalSaving, setGoalSaving] = useState(false)
+  const [dayHourInput, setDayHourInput] = useState(getDayStartHour())
   const inputRef = useRef(null)
 
   const phaseInfo = getPhaseInfo(sel)
@@ -183,6 +184,7 @@ export default function DailyCalendar({
   function openGoalEdit() {
     setGoalTotalInput(String(todayGoal.threshold))
     setGoalNewInput(String(todayGoal.newThreshold || 0))
+    setDayHourInput(getDayStartHour())
     setGoalEditOpen(true)
   }
 
@@ -193,6 +195,18 @@ export default function DailyCalendar({
     if (!Number.isFinite(fresh) || fresh < 0) { toast.error('Yeni soru hedefi 0 veya daha büyük olmalı'); return }
     if (fresh > total) { toast.error('Yeni soru hedefi toplamdan büyük olamaz'); return }
     setGoalSaving(true)
+    // Gün başlangıç saati değiştiyse kaydet; sayaçlar/takvim/süre yeni saate göre kurulsun diye sayfa yenilenir
+    if (dayHourInput !== getDayStartHour()) {
+      const hourErr = await saveDayStartHour(userId, dayHourInput)
+      if (hourErr) {
+        setGoalSaving(false)
+        toast.error('Gün başlangıç saati kaydedilemedi')
+        return
+      }
+      toast.success(`Gün artık ${String(dayHourInput).padStart(2, '0')}:00'da başlıyor`)
+      setTimeout(() => window.location.reload(), 800)
+      return
+    }
     const { error } = await supabase.from('user_goal_settings').upsert({
       user_id: userId,
       effective_date: todayKey,
@@ -793,6 +807,15 @@ export default function DailyCalendar({
                         value={goalNewInput} onChange={e => setGoalNewInput(e.target.value)}
                         onKeyDown={e => { if (e.key === 'Enter') saveGoal() }} />
                     </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={lblStyle}>Gün başlangıcı</span>
+                      <select style={{ ...numStyle, width: 78 }}
+                        value={dayHourInput} onChange={e => setDayHourInput(Number(e.target.value))}>
+                        {Array.from({ length: 24 }, (_, h) => (
+                          <option key={h} value={h}>{String(h).padStart(2, '0')}:00</option>
+                        ))}
+                      </select>
+                    </label>
                     <button
                       onClick={saveGoal}
                       disabled={goalSaving}
@@ -812,7 +835,7 @@ export default function DailyCalendar({
                       İptal
                     </button>
                     <span style={{ ...lblStyle, flexBasis: '100%', color: 'rgba(240,192,64,0.4)', textTransform: 'none', letterSpacing: '0.02em' }}>
-                      Bugünden itibaren geçerli, geçmiş günler ve seri etkilenmez. Yeni = hiç çözmediğin soru (0 olabilir).
+                      Hedef bugünden itibaren geçerli, geçmiş günler etkilenmez. Yeni = hiç çözmediğin soru (0 olabilir). Gün başlangıcı: sayaçlar, hedef, seri, takvim ve çalışma süresi bu saatte sıfırlanır.
                     </span>
                   </motion.div>
                 )
