@@ -90,6 +90,7 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
   const lastClickRef = useRef({ time: 0, index: -1 })
   // Klavye double-tap tracking (aynı tuşa 400ms içinde 2x = confirm)
   const lastKeyRef = useRef({ num: -1, time: 0 })
+  const numpad0Ref = useRef(false) // num0 basılı tutulurken numpad rakamı = şık ele (tek elle Alt yerine)
 
   function shuffleOptions(question, forIndex) {
     if (!question?.options?.length) return
@@ -118,7 +119,22 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
     return () => window.removeEventListener('keydown', handler)
   }, [topicId])
 
-  // Klavye kısayolları: soru fazı 1-5 (double-tap = confirm, Alt+rakam = ele), Space = boş bırak, cevap fazı 1-4
+  // Num0 basılı mı? (keyup'ta ya da pencere odak kaybedince bırakılmış say)
+  useEffect(() => {
+    const down = (e) => { if (e.code === 'Numpad0') numpad0Ref.current = true }
+    const up = (e) => { if (e.code === 'Numpad0') numpad0Ref.current = false }
+    const reset = () => { numpad0Ref.current = false }
+    window.addEventListener('keydown', down)
+    window.addEventListener('keyup', up)
+    window.addEventListener('blur', reset)
+    return () => {
+      window.removeEventListener('keydown', down)
+      window.removeEventListener('keyup', up)
+      window.removeEventListener('blur', reset)
+    }
+  }, [])
+
+  // Klavye kısayolları: soru fazı 1-5 (double-tap = confirm, Alt+rakam veya Num0+rakam = ele), Space = boş bırak, cevap fazı 1-4
   useEffect(() => {
     const DOUBLE_TAP_MS = 400
 
@@ -164,8 +180,8 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
         const idx = num - 1
         if (idx < 0 || idx >= opts.length) return
 
-        // Alt + rakam → şıkkı ele (çarpı butonu gibi; tekrar basınca geri alır)
-        if (e.altKey) {
+        // Alt + rakam veya Num0 basılıyken numpad rakamı → şıkkı ele (çarpı butonu gibi; tekrar basınca geri alır)
+        if (e.altKey || numpad0Ref.current) {
           e.preventDefault()
           toggleElimination(idx)
           lastKeyRef.current = { num: -1, time: 0 }
@@ -188,7 +204,7 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
         }
       } else {
         // Cevap fazı: 1=TEKRAR, 2=ZOR, 3=İYİ, 4=KOLAY
-        if (e.altKey) return
+        if (e.altKey || numpad0Ref.current) return
         if (num >= 1 && num <= RATING_CONFIG.length) {
           handleRating(RATING_CONFIG[num - 1].rating)
         }
@@ -962,7 +978,7 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
                         <motion.button
                           whileTap={{ scale: 0.9 }}
                           onClick={() => toggleElimination(i)}
-                          title={`Şıkkı ele (Alt+${i + 1})`}
+                          title={`Şıkkı ele (Alt+${i + 1} veya Num0+${i + 1})`}
                           className="w-10 flex-shrink-0 flex items-center justify-center text-xs font-bold transition-all duration-150"
                           style={{
                             background: isEliminated ? 'rgba(8,145,178,0.15)' : 'rgba(255,255,255,0.02)',
