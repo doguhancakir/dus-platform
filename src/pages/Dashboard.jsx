@@ -11,6 +11,7 @@ import { loadNotes } from '../lib/questionNotes'
 import { loadDayStartHour, studyDayStart, studyDayKey } from '../lib/studyDay'
 import Layout from '../components/Layout'
 import DailyCalendar from '../components/DailyCalendar'
+import ExamCountdown from '../components/ExamCountdown'
 
 const containerVariants = {
   hidden: {},
@@ -389,6 +390,16 @@ export default function Dashboard() {
                   Diş Hekimliği Uzmanlık Sınavı Hazırlık Platformu
                 </motion.p>
               )}
+            </motion.div>
+
+            {/* DUS geri sayımı */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="mt-6 relative z-10"
+            >
+              <ExamCountdown />
             </motion.div>
 
             {/* Buttons row */}
