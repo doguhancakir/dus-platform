@@ -8,6 +8,7 @@ import { supabase } from '../lib/supabase'
 import { processCard, newCard, getEstimatedTime, RATINGS, CARD_STATUS, isDue } from '../lib/sm2'
 import { loadNotes, saveNote, removeNote, notesErrorMessage } from '../lib/questionNotes'
 import StarButton from './StarButton'
+import { DEFAULT_ORDER } from '../lib/bulkOrder'
 
 const OPTION_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F']
 
@@ -66,7 +67,7 @@ const RATING_CONFIG = [
 
 const DAILY_NEW_LIMIT = 20
 
-export default function QuestionPanel({ topicId, onClose, flaggedOnly = false }) {
+export default function QuestionPanel({ topicId, onClose, flaggedOnly = false, groupOrder = null }) {
   const { user } = useAuth()
   const { triggerQuestion } = useStudyTimer()
   const [questions, setQuestions] = useState([])
@@ -264,20 +265,23 @@ export default function QuestionPanel({ topicId, onClose, flaggedOnly = false })
       return
     }
 
-    // Sıra: 1) Yeni  2) İnceleme (review)  3) Öğreniyor (learning/relearning)
+    // Varsayılan sıra: 1) Yeni  2) İnceleme  3) Öğreniyor  4) Tekrar (relearning).
+    // Toplu çözde kullanıcı kendi sırasını seçebilir (groupOrder).
     const groupOf = (q) => {
       const card = cardsMap[q.id]
       if (card?.flagged) return null // bayraklı sorular normal sıraya girmez
       if (!card || card.status === CARD_STATUS.NEW) return 'new'
       if (!isDue(card)) return null
-      if (card.status === CARD_STATUS.LEARNING || card.status === CARD_STATUS.RELEARNING) return 'learning'
+      if (card.status === CARD_STATUS.LEARNING) return 'learning'
+      if (card.status === CARD_STATUS.RELEARNING) return 'relearning'
       return 'review'
     }
+    const order = Array.isArray(topicId) && groupOrder ? groupOrder : DEFAULT_ORDER
     const orderOf = (list, newLimit) => {
-      const g = { new: [], review: [], learning: [] }
+      const g = { new: [], review: [], learning: [], relearning: [] }
       list.forEach(q => { const k = groupOf(q); if (k) g[k].push(q.id) })
-      const fresh = newLimit != null ? g.new.slice(0, newLimit) : g.new
-      return [...fresh, ...g.review, ...g.learning]
+      if (newLimit != null) g.new = g.new.slice(0, newLimit)
+      return order.flatMap(k => g[k])
     }
 
     // Toplu çözde (birden çok konu seçili → topicId dizi) yeni soru limiti yok;

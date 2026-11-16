@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link, useParams, Navigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronLeft, ChevronRight, ChevronDown, BarChart3, Layers, Check, Zap, X, Play, FileText, Flag } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, BarChart3, Layers, Check, Zap, X, Play, FileText, Flag, ListFilter } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase, fetchAllRows } from '../lib/supabase'
 import { getBranchById } from '../lib/data'
@@ -12,6 +12,7 @@ import QuestionPanel from '../components/QuestionPanel'
 import QuestionsTextModal from '../components/QuestionsTextModal'
 import BookGrid from '../components/BookGrid'
 import { loadBooks } from '../lib/books'
+import { ORDER_GROUPS, DEFAULT_ORDER, getBulkOrder, loadBulkOrder, saveBulkOrder } from '../lib/bulkOrder'
 
 const containerVariants = {
   hidden: {},
@@ -39,6 +40,8 @@ export default function BranchPage() {
   // ── Toplu çöz ──────────────────────────────────────────────────────────────
   const [bulkMode, setBulkMode] = useState(false)
   const [selectedBulk, setSelectedBulk] = useState(new Set())
+  const [bulkOrder, setBulkOrder] = useState(getBulkOrder)
+  const [orderOpen, setOrderOpen] = useState(false)
 
   // ── Konular / Kitaplar sekmesi ─────────────────────────────────────────────
   const [tab, setTab] = useState('topics')
@@ -64,6 +67,15 @@ export default function BranchPage() {
   function toggleBulkMode() {
     setBulkMode(v => !v)
     setSelectedBulk(new Set())
+    setOrderOpen(false)
+  }
+
+  useEffect(() => { if (user) loadBulkOrder(user.id).then(setBulkOrder) }, [user?.id])
+
+  async function changeBulkOrder(next) {
+    setBulkOrder(next)
+    const err = await saveBulkOrder(user?.id, next)
+    if (err) console.error('bulk order save error', err) // cihazda yine de saklanır
   }
 
   function toggleBulkTopic(topicId) {
@@ -81,6 +93,7 @@ export default function BranchPage() {
 
   function startBulkSolve() {
     if (selectedBulk.size === 0) return
+    setOrderOpen(false)
     setPanelTopicIds([...selectedBulk])
   }
 
@@ -282,6 +295,29 @@ export default function BranchPage() {
                 {bulkMode ? <X size={12} /> : <Layers size={12} />}
                 {bulkMode ? 'VAZGEÇ' : 'TOPLU ÇÖZ'}
               </button>
+              {bulkMode && (
+                <div className="relative">
+                  <button
+                    onClick={() => setOrderOpen(v => !v)}
+                    title="Soru sırası"
+                    aria-label="Soru sırasını ayarla"
+                    className="flex items-center px-2 py-1.5 transition-colors"
+                    style={orderOpen
+                      ? { color: '#fff', background: `${branch.color}33`, border: `1px solid ${branch.color}` }
+                      : { color: '#6a8aaa', background: 'transparent', border: '1px solid #1e3555' }}
+                  >
+                    <ListFilter size={14} />
+                  </button>
+                  {orderOpen && (
+                    <BulkOrderPanel
+                      order={bulkOrder}
+                      color={branch.color}
+                      onChange={changeBulkOrder}
+                      onClose={() => setOrderOpen(false)}
+                    />
+                  )}
+                </div>
+              )}
             </>
           )}
         </div>
@@ -360,7 +396,7 @@ export default function BranchPage() {
 
       <AnimatePresence>
         {panelTopicIds && (
-          <QuestionPanel topicId={panelTopicIds} onClose={closePanel} />
+          <QuestionPanel topicId={panelTopicIds} onClose={closePanel} groupOrder={bulkOrder} />
         )}
       </AnimatePresence>
 
@@ -628,5 +664,49 @@ function EmptyState({ branchName, color }) {
         {branchName} için konular yakında eklenecek.
       </p>
     </div>
+  )
+}
+
+// Toplu çöz soru sırası: Yeni / İnceleme / Öğreniyor / Tekrar gruplarını yukarı-aşağı taşı
+function BulkOrderPanel({ order, color, onChange, onClose }) {
+  function move(i, d) {
+    const j = i + d
+    if (j < 0 || j >= order.length) return
+    const next = [...order]
+    ;[next[i], next[j]] = [next[j], next[i]]
+    onChange(next)
+  }
+  const isDefault = order.every((k, i) => k === DEFAULT_ORDER[i])
+  return (
+    <>
+      <div className="fixed inset-0 z-40" style={{ background: 'rgba(0,0,0,0.25)' }} onClick={onClose} />
+      <div
+        className="fixed inset-x-4 top-28 z-50 rounded-md p-3 shadow-xl sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-60"
+        style={{ background: '#0f1d31', border: `1px solid ${color}55` }}
+      >
+        <p className="text-[12px] font-semibold text-white mb-0.5">Soru sırası</p>
+        <p className="text-[11px] mb-2.5 leading-snug" style={{ color: '#7d8ca0' }}>Toplu çözde sorular bu sırayla gelir (her konu kendi içinde).</p>
+        <div className="space-y-1">
+          {order.map((k, i) => (
+            <div key={k} className="flex items-center gap-2 rounded px-2 py-1.5" style={{ background: '#0a1628', border: '1px solid #1a2d45' }}>
+              <span className="w-4 text-[12px] tabular-nums" style={{ color: '#7d8ca0' }}>{i + 1}.</span>
+              <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: ORDER_GROUPS[k].color }} />
+              <span className="flex-1 text-[13px] text-white">{ORDER_GROUPS[k].label}</span>
+              <button onClick={() => move(i, -1)} disabled={i === 0} aria-label="Yukarı" className="p-1" style={{ color: i === 0 ? '#2a3a50' : '#8aa4c0' }}>
+                <ChevronUp size={15} />
+              </button>
+              <button onClick={() => move(i, 1)} disabled={i === order.length - 1} aria-label="Aşağı" className="p-1" style={{ color: i === order.length - 1 ? '#2a3a50' : '#8aa4c0' }}>
+                <ChevronDown size={15} />
+              </button>
+            </div>
+          ))}
+        </div>
+        {!isDefault && (
+          <button onClick={() => onChange(DEFAULT_ORDER)} className="mt-2 text-[11px]" style={{ color }}>
+            Varsayılana dön (Yeni → İnceleme → Öğreniyor → Tekrar)
+          </button>
+        )}
+      </div>
+    </>
   )
 }
