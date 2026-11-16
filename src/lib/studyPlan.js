@@ -4,7 +4,7 @@ const P1_START = new Date('2026-06-15T00:00:00')
 const P2_START = new Date('2026-09-01T00:00:00')
 const P3_START = new Date('2027-02-01T00:00:00')
 const P4_START = new Date('2027-07-01T00:00:00')
-const P4_END   = new Date('2027-09-16T00:00:00')
+const P4_END   = new Date('2027-10-24T00:00:00') // DUS 2027 sınav günü
 
 function floor(d) { const r = new Date(d); r.setHours(0,0,0,0); return r }
 function daysBetween(a, b) { return Math.floor((floor(b) - floor(a)) / 86400000) }
@@ -25,7 +25,7 @@ export function getPhaseInfo(date) {
   }
   if (d >= floor(P4_START) && d < floor(P4_END)) {
     const weekNum = Math.floor(daysBetween(P4_START, d) / 7) + 1
-    return { phase: 4, label: 'Faz 4 — Final Sprint', weekNum, totalWeeks: 11 }
+    return { phase: 4, label: 'Faz 4 — Final Sprint', weekNum, totalWeeks: 17 }
   }
   return null
 }

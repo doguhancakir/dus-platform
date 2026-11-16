@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../contexts/AuthContext'
 import { Menu, X, LogOut } from 'lucide-react'
+import { ExamCountdownBadge } from './ExamCountdown'
 
 export default function Layout({ children }) {
   const [menuOpen, setMenuOpen] = useState(false)
@@ -67,6 +68,7 @@ export default function Layout({ children }) {
 
         {/* ── Desktop Nav ── */}
         <div className="hidden md:flex items-center gap-1 ml-auto pr-6 relative z-10">
+          <span className="mr-3"><ExamCountdownBadge /></span>
           <NavLink to="/" label="ANA SAYFA" active={isActive('/')} />
           <NavLink to="/library" label="KÜTÜPHANE" active={isActive('/library')} />
 
@@ -98,10 +100,11 @@ export default function Layout({ children }) {
           </div>
         </div>
 
-        {/* ── Mobile Hamburger ── */}
+        {/* ── Mobile: DUS sayacı + Hamburger ── */}
+        <span className="md:hidden ml-auto mr-3 relative z-10"><ExamCountdownBadge /></span>
         <button
           onClick={() => setMenuOpen(!menuOpen)}
-          className="md:hidden ml-auto mr-5 p-2 text-gray-500 hover:text-white transition-colors relative z-10"
+          className="md:hidden mr-5 p-2 text-gray-500 hover:text-white transition-colors relative z-10"
           aria-label="Menu"
           style={{ border: '1px solid #1e3555' }}
         >
